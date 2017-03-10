@@ -466,7 +466,7 @@ __global__ void gRmsdMaxSuper(int nato, const int nframes, const float* gclust_c
 		
 				//calculate_rotation_rmsd(&gclust_coords[cluster*3*nato],&gclust_coords[index*3*nato], nato, &rmsd);
 		float rmsd;
-		float R[3][3];
+		float R[3][3]; //comment
 		
 		//volatile int i,j,k,n;
 		volatile int i,j,n;	
