@@ -1,1 +1,0 @@
-/localscratch/flthomas/Wordom/build/CMakeFiles/wordom.dir
