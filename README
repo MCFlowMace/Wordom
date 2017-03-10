@@ -1,0 +1,27 @@
+INSTALL
+In order to compile wordom get into the build directory and run the cmake/make procedure:
+mkdir build
+cd build
+cmake ../
+make
+This will generate a wordom binary file in the build directory. Running as root:
+make install
+will copy it to /usr/local/bin/wordom
+
+In order to compile/install the python wordom module get in the src directory and run:
+python setup.py build
+then, as root:
+python setup.py install
+
+DOCUMENTATION
+Online documentation is available at:
+http://sourceforge.net/p/wordom/wikidoc/User%27s_Guide/
+A pdf copy of the manual is found in the doc directory.
+Some of the code (basic functions mostly) is commented doxygen-style, to generate a code documentation run doxygen on the wordom.doxy file found in the src directory.
+
+
+LICENSE
+ Wordom is Copyright © 2003-2014 the University of Modena and Reggio Emilia and the University of Zurich.
+ Wordom is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation; either version 3 of the License, or (at your option) any later version.
+ Wordom is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+ You should have received a copy of the GNU General Public License along with Wordom. If not, see http://www.gnu.org/licenses/

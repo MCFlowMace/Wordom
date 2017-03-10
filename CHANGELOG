@@ -1,0 +1,51 @@
+version 0.23:
+ users:
+  * more options+docs for the ENM module (Raimondi)
+  * more options+docs for the PSN modules (Felline)
+  * ring detection module (Conti)
+  * center of mass module (Conti)
+  * chain construct added to overall molecule structure (Seeber)
+  * selection includes chain; variable fields number (Seeber)
+  * wordom compiling and installing shifted to cmake (Seeber)
+  * pywordom compiling and installing shifted to setup.py (Seeber)
+ debug:
+  * many bugfixes throughout the code (Seeber, everybody)
+version 0.22-rc2:
+ debug:
+  * cFEP would loose peaks with populated trajectories due to uncorrect sizing of variables
+  * leader-like clustering gave shifted numbering for first time appearance of new cluster
+  * QT-like clustering did not include starter frame in each cluster
+  * within module would crash when --LEVEL used without --VERBOSE
+  * distance module would sometimes crash on 32-bits arch
+  * documentation did not mention --MEMSIZE flag in surface module
+  * documentation cleanup
+version 0.22:
+ for users:
+  * new Surface (+surf_coor, +surf_cluster) module (Felline)
+  * ENM module now working and still in development (Raimondi)
+  * PSN and PSN-path module now working (Felline, Seeber)
+  * selection enhanced (within, add/del) (Felline)
+  * manipulation enhanced (Seeber)
+  * various debugs (Seeber, everybody)
+ for developers:
+  * moved function.c/.h to datahandler.c/.h
+  * many subtle (and not-so-subtle) changes... more to come
+version 0.21:
+ for users:
+  * new -imol, -itrj, -omol, -otrj _replace_ all previous mol/trj input methods (Seeber)
+  * analysis directly from command line now possible (Seeber)
+  * new secondary structure computation module (Seeber)
+  * new kinetic analysis module (Muff)
+  * new elastic network module (Raimondi) -> not yet present in documentation
+  * new protein structure network module (Seeber) -> experimental, not in documentation
+  * gromacs files compatibility (Friedman)
+  * -checksele flag prints out selected atom numbers (Seeber)
+  * -sele accepts a index file name (list of atom numbers) (Seeber)
+  * -F accepts keywords all/range to select all (or ranges of) frames (Seeber)
+ for developers:
+  * analysis2.c split into multiple files: complex analysis modules have their own file
+  * added _traj structure to account for different trj file types
+  * modify accordingly lots of functions and function calls
+  * bugfix rmsd module when fitting to a different selection than the one used for computing rmsd proper
+  * ReadTRJ_Coor no more allocates for output coordinates: more consistent (didn't free)
+
