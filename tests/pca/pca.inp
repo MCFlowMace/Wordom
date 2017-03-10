@@ -1,0 +1,5 @@
+# pca module
+BEGIN pca
+--TITLE pca
+--SELE /A/*/CA
+END

@@ -1,0 +1,16 @@
+BEGIN rmsd
+--TITLE rmsd1
+--SELE /A/*/CA
+END
+BEGIN drms
+--TITLE drms1
+--SELE /*/*/*
+END
+BEGIN drms
+--TITLE drms2
+--SELE /A/*/*
+END
+BEGIN rmsf
+--TITLE rmsfX
+--SELE /A/*/CA
+END

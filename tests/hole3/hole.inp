@@ -1,0 +1,9 @@
+
+BEGIN HOLE
+--TITLE 2VL0b
+--POINT (-80.8:-110.3:-35.9) 
+--VECT  (0.97:0.22:0.06) 
+--SELE /@(F|G|H|I|J)/// 
+--SEED 1989
+END
+

@@ -1,0 +1,7 @@
+BEGIN projection
+--TITLE proj
+--SELE /A/*/CA : /A/*/CA
+--FILE eigvec.txt
+--VECTOR 1
+--DCDOUT proj.dcd
+END

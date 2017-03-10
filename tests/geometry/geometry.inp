@@ -1,0 +1,57 @@
+BEGIN distance
+--TITLE dist1
+--SELE /A/1/CA : /A/16/CA
+--TITLE dist2
+--SELE /A/2/CA : /A/15/CA
+--TITLE dist3
+--SELE /A/3/CA : /A/14/CA
+END
+BEGIN contacts
+--TITLE cont1
+--SELE /A/1/CA : /A/16/CA :  5.0
+--TITLE cont2
+--SELE /A/1/CA : /A/16/CA :  5.0
+--SELE /A/1/CA : /A/16/CA :  6.0
+--SELE /A/1/CA : /A/16/CA :  4.0
+--SELE /A/1/CA : /A/16/CA :  4.5
+--TITLE cont2a
+--SELE /A/1/CA : /A/16/CA :  5.0
+--SELE /A/1/CA : /A/16/CA : 10.0
+END
+BEGIN contacts
+--TITLE cont3
+--SELE /A/1/CA : /A/16/CA :  5.5
+END
+BEGIN contacts
+--TITLE cont4
+--SELE /A/1/CA : /A/16/CA :  5.0
+--SELE /A/1/CA : /A/16/CA : 10.0
+END
+BEGIN contacts
+--TITLE CONT
+--SELE /A/1/CA : /A/16/CA : 5.0
+--SELE /A/2/CA : /A/15/CA : 4.5
+--SELE /A/3/CA : /A/14/CA : 4.0
+END
+BEGIN angle
+--TITLE angle1
+--SELE /A/1/CA : /A/9/CA : /A/16/CA
+END
+BEGIN dihedral
+--TITLE dihe1
+--SELE /A/1/CA : /A/5/CA : /A/10/CA : /A/16/CA
+END
+BEGIN within
+--TITLE with1
+--SELE /A/10/*
+--LEVEL RES
+--VERBOSE 1
+END
+BEGIN rgyr
+--TITLE rgyr1
+--SELE /A/*/CA
+END
+BEGIN hbond
+--TITLE hb1
+--SELE /A/1/C : /A/1/O : /A/16/HN 
+END

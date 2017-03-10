@@ -1,0 +1,14 @@
+BEGIN corr
+--TITLE corr1
+--TYPE DCC
+--SELE /*/*/CA
+--LEVEL RES
+--MASS 0
+END
+BEGIN corr
+--TITLE corr2
+--TYPE LMI
+--SELE /*/*/CA
+--LEVEL ATM
+--MASS 0
+END

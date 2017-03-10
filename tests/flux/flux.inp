@@ -1,0 +1,10 @@
+BEGIN flux 
+--TITLE pent
+--SELE /*/*/OH2 
+--LOWER -50.83 
+--UPPER 2.432
+--DELTA 5.0
+--REF /*/*/CA
+--RCUT 15
+END
+

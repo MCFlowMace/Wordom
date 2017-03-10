@@ -1,0 +1,38 @@
+BEGIN surf
+--TITLE surf1
+--SELE /*/@(1-5)/*
+--ALGO GEPOL
+--CALC ESURF
+--NDIV 5
+--OFAC 0.5
+--RMIN 0.75
+--MEMSIZE 50MB
+END
+BEGIN surf
+--TITLE surf2
+--SELE /*/@(1-5)/*
+--ALGO GEPOL
+--CALC WSURF
+--NDIV 5
+END
+BEGIN surf
+--TITLE surf3
+--SELE /*/@(1-5)/*
+--ALGO GEPOL
+--CALC ASURF
+--NDIV 5
+END
+BEGIN surf
+--TITLE surf4
+--SELE /*/@(1-5)/*
+--ALGO ARVO
+END
+BEGIN surfclust
+--TITLE sclust1
+--SELE /*/@(1-5)/*
+--ALGO GEPOL
+--CALC ESURF
+--NDIV 5
+--OFAC 0.5
+--RMIN 0.75
+END

@@ -1,0 +1,15 @@
+BEGIN cluster
+--TITLE c_hiero
+--SELE /*/*/CA
+--METHOD hiero
+--CUTOFF 1.5
+--INMATRIX matrix_cluster.dat
+END
+BEGIN cassign
+--TITLE c2pass
+--FILE c_qt
+--SELE /*/*/CA
+--DISTANCE rmsd
+--CUTOFF 1.5
+--STEP 1
+END

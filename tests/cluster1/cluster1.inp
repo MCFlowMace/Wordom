@@ -1,0 +1,16 @@
+BEGIN cluster
+--TITLE c_qt
+--SELE /*/*/CA
+--METHOD qt
+--DISTANCE rmsd
+--CUTOFF 1.5
+--STEP 10
+--OUTMATRIX matrix_cluster.dat
+END
+BEGIN cluster
+--TITLE c_leader
+--SELE /*/*/CA
+--METHOD leader
+--DISTANCE rmsd
+--CUTOFF 1.5
+END
