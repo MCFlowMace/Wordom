@@ -649,8 +649,9 @@ int applyRotTrans( float **moving, float rotmatrix[3][3], float transvec[3], int
    
    return 0;
 }
+
 // ------------------------------------------------------------------
-float RmsdCalc(float **refcoor, float **movcoor, int nato, int super )
+float RmsdCalc(float **refcoor, float **movcoor, int nato, int super)
 {
 
   float rmsd=-1;
@@ -659,7 +660,7 @@ float RmsdCalc(float **refcoor, float **movcoor, int nato, int super )
   if( super == 0 )
     return RmsdCalc_nosup( refcoor, movcoor, nato );
   
-  rmsd = RmsdCalcQCP( refcoor, movcoor, nato, super );
+  rmsd = RmsdCalcQCP( refcoor, movcoor, nato, super);
   if( rmsd == -1 )
     return RmsdCalcKabsch3n( refcoor, movcoor, nato, super );
   
@@ -718,8 +719,9 @@ float RmsdCalcKabsch3n(float **refcoor, float **movcoor, int nato, int super )
   //fprintf(stderr, "RMSD: %f\n", rmsd);
   return rmsd;
 }
+
 // ------------------------------------------------------------------
-float RmsdCalcQCP(float **refcoor, float **movcoor, int nato, int super )
+float RmsdCalcQCP(float **refcoor, float **movcoor, int nato, int super)
 {
   float   rotmat[9];
   float   rmsd=0.0;

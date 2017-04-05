@@ -847,8 +847,8 @@ int ClusterLeaderRmsd( struct inp_Cluster *inp_cluster, CoorSet *trj_crd, int fr
    int          checked_clusters;
    int          lframe;
    
-//   lframe = (frame-1)/inp_cluster->step;
-   lframe = (frame)/inp_cluster->step;
+   lframe = (frame-1)/inp_cluster->step +1;
+   //lframe = (frame)/inp_cluster->step; probably wrong
    //lframe = frame;
    if( inp_cluster->nclusters == 0 )
    { // at the beginning, get first frame as first cluster

@@ -97,10 +97,11 @@ typedef struct pbcdata
  First attempt with QCP algorithm, Kabsch-like in case of failure
  Coor set are in coor[3][nato] format
 */
+
 float RmsdCalc( float **refcoor,        /*!< reference coordinate set */
                 float **movcoor,        /*!< moving coordinate set */
                 int n_ato,              /*!< number of atoms for both sets */
-                int super_flag          /*!< whether superposition is required */
+                int super_flag         /*!< whether superposition is required */
               );
 // ------------------------------------------------------------------
 //! Computes Root Mean Square Deviation - preserves original data
@@ -110,7 +111,7 @@ float RmsdCalc( float **refcoor,        /*!< reference coordinate set */
  By using local arrays before calling RmsdCalc it preserves the original
  data. Coor set are in coor[nato][3] format.
 */
-float RmsdCalc_preserve(float **refcoor, float **movcoor, int nato, int super );
+float RmsdCalc_preserve(float **refcoor, float **movcoor, int nato, int super);
 // ------------------------------------------------------------------
 //! Computes Root Mean Square Deviation - no superposition
 /*!

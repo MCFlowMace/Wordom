@@ -1,3 +1,21 @@
+// ------------------------------------------------------------------
+//
+// This program is free software; you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation; either version 2 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+// ------------------------------------------------------------------
+
+
 #include <math.h>
 #include <stdio.h> 
 #include <stdlib.h>
@@ -526,13 +544,17 @@ __global__ void gRmsdSuper(int nato, const int nframes, const float* gclust_coor
 		//if(calculate_rotation_matrix(R, E0, &rmsd)) {
   
 			rmsd = fabsf(rmsd); // avoids the awkward case of -0.0 
-			rmsd = sqrtf( fabsf((float) (rmsd)*2.0f/((float)nato)) ); 
+			rmsd = sqrtf( fabsf((float) (rmsd)*2.0f/((float)nato)) );
 			
-			//if (rmsd<cutoff){
+
+			//if(cluster == 38 && index < 100) printf("cluster: %10d, frame: %10d, rmsd: %10f, cutoff: %10f, frameapp: %10d\n",cluster, index, rmsd, distance[index],frameapp_read[index]);
+			//if(cluster == 59 && index < 100) printf("cluster: %10d, frame: %10d, rmsd: %10f, cutoff: %10f, frameapp: %10d\n",cluster, index, rmsd, distance[index],frameapp_read[index]);
+			
+			
 			if (rmsd<distance[index]){
 				frameapp_write[index] = cluster + 1; //+1 because in wordom the frames are counted starting with 1
 				distance[index] = rmsd;
-			return;
+				return;
 			}
   
 		}	
@@ -846,6 +868,12 @@ __global__ void gDrmsFramesClosest(const int msize, const int nframes, const flo
 __global__ void shiftToCenter(float* gclust_coords, const int nato, const int nframes) {
   
 	int index = blockIdx.x * blockDim.x + threadIdx.x;
+	
+	// if there are more threads than frames then stop these
+	if (index>=nframes){
+		return;
+	}
+	
 	float cms[3];
   
 	int ii,jj;
@@ -925,7 +953,7 @@ extern "C" int gClusterRmsd (struct inp_Cluster *inp_cluster,float *distance) {
 				fprintf(stderr,"multiProcessorCount %d\n",properties.multiProcessorCount);
 				fprintf(stderr,"maxThreadsPerMultiProcessor %d\n",properties.maxThreadsPerMultiProcessor);
 				
-				threadsPerBlock = 512; //100% occupancy
+				threadsPerBlock = 448; //100% occupancy
 				//threadsPerBlock = 704; //69% occupancy
 				
 				/*if(properties.major == 2)

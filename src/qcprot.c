@@ -153,7 +153,6 @@ float InnerProduct(float *A, float **coords1, float **coords2, const int len, co
     return (G1 + G2) * 0.5;
 }
 
-
 int FastCalcRMSDAndRotation(float *rot, float *A, float *rmsd, float E0, int len, float minScore)
 {
     float   Sxx, Sxy, Sxz, Syx, Syy, Syz, Szx, Szy, Szz;
@@ -232,10 +231,10 @@ int FastCalcRMSDAndRotation(float *rot, float *A, float *rmsd, float E0, int len
     if (i == 50)
     {
       // modified to signal silently that another method is needed
-      //fprintf(stderr,"\nMore than %d iterations needed!\n", i);
+      //fprintf(stderr,"More than %d iterations needed!\n", i);
       //fflush(stderr); // DEBUG
-      (*rmsd) = -1;
-      return 0;
+      //(*rmsd) = -1;
+      //return 0;
     }
     rms = sqrt(2.0 * (E0 - mxEigenV)/len);
     (*rmsd) = rms;
@@ -352,7 +351,6 @@ void CenterCoords(float **coords, const int len)
         z[i] -= zsum;
     }
 }
-
 
 float CalcRMSDRotationalMatrix(float **coords1, float **coords2, const int len, float *rot, const float *weight)
 {
