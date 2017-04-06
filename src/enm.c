@@ -505,6 +505,16 @@ int Read_iEnm( char **input, int inp_index, struct inp_enm *inp_enm, char *print
      {
        inp_enm->cov[ii]= inp_enm->cov[0] + 3*inp_enm->selean.nselatm*ii;
      }
+     
+     inp_enm->cov2 = (float **) calloc(3*inp_enm->selean.nselatm, sizeof(float *));
+     for(ii=0;ii<3*inp_enm->selean.nselatm;ii++)
+     {
+       inp_enm->cov2[ii] = (float *) calloc(3*inp_enm->selean.nselatm, sizeof(float));
+       for(jj=0;jj<3*inp_enm->selean.nselatm;jj++)
+       {
+         inp_enm->cov2[ii][jj] = 0.0;
+       }
+     }
    }
    
    //if (inp_enm->beta_flag==1 && strncmp(inp_enm->beta,"off",64) != 0 )
@@ -909,7 +919,7 @@ int Compute_Enm( struct inp_enm *inp_enm, Molecule *molecule, CoorSet *trj_crd, 
     {
       memset ( filename, '\0', sizeof(filename));
       sprintf( filename, "%s-eigvec_fr%d.dcd", inp_enm->title,inp_enm->current_frame);
-    }     
+    }
     
     inp_enm->evectrj = O_File( filename, "w" );
     FillDcdHeader( selmol, &inp_enm->evechdr );
@@ -1752,12 +1762,14 @@ int Enm_Rtb2full (struct inp_enm *inp_enm, Molecule *molecule  )
 int Enm_Correlation (struct inp_enm *inp_enm, _eigen *eig, Molecule *molecule)
 {
  
-  FILE *correlation;
+  FILE *correlation, *fhCovMatFile;
   FILE *corr4psn;
-  int len_mode=0, size=0, ssize=0, ii=0, jj=0, kk=0, *mode;
+  int   len_mode=0, size=0, ssize=0, ii=0, jj=0, kk=0, *mode;
+  int   mm, nn, n1, n2;
   float eignorm1=0, eignorm2=0, euclidean=0, **cov;
-  char  filename1[1280], filename2[1280], *tmp; 
-  char     cLabelA[20], cLabelB[20], cResCode1[3];
+  float **ppfTemp;
+  char  filename1[1280], filename2[1280], filename3[1280], *tmp;
+  char  cLabelA[20], cLabelB[20], cResCode1[3];
   
   if(strncmp(inp_enm->corr,"all",64)==0)
   {
@@ -1779,7 +1791,7 @@ int Enm_Correlation (struct inp_enm *inp_enm, _eigen *eig, Molecule *molecule)
   
   size = inp_enm->selean.nselatm;
   ssize = size*size;
-
+  
   cov = inp_enm->cov;
   for( ii=0; ii<ssize; ii++)
   {
@@ -1808,7 +1820,7 @@ int Enm_Correlation (struct inp_enm *inp_enm, _eigen *eig, Molecule *molecule)
       cov[ii][jj] = cov[ii][jj]/(sqrt(eignorm1)*sqrt(eignorm2));
     }
   }
- 
+
   if (inp_enm->print==0)
   {
     memset ( filename1, '\0', sizeof(filename1));
@@ -1823,7 +1835,44 @@ int Enm_Correlation (struct inp_enm *inp_enm, _eigen *eig, Molecule *molecule)
     memset ( filename2, '\0', sizeof(filename2));
     sprintf( filename2, "%s-corrpairs_fr%d.txt", inp_enm->title,inp_enm->current_frame);
   }
- 
+
+  // === *-* ANF *-* ================================================ //
+  if (inp_enm->print==0)
+  {
+    memset ( filename3, '\0', sizeof(filename3));
+    sprintf( filename3, "covarmatrix.txt");
+  }
+  else if (inp_enm->print==1)
+  {
+    memset ( filename3, '\0', sizeof(filename3));
+    sprintf( filename3, "%s-covarmatrix_fr%d.txt", inp_enm->title,inp_enm->current_frame);
+  }
+  
+  ppfTemp = (float **) calloc(len_mode, sizeof(float *));
+  for(mm=0; mm<len_mode; ++mm)
+    ppfTemp[mm] = (float *) calloc(inp_enm->selean.nselatm*3, sizeof(float));
+  
+  for(mm=0; mm<len_mode; ++mm)
+    for(nn=0; nn<inp_enm->selean.nselatm*3; ++nn)
+      ppfTemp[mm][nn] = (eig->eigval[eig->size-mode[mm]-6] * eig->eigvec[eig->size-mode[mm]-6][nn]);
+  
+  for(n1=0; n1<inp_enm->selean.nselatm*3; ++n1)
+    for(n2=0; n2<inp_enm->selean.nselatm*3; ++n2)
+      for(mm=0; mm<len_mode; ++mm)
+        inp_enm->cov2[n1][n2] += (eig->eigvec[eig->size-mode[mm]-6][n1] * ppfTemp[mm][n2]);
+  
+  fhCovMatFile = fopen(filename3, "w");
+  for(n1=0; n1<inp_enm->selean.nselatm*3; ++n1)
+  {
+    for(n2=0; n2<inp_enm->selean.nselatm*3; ++n2)
+    {
+      fprintf(fhCovMatFile,"%9.5f ",(inp_enm->cov2[n1][n2]));
+    }
+    fprintf(fhCovMatFile,"\n");
+  }
+  fclose(fhCovMatFile);
+  // === *-* ANF *-* ================================================ //
+
   correlation = fopen(filename1,"w");
   if (inp_enm->rtb_flag==0 || inp_enm->rtblevan_flag == 0)
   {

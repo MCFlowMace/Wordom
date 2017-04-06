@@ -107,6 +107,11 @@ Read_iTilt ( char **input, int inp_index, struct inp_tilt *inp_tilt , char *prin
         exit(5);
     }
 
+    /* Initialize Zprev to 0 0 1 */
+    inp_tilt->Zprev[0]=0;
+    inp_tilt->Zprev[1]=0;
+    inp_tilt->Zprev[2]=1;
+
     /* Print header and return */
     if (inp_tilt->decompose == 1) {
         if (title[0]=='\0') {
@@ -196,7 +201,7 @@ float Compute_Inertia(CoorSet *trj_crd, Selection *sele, float ***mtx)
 int Compute_Tilt ( struct inp_tilt *inp_tilt, CoorSet *trj_crd, char *outstring)
 {
 
-    float theta, phi, scalar;
+    float theta, phi, scalar, angle;
     float *v1;
     float X[3], Y[3], *Z;
     float projv1X, projv1Y, projv1Z;
@@ -226,6 +231,19 @@ int Compute_Tilt ( struct inp_tilt *inp_tilt, CoorSet *trj_crd, char *outstring)
 
         Z = mtxref[2]; /* eigenvec with the highest eigenval */
         w_norm(Z);
+
+        /* Check random flipping of the Z axis. */
+        /* If the Z axis rotates more than 178 degree */
+        /* Still not 100% accurate. Random flips are still possible */
+        angle = compute_angle(dot_prod(Z, inp_tilt->Zprev));
+        if (angle<-178 || angle>178) {
+            Z[0]*=-1;
+            Z[1]*=-1;
+            Z[2]*=-1;
+        }
+        inp_tilt->Zprev[0] = Z[0];
+        inp_tilt->Zprev[1] = Z[1];
+        inp_tilt->Zprev[2] = Z[2];
 
         /* X defined as vector between COM of sele and COM of seleRef projected on the plan orthogonal to Z axis */
 
@@ -293,6 +311,10 @@ int Compute_Tilt ( struct inp_tilt *inp_tilt, CoorSet *trj_crd, char *outstring)
         /* ..compute phi */
         scalar = dot_prod(V_phi, VZ);
         phi = compute_angle(scalar);
+
+        /* Assign sign base on quadrants */
+        if (projv1X<0) theta*=-1;
+        if (projv1Y<0) phi*=-1;
 
         sprintf( outstring, " %10.5f  %10.5f ", theta, phi);
 

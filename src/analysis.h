@@ -23,8 +23,6 @@
 #ifndef ANALYSIS
 #define ANALYSIS
 
-
-
 // ------------------------------------------------------------------
 typedef struct _coorsetdata      // coordinate sets data
 {
@@ -84,7 +82,6 @@ struct temp_ll
   int    size;
 } ;
 // ------------------------------------------------------------------
-
 #include "geometry.h"
 #include "moldiff.h"
 #include "cluster.h"

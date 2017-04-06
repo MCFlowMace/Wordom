@@ -93,4 +93,57 @@ int Compute_pro (struct inp_pro *, struct sopt *, CoorSet *, char *  );
 int Post_pro ( struct inp_pro *inp_pro, struct sopt *OPT, int nframe, Molecule *molecule );
 // ---------------------------------------------------------------------
 
+// === *** ANF *** ================================================== //
+
+typedef enum { NONE, EVEVOVER, EVDVOVER } pcatools_calc_type;
+
+struct inp_pcatools
+{
+  pcatools_calc_type    eCalcFlag;                                      // calc oper
+  
+  int                   iVerboseFlag;                                   // verbose flag, print some processing info
+  int                   iEVRangeBeg1;                                   // the first eigenvect number of eigfile1
+  int                   iEVRangeEnd1;                                   // the last  eigenvect number of eigfile1
+  int                   iEVNum1;                                        // the number of selected eigenvectors from eigfile1
+  int                  *piEVList1;                                      // list of eigenvectors from eigfile1
+  int                   iEVRangeBeg2;                                   // the first eigenvect number of eigfile2
+  int                   iEVRangeEnd2;                                   // the last  eigenvect number of eigfile2
+  int                   iEVNum2;                                        // the number of selected eigenvectors from eigfile2
+  int                  *piEVList2;                                      // list of eigenvectors from eigfile2
+  int                   iNumOfFittedAtoms;                              // the number of atoms used to fit reference and target structures
+  int                   iNumOfEigenVals1;                               // the length of each eigenvector
+  int                   iNumOfEigenVals2;                               // the length of each eigenvector
+  
+  float                 fRMSD;                                          // rmsd value, used for EV Vs DV calc
+  float                 fRMSDDeform;                                    // rmsd deformation
+  float               **ppfEVMatrix1;                                   // a matrix with all selected eigvect values from eigfile1
+  float               **ppfEVMatrix2;                                   // a matrix with all selected eigvect values from eigfile1
+  float               **ppfOverlapMatrix;                               // overlap matrix
+  float                *pfNormalizedVect;                               // normalized overlap vector for EV vs DV overlap calculation
+  float                *pfCSOVect1;                                     // cumulative square overlap vector
+  float                *pfCSOVect2;                                     // cumulative square overlap vector
+  
+  char                  cTitle[1024];                                   // title
+  char                  cLogFileName[1024];                             // log file name
+  char                  cEVFile1[1024];                                 // EV filename 1
+  char                  cEVFile2[1024];                                 // EV filename 2
+  
+  FILE                 *logFile;                                        // log file handler
+  time_t                time_tToday;                                    // used for time stamps
+  
+};
+
+void PCAToolsInpCheckAndSetup(struct inp_pcatools *);                   // performs some sanity checks on passed input and setup some internals
+void PCAToolsLoadEigenVect(struct inp_pcatools *);                      // load eigenvectors files
+void PCAToolsVerbose(struct inp_pcatools *);                            // write a log file
+void PCAToolsEVEVCalcOverlaps(struct inp_pcatools *);                   // performs ev vs ev overlap caluclations
+void PCAToolsEVDVCalcOverlaps(struct inp_pcatools *);                   // performs ev vs dv overlap caluclations
+void SetMatrix(float **, int, int, float);                              // set a matrix
+void SetVector(float *, int, float);                                    // set a vector
+void PCAToolsCalcCSO(struct inp_pcatools *);                            // calculates cumulative square overlap vector
+void PCAToolsWriteOverlapData(struct inp_pcatools *);                   // writes overlap matrix data file
+void PCAToolsWriteCSOData(struct inp_pcatools *);                       // writes cumulative square overlap vector data file
+
+// === *** ANF *** ================================================== //
+
 #endif

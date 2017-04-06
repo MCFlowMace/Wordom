@@ -278,6 +278,9 @@ int GetThisCoorSet( CoorSetData *coorsetdata, int number, CoorSet *crdset )
 // ---------------------------------------------------------------------
 int CoorSetRewind( CoorSetData *coorsetdata )
 {
+  int       ii;
+  char      tmptrjname[1024];
+  
   if( coorsetdata->islistoftrajs )
   {
     coorsetdata->frbefthistrj = 0;
@@ -285,6 +288,12 @@ int CoorSetRewind( CoorSetData *coorsetdata )
     CloseTrj( &coorsetdata->traj );
     OpenTrj( coorsetdata->trj_list.trjname[coorsetdata->currenttrj], &coorsetdata->traj, "r" );
     ReadTrjHeader ( &coorsetdata->traj );
+  }
+  else if( coorsetdata->traj.filetype == 2) {
+    for( ii=0; ii<1024; ii++ )
+      tmptrjname[ii] = coorsetdata->traj.filename[ii];
+    CloseTrj( &coorsetdata->traj );
+    OpenTrj( tmptrjname, &coorsetdata->traj, "r" );
   }
   
   return 0;
@@ -358,7 +367,7 @@ void superCalc ( struct sopt   *OPT  )
      
      T_data[0].iA_data.nframe = T_data[0].coorsetdata->i_nUsedFrames;
      
-     fprintf( oA_f, "#   nFr ");
+     fprintf( oA_f, "#Fr     ");
      header = Read_iA ( OPT, &T_data[0].iA_data, &papersize, &molecule, &coorsetdata);
      fprintf(oA_f,"%s\n", header);
      free(header);
@@ -637,12 +646,11 @@ int CoreCalc( struct sopt *OPT, Molecule *molecule, CoorSetData * coorsetdata, s
    }
    for( ii=0; ii<=(coorsetdata->endframe-coorsetdata->begframe); ii+=coorsetdata->skip )
    {
-		intex = GetThisCoorSet( coorsetdata, ii, &trj_crd );
-     
-			fprintf(oA_f,"%7d ", intex); fflush(oA_f);
-			memset( tmp_print, '\0', tmp_print_size);
-			run_iA( ii, intex, &trj_crd, iA_data, tmp_print, molecule );
-			fprintf( oA_f, "%s\n", tmp_print);
+	 intex = GetThisCoorSet( coorsetdata, ii, &trj_crd );
+     fprintf(oA_f,"%7d ", intex); fflush(oA_f);
+     memset( tmp_print, '\0', tmp_print_size);
+     run_iA( ii, intex, &trj_crd, iA_data, tmp_print, molecule );
+     fprintf( oA_f, "%s\n", tmp_print);
    }
    
    if(OPT->VERBOSE_FLAG)
@@ -694,7 +702,7 @@ int CoreCalc( struct sopt *OPT, Molecule *molecule, CoorSetData * coorsetdata, s
         iA_data->bonoffmodulespost[jj] = Post_PSG (&iA_data->input[jj]->inp_psn, iA_data->nframe, molecule, OPT );
        break;
        case  19 :
-        iA_data->bonoffmodulespost[jj] = Post_CORR ( &iA_data->input[jj]->inp_corr, molecule, OPT, &trj_crd);
+        iA_data->bonoffmodulespost[jj] = Post_CORR (&iA_data->input[jj]->inp_corr, molecule, OPT, &trj_crd);
         break;
        case  20 :
         iA_data->bonoffmodulespost[jj] = Post_SURFCLUST( &iA_data->input[jj]->inp_surf, OPT);
@@ -835,8 +843,6 @@ void * iA_Calc_thread ( void * pT_data )
      header = Read_iA ( opt, iA_data, &papersize, molecule, coorsetdata);
      free(header);
    }
-   
-   iA_data->output = T_data->printout;
    
    CalloCoor( &trj_crd, coorsetdata->nato );
 
@@ -992,7 +998,7 @@ void iA_Calc ( struct sopt   *OPT  )
      oA_f = stdout;
     
    
-   fprintf(oA_f, "#   nFr ");
+   fprintf(oA_f, "#Fr     ");
 
   // reading input file
    iA_data.nframe = coorsetdata.i_nUsedFrames;
@@ -1153,14 +1159,12 @@ char * Read_iA( struct sopt  *OPT, struct inp_A *iA_data, int *papersize, Molecu
       Get_Atype ( input_text, n_inputlines, iA_data->A_type, iA_data->nBEG );
     }
     else if( OPT->Ia_FLAG )
-    {
-		
+    {	
       n_inputlines = OPT->iaopt->noptions+2;
       input_text = calloc( n_inputlines, sizeof(char * ));
       for( ii=0; ii< n_inputlines; ii++ )
         input_text[ii] = calloc( 20480, sizeof(char));
       sprintf( input_text[0], "BEGIN %s\n", OPT->Ia_STRING);
-
       current = OPT->iaopt;
       for( ii=0; ii< OPT->iaopt->noptions; ii++ )
       {
@@ -1337,11 +1341,6 @@ char * Read_iA( struct sopt  *OPT, struct inp_A *iA_data, int *papersize, Molecu
       temp_ll = temp_ll->next;
       free(prev);
     }
-    
-    /* now create arrays where results will be stored */
-    iA_data->output = calloc ( iA_data->nframe, sizeof(char *));
-    for( ii=0; ii<iA_data->nframe; ii++ )
-      iA_data->output = calloc ( papersize[0], sizeof(char));
     
     if( OPT->PBC_FLAG )
     {

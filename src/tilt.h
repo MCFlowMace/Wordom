@@ -30,6 +30,7 @@ struct inp_tilt {
   Selection  sele;
   int decompose;
   int noorient;
+  float Zprev[3];
 };
 
 int Read_iTilt ( char **input, int inp_index, struct inp_tilt *inp_tilt , char *title, Molecule *molecule );

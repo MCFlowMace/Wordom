@@ -34,7 +34,6 @@
 //void Read_iRmsd_c1 ( FILE *inpfile, struct inp_rms_c1 *inp_rms_c1, FILE *outfile, Molecule *molecule )
 int Read_iCluster ( char **input, int inp_index, struct inp_Cluster *inp_cluster, char *printout, Molecule *molecule, CoorSetData *coorsetdata,int nframe )
 {
-	
    int         ii, jj, kk;
    char        buffer[1024];
    char        title[64];
@@ -98,8 +97,8 @@ int Read_iCluster ( char **input, int inp_index, struct inp_Cluster *inp_cluster
     }
     else if ( !strncmp(buffer, "--TITLE", 7))
     {
-		sscanf( buffer, "--TITLE %s", title);
-		gotit = 1;
+      sscanf( buffer, "--TITLE %s", title);
+      gotit = 1;
     } 
     else if ( !strncmp(buffer, "--DISTANCE", 10))
     {
@@ -307,25 +306,21 @@ int Read_iCluster ( char **input, int inp_index, struct inp_Cluster *inp_cluster
    if( inp_cluster->method == 3 )
    {
     inp_cluster->totframe = nframe;
-    //inp_cluster->frameapp = (int *)calloc( (inp_cluster->totframe/inp_cluster->step+1) , sizeof( int)); // +1 is needed because we will use the real number of frame, not the index (maybe)
-    //inp_cluster->frameapp = (int *)calloc( inp_cluster->totframe+1 , sizeof( int)); // +1 is needed because we will use the real number of frame, not the index (maybe)
-    inp_cluster->frameapp = (int*) malloc((inp_cluster->totframe/inp_cluster->step+(inp_cluster->totframe%inp_cluster->step == 0 ? 0 : 1)+1)*sizeof(int));
-    memset(inp_cluster->frameapp,-1,(inp_cluster->totframe/inp_cluster->step+(inp_cluster->totframe%inp_cluster->step == 0 ? 0 : 1)+1)*sizeof(int));
+    //inp_cluster->frameapp = (int *)calloc( inp_cluster->totframe+1 , sizeof( int)); // old, not taking the step into account and therefore taking more memory
+    //inp_cluster->frameapp = (int*) malloc((inp_cluster->totframe/inp_cluster->step+(inp_cluster->totframe%inp_cluster->step == 0 ? 0 : 1)+1)*sizeof(int));
+    //memset(inp_cluster->frameapp,-1,(inp_cluster->totframe/inp_cluster->step+(inp_cluster->totframe%inp_cluster->step == 0 ? 0 : 1)+1)*sizeof(int)); //Memsetting to -1 for debugging purposes
+    inp_cluster->frameapp = (int *) calloc((inp_cluster->totframe/inp_cluster->step+(inp_cluster->totframe%inp_cluster->step == 0 ? 0 : 1)+1), sizeof(int)); // +1 is needed because we will use the real number of frame, not the index
     
-    if( inp_cluster->distance == 1 )
-    {
-	    inp_cluster->refcoor = calloc( 3, sizeof(float *));
-	    inp_cluster->refcoor[0] = calloc ( inp_cluster->nato*3, sizeof ( float  ));
-	    for ( ii =0; ii<3; ii++)
-	      inp_cluster->refcoor[ii] = inp_cluster->refcoor[0] + inp_cluster->nato*ii;
-	    /*
-	    inp_cluster->refcoor    = calloc(   inp_cluster->nato, sizeof(float *));
-	    inp_cluster->refcoor[0] = calloc( 3*inp_cluster->nato, sizeof(float  ));
-	    for ( ii =0; ii<inp_cluster->nato; ii++)
-	     inp_cluster->refcoor[ii] = inp_cluster->refcoor[0] + 3*ii;
-	    */
-	}
-    
+    inp_cluster->refcoor = calloc( 3, sizeof(float *));
+    inp_cluster->refcoor[0] = calloc ( inp_cluster->nato*3, sizeof ( float  ));
+    for ( ii =0; ii<3; ii++)
+      inp_cluster->refcoor[ii] = inp_cluster->refcoor[0] + inp_cluster->nato*ii;
+    /*
+    inp_cluster->refcoor    = calloc(   inp_cluster->nato, sizeof(float *));
+    inp_cluster->refcoor[0] = calloc( 3*inp_cluster->nato, sizeof(float  ));
+    for ( ii =0; ii<inp_cluster->nato; ii++)
+     inp_cluster->refcoor[ii] = inp_cluster->refcoor[0] + 3*ii;
+    */
     inp_cluster->nclusters = 0;
     inp_cluster->clusterlist = calloc( inp_cluster->totframe+1, sizeof(_clusters *));
     
@@ -390,10 +385,11 @@ int Read_iCluster ( char **input, int inp_index, struct inp_Cluster *inp_cluster
     for ( ii =0; ii<nsframe+1; ii++)
      inp_cluster->zcoor[ii] = (float *)calloc( inp_cluster->sele.nselatm, sizeof ( float  ));
     
-    inp_cluster->totframe = nframe;
-    //inp_cluster->frameapp = (int *)calloc( (inp_cluster->totframe/inp_cluster->step+1) , sizeof( int)); // +1 is needed because we will use the real number of frame, not the index (maybe)
-    inp_cluster->frameapp = (int*) malloc((inp_cluster->totframe/inp_cluster->step+(inp_cluster->totframe%inp_cluster->step == 0 ? 0 : 1)+1)*sizeof(int));
-    memset(inp_cluster->frameapp,-1,(inp_cluster->totframe/inp_cluster->step+(inp_cluster->totframe%inp_cluster->step == 0 ? 0 : 1)+1)*sizeof(int));
+    inp_cluster->totframe = nframe;    
+    //inp_cluster->frameapp = (int *)calloc( inp_cluster->totframe+1 , sizeof( int)); // old, not taking the step into account and therefore taking more memory
+    //inp_cluster->frameapp = (int*) malloc((inp_cluster->totframe/inp_cluster->step+(inp_cluster->totframe%inp_cluster->step == 0 ? 0 : 1)+1)*sizeof(int));
+    //memset(inp_cluster->frameapp,-1,(inp_cluster->totframe/inp_cluster->step+(inp_cluster->totframe%inp_cluster->step == 0 ? 0 : 1)+1)*sizeof(int)); //Memsetting to -1 for debugging purposes
+    inp_cluster->frameapp = (int *) calloc((inp_cluster->totframe/inp_cluster->step+(inp_cluster->totframe%inp_cluster->step == 0 ? 0 : 1)+1), sizeof(int)); // +1 is needed because we will use the real number of frame, not the index
     
     inp_cluster->refcoor = calloc( 3, sizeof(float *));
     inp_cluster->refcoor[0] = calloc ( inp_cluster->nato*3, sizeof ( float  ));
@@ -462,7 +458,6 @@ int Read_iCluster ( char **input, int inp_index, struct inp_Cluster *inp_cluster
    }
    
    inp_cluster->output = O_File( title, "w");
-
    if(inp_cluster->method == 3)
    {
      sprintf( printout, " %10s cluster# distance ", title);
@@ -1027,7 +1022,7 @@ int GclusterLeaderRmsd( struct inp_Cluster *inp_cluster, CoorSet *trj_crd, int f
 #endif
 
 // ------------------------------------------------------------------
-int ClusterLeaderDrms( struct inp_Cluster *inp_cluster, CoorSet *trj_crd, int frame, float *finaldrms)
+int ClusterLeaderDrms( struct inp_Cluster *inp_cluster, CoorSet *trj_crd, int frame, float *finaldrms )
 {
    int          ii, index;
    float        drms, mindrms;
@@ -1115,11 +1110,10 @@ int ClusterLeaderDrms( struct inp_Cluster *inp_cluster, CoorSet *trj_crd, int fr
  
        if( inp_cluster->nointrasegm == 1 ) //Renormalize the distance properly
          drms *= inp_cluster->nointrasegm_corr_fact;
-  
+
        if( drms<inp_cluster->threshold )
        {
          inp_cluster->frameapp[lframe] = index;
-         //fprintf(stdout,"DEBUG apply frame number %d to cluster %d with drms2 = %f\n",lframe,index,drms*drms);
          inp_cluster->clusterlist[index]->nelements += 1;
          finaldrms[0] = drms;
          return inp_cluster->clusterlist[inp_cluster->frameapp[lframe]][0].center;
@@ -1901,25 +1895,19 @@ int Post_Cluster ( struct inp_Cluster *inp_cluster )
      fprintf( inp_cluster->output, "%s", inp_cluster->header);
      inp_cluster->cluster = (_scluster *)calloc(inp_cluster->nclusters+1, sizeof(_scluster));
      //ccenterindex = (int *)calloc(inp_cluster->nclusters, sizeof( int ));
-   int frames = inp_cluster->totframe/inp_cluster->step+(inp_cluster->totframe%inp_cluster->step == 0 ? 0 : 1);
+	 int frames = inp_cluster->totframe/inp_cluster->step+(inp_cluster->totframe%inp_cluster->step == 0 ? 0 : 1);
    
      for( ii=0; ii<inp_cluster->nclusters; ii++ )
      {
-			
-		 
        inp_cluster->cluster[ii].cluspop = inp_cluster->clusterlist[ii][0].nelements;
        inp_cluster->cluster[ii].clusstart = inp_cluster->cluster[ii].cluscenter = inp_cluster->clusterlist[ii][0].center;
        inp_cluster->cluster[ii].clusstrs = calloc( inp_cluster->cluster[ii].cluspop+1, sizeof(int));
-       index = 0;
-       
-	  		
+       index = 0;  		
        for( jj=0; jj<frames; jj++ )
        {
-
-
-        if( inp_cluster->frameapp[jj+1] == ii )
+         if( inp_cluster->frameapp[jj+1] == ii )
          {
-			//inp_cluster->cluster[ii].clusstrs[index] = (jj+1) * inp_cluster->step;
+           //inp_cluster->cluster[ii].clusstrs[index] = (jj + 1) * inp_cluster->step; //seems to be wrong
            inp_cluster->cluster[ii].clusstrs[index] = jj * inp_cluster->step + 1;
            index++;
          }
@@ -1929,7 +1917,7 @@ int Post_Cluster ( struct inp_Cluster *inp_cluster )
      fprintf(inp_cluster->output, "# Nclusters (method %d): %d \n", inp_cluster->method, inp_cluster->nclusters);
      fprintf(inp_cluster->output, "Cluster#    0 ; structures: 0 ; header: leader-like has no isolated structures\n" );
      
-     for( ii=0; ii<inp_cluster->nclusters; ii++) 
+     for( ii=0; ii<inp_cluster->nclusters; ii++)
      {
        fprintf(inp_cluster->output, "Cluster# %4d ; structures: %d ; header: %5d\n", ii+1, inp_cluster->cluster[ii].cluspop, inp_cluster->cluster[ii].cluscenter );
        for( jj=0; jj<inp_cluster->cluster[ii].cluspop; jj++)
@@ -2058,9 +2046,9 @@ int FileClustering( char **ppcInput, int iInputLineNum )
       gotit = 1;
     else if ( !strncmp(buffer, "--TITLE", 7))
     {
-		sscanf( buffer, "--TITLE %s", title);
-		gottitle = 1;
-		gotit = 1;
+     sscanf( buffer, "--TITLE %s", title);
+     gottitle = 1;
+     gotit = 1;
     } 
     else if ( !strncmp(buffer, "--CUTOFF", 8))
     {
@@ -2190,8 +2178,8 @@ int Read_iCAssign ( char **input, int inp_index, struct inp_CAssign *inp_cassign
     }
     else if ( !strncmp(buffer, "--TITLE", 7))
     {
-		sscanf( buffer, "--TITLE %s", title);
-		gotit = 1;
+     sscanf( buffer, "--TITLE %s", title);
+     gotit = 1;
     } 
     else if ( !strncmp(buffer, "--FILE", 6))
     {

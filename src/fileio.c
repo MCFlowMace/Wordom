@@ -48,6 +48,8 @@
 #define MAX_LENGTH_SUFFIX 4
 #define O_GMX_NOT_COMPILED fprintf(stderr, "Sorry, this version was not compiled with XTC files support\n");
 
+#define PIE 3.14159265358979323846
+
 // defines for fnm_match
 /* Bits set in the FLAGS argument to `fnmatch'.  */
 #define	FNM_PATHNAME	(1 << 0) /* No wildcard can ever match `/'.  */
@@ -768,8 +770,16 @@ void FillDcdHeader ( Molecule   *molecule,    // pdb structure
    hdr->skpstp  = 1000;
    hdr->numstp  = 1;
    hdr->tmstp   = 0.002;
+   hdr->varpbc  = 0;
    hdr->nato    = molecule->nato;
-   hdr->sixtyfour    = 0;
+   hdr->fixatm  = 0;
+   hdr->fixatm_list = NULL;
+   hdr->fixcoor     = NULL;
+   hdr->sex     = 0;
+   hdr->size    = 0;  /* to be computed later */
+   hdr->sixtyfour = 0;
+   hdr->c_nframe  = 1;
+   hdr->c_numstp  = 1;
    
    return;
 }        
@@ -800,6 +810,8 @@ void WriteDcdHeader( FILE        *dcd,         // dcd file
    int dum164 = 164;
    int dum2 = 2;
    int dum4 = 4;
+   
+   
    
    if (strstr (field, "all"))
    {
@@ -2083,7 +2095,7 @@ void ReadPdb ( char *name, Molecule *molecule )
 {
   FILE        *pdb;
   int          ii;
-  char         buffer[80], varbuffer[12];
+  char         buffer[80], varbuffer[13];
   int          skewed = 0;
   int         *tmpchainpop=NULL;
   int          tmp_presn = 0;
@@ -2373,9 +2385,9 @@ void ReadPdb ( char *name, Molecule *molecule )
     molecule->coor.pbc->a_size = molecule->rawmol.a;
     molecule->coor.pbc->b_size = molecule->rawmol.b;
     molecule->coor.pbc->c_size = molecule->rawmol.c;
-    molecule->coor.pbc->angle1 = cos(molecule->rawmol.alpha);
-    molecule->coor.pbc->angle2 = cos(molecule->rawmol.beta);
-    molecule->coor.pbc->angle3 = cos(molecule->rawmol.gamma);
+    molecule->coor.pbc->angle1 = cos(molecule->rawmol.alpha * (PIE/180));
+    molecule->coor.pbc->angle2 = cos(molecule->rawmol.beta  * (PIE/180));
+    molecule->coor.pbc->angle3 = cos(molecule->rawmol.gamma * (PIE/180));
     strncpy( molecule->s_group, molecule->rawmol.s_group, 11);
     molecule->coor.pbc->zval       = molecule->rawmol.z;
   }
@@ -2420,7 +2432,7 @@ void WritePdb ( char *name, Molecule *molecule )
       else
         fprintf( out, "HETATM" );
       if ( (strlen (molecule->segment[ii].pRes[jj].pAto[kk].atmType)) < 4 ) 
-       fprintf ( out, "%5d  %-4s%-4s%c%4d    %8.3f%8.3f%8.3f%6.2f%6.2f      %-4s%2s%2s\n",
+       fprintf ( out, "%5d  %-4s%-4s%c%4d    %8.*f%8.*f%8.*f%6.2f%6.2f      %-4s%2s%2s\n",
                        atomn, 
                        molecule->segment[ii].pRes[jj].pAto[kk].atmType, 
                        molecule->segment[ii].pRes[jj].resType, 
@@ -2429,16 +2441,17 @@ void WritePdb ( char *name, Molecule *molecule )
                        //molecule->coor.xcoor[ll], 
                        //molecule->coor.ycoor[ll], 
                        //molecule->coor.zcoor[ll], 
-                       molecule->segment[ii].pRes[jj].pAto[kk].xCoor,
-                       molecule->segment[ii].pRes[jj].pAto[kk].yCoor,
-                       molecule->segment[ii].pRes[jj].pAto[kk].zCoor,
+                        /* The x,y,z coordinated are written normally with 3 figures after the comma. If less then -1000, only two figures are printed. */
+                       molecule->segment[ii].pRes[jj].pAto[kk].xCoor <-1000 ? 2 : 3, molecule->segment[ii].pRes[jj].pAto[kk].xCoor,
+                       molecule->segment[ii].pRes[jj].pAto[kk].yCoor <-1000 ? 2 : 3, molecule->segment[ii].pRes[jj].pAto[kk].yCoor,
+                       molecule->segment[ii].pRes[jj].pAto[kk].zCoor <-1000 ? 2 : 3, molecule->segment[ii].pRes[jj].pAto[kk].zCoor,
                        molecule->segment[ii].pRes[jj].pAto[kk].occup, 
                        molecule->segment[ii].pRes[jj].pAto[kk].bFac , 
                        molecule->segment[ii].segName , 
                        molecule->segment[ii].pRes[jj].pAto[kk].element, 
                        molecule->segment[ii].pRes[jj].pAto[kk].charge);
       else
-       fprintf ( out, "%5d %-4s %-4s%c%4d    %8.3f%8.3f%8.3f%6.2f%6.2f      %-4s%2s%2s\n", 
+       fprintf ( out, "%5d %-4s %-4s%c%4d    %8.*f%8.*f%8.*f%6.2f%6.2f      %-4s%2s%2s\n", 
                        atomn,
                        molecule->segment[ii].pRes[jj].pAto[kk].atmType, 
                        molecule->segment[ii].pRes[jj].resType, 
@@ -2447,9 +2460,10 @@ void WritePdb ( char *name, Molecule *molecule )
                        //molecule->coor.xcoor[ll], 
                        //molecule->coor.ycoor[ll], 
                        //molecule->coor.zcoor[ll], 
-                       molecule->segment[ii].pRes[jj].pAto[kk].xCoor,
-                       molecule->segment[ii].pRes[jj].pAto[kk].yCoor,
-                       molecule->segment[ii].pRes[jj].pAto[kk].zCoor,
+                        /* The x,y,z coordinated are written normally with 3 figures after the comma. If less then -1000, only two figures are printed. */
+                       molecule->segment[ii].pRes[jj].pAto[kk].xCoor <-1000 ? 2 : 3, molecule->segment[ii].pRes[jj].pAto[kk].xCoor,
+                       molecule->segment[ii].pRes[jj].pAto[kk].yCoor <-1000 ? 2 : 3, molecule->segment[ii].pRes[jj].pAto[kk].yCoor,
+                       molecule->segment[ii].pRes[jj].pAto[kk].zCoor <-1000 ? 2 : 3, molecule->segment[ii].pRes[jj].pAto[kk].zCoor,
                        molecule->segment[ii].pRes[jj].pAto[kk].occup, 
                        molecule->segment[ii].pRes[jj].pAto[kk].bFac , 
                        molecule->segment[ii].segName , 
@@ -2483,36 +2497,39 @@ void WritePdb_unstr ( char *name, Molecule *molecule )
     else
       fprintf( out, "HETATM" );
     if ( (strlen (molecule->rawmol.atmtype[ii])) < 4 ) 
-     fprintf ( out, "%5d  %-4s%-3s %c%4d    %8.3f%8.3f%8.3f%6.2f%6.2f      %-4s%2s%2s\n",
+     fprintf ( out, "%5d  %-4s%-3s %c%4d    %8.*f%8.*f%8.*f%6.2f%6.2f      %-4s%2s%2s\n",
                         atomn,
                         molecule->rawmol.atmtype[ii], 
                         molecule->rawmol.restype[ii], 
                         molecule->rawmol.chainId[ii],
                         molecule->rawmol.resn[ii],
-                        molecule->coor.xcoor[ii],
-                        molecule->coor.ycoor[ii],
-                        molecule->coor.zcoor[ii],
+                        /* The x,y,z coordinated are written normally with 3 figures after the comma. If less then -1000, only two figures are printed. */
+                        molecule->coor.xcoor[ii] <-1000 ? 2 : 3, molecule->coor.xcoor[ii],
+                        molecule->coor.ycoor[ii] <-1000 ? 2 : 3, molecule->coor.ycoor[ii],
+                        molecule->coor.zcoor[ii] <-1000 ? 2 : 3, molecule->coor.zcoor[ii],
                         molecule->rawmol.occup[ii],
                         molecule->rawmol.bFac[ii],
                         molecule->rawmol.segId[ii],
                         molecule->rawmol.element[ii], 
                         molecule->rawmol.charge[ii]);
-    else
+     else 
      //fprintf ( out, "ATOM  %5d  %-4s%-3s %c%4d    %8.3f%8.3f%8.3f%6.2f%6.2f      %-4s%2s%2s\n",
-     fprintf ( out, "%5d %-4s %-4s%c%4d    %8.3f%8.3f%8.3f%6.2f%6.2f      %-4s%2s%2s\n", 
+     fprintf ( out, "%5d %-4s %-4s%c%4d    %8.*f%8.*f%8.*f%6.2f%6.2f      %-4s%2s%2s\n", 
                         atomn,
                         molecule->rawmol.atmtype[ii], 
                         molecule->rawmol.restype[ii], 
                         molecule->rawmol.chainId[ii],
                         molecule->rawmol.resn[ii],
-                        molecule->coor.xcoor[ii],
-                        molecule->coor.ycoor[ii],
-                        molecule->coor.zcoor[ii],
+                        /* The x,y,z coordinated are written normally with 3 figures after the comma. If less then -1000, only two figures are printed. */
+                        molecule->coor.xcoor[ii] <-1000 ? 2 : 3, molecule->coor.xcoor[ii],
+                        molecule->coor.ycoor[ii] <-1000 ? 2 : 3, molecule->coor.ycoor[ii],
+                        molecule->coor.zcoor[ii] <-1000 ? 2 : 3, molecule->coor.zcoor[ii],
                         molecule->rawmol.occup[ii],
                         molecule->rawmol.bFac[ii],
                         molecule->rawmol.segId[ii],
                         molecule->rawmol.element[ii], 
                         molecule->rawmol.charge[ii]);
+    
       }
   
    fprintf(out, "END\n");
@@ -2525,7 +2542,7 @@ void ReadCrd ( char *name, Molecule *molecule )
 {
    FILE   *crd;
    int     ii;
-   char    buffer[150], varbuffer[12];
+   char    buffer[150], varbuffer[13];
    int     nato, nlines, crdnatofound = 0;
    
    crd = O_File( name, "r");
@@ -3522,6 +3539,7 @@ Molecule * CopyMol( Molecule *mol1 )
 {
    Molecule *mol2;
    int   ii, jj, kk;
+   int   previouschainssegs;
    
    mol2 = calloc( 1, sizeof(Molecule));
    
@@ -3540,6 +3558,7 @@ Molecule * CopyMol( Molecule *mol1 )
    mol2->rawmol.resn    = calloc ( mol2->nato, sizeof( int ) );
    mol2->rawmol.occup   = calloc ( mol2->nato, sizeof(float) );
    mol2->rawmol.bFac    = calloc ( mol2->nato, sizeof(float) );
+   mol2->rawmol.hetatm  = calloc ( mol2->nato, sizeof(short) );
 
    mol2->rawmol.atmtype    = calloc ( mol2->nato, sizeof(char *));
    mol2->rawmol.atmtype[0] = calloc ( 5*mol2->nato, sizeof(char) );
@@ -3552,9 +3571,10 @@ Molecule * CopyMol( Molecule *mol1 )
     mol2->rawmol.atmId[ii]   = mol2->rawmol.atmId[0] + 5*ii;
 
    mol2->rawmol.restype    = calloc ( mol2->nato, sizeof(char *));
-   mol2->rawmol.restype[0] = calloc ( 3*mol2->nato, sizeof(char) );
+   mol2->rawmol.restype[0] = calloc ( 4*mol2->nato, sizeof(char) );
    for ( ii=0; ii < mol2->nato ; ii++)
-    mol2->rawmol.restype[ii] = mol2->rawmol.restype[0] + 3*ii;
+    mol2->rawmol.restype[ii] = mol2->rawmol.restype[0] + 4*ii;
+    
 
    mol2->rawmol.segId      = calloc ( mol2->nato, sizeof(char *));
    mol2->rawmol.segId[0]   = calloc ( 5*mol2->nato, sizeof(char) );
@@ -3562,9 +3582,9 @@ Molecule * CopyMol( Molecule *mol1 )
     mol2->rawmol.segId[ii]   = mol2->rawmol.segId[0] + 5*ii;
 
    mol2->rawmol.element    = calloc ( mol2->nato, sizeof(char *));
-   mol2->rawmol.element[0] = calloc ( 2*mol2->nato, sizeof(char) );
+   mol2->rawmol.element[0] = calloc ( 3*mol2->nato, sizeof(char) );
    for ( ii=0; ii < mol2->nato ; ii++)
-    mol2->rawmol.element[ii] = mol2->rawmol.element[0] + 2*ii;
+    mol2->rawmol.element[ii] = mol2->rawmol.element[0] + 3*ii;
 
    mol2->rawmol.charge     = calloc ( mol2->nato, sizeof(char *));
    mol2->rawmol.charge[0]  = calloc ( 2*mol2->nato, sizeof(char) );
@@ -3580,6 +3600,7 @@ Molecule * CopyMol( Molecule *mol1 )
      mol2->rawmol.resn[ii]    = mol1->rawmol.resn[ii];
      mol2->rawmol.occup[ii]   = mol1->rawmol.occup[ii];
      mol2->rawmol.bFac[ii]    = mol1->rawmol.bFac[ii];
+     mol2->rawmol.hetatm[ii]  = mol1->rawmol.hetatm[ii];
      sprintf( mol2->rawmol.atmtype[ii], "%s",mol2->rawmol.atmtype[ii]);
      sprintf( mol2->rawmol.atmId[ii], "%s", mol1->rawmol.atmId[ii]);
      sprintf( mol2->rawmol.restype[ii], "%s",mol1->rawmol.restype[ii]);
@@ -3596,6 +3617,26 @@ Molecule * CopyMol( Molecule *mol1 )
    mol2->nRpS    = calloc ( mol2->nSeg, sizeof (  int  ));
    mol2->nApR    = calloc ( mol2->nRes, sizeof (  int  ));
    
+   mol2->nChains = mol1->nChains;
+   mol2->chains = calloc( mol2->nChains, sizeof( wrd_Chain ));
+   mol2->nApC = calloc( mol2->nChains, sizeof( int )) ;
+   mol2->nRpC = calloc( mol2->nChains, sizeof( int )) ;
+   mol2->nSpC = calloc( mol2->nChains, sizeof( int )) ;
+   
+   previouschainssegs = 0;
+   for( ii=0; ii<mol2->nChains; ii++ )
+   {
+     mol2->chains[ii].chainId = mol1->chains[ii].chainId;
+     mol2->chains[ii].nApC = mol1->chains[ii].nApC;
+     mol2->chains[ii].nRpC = mol1->chains[ii].nRpC;
+     mol2->chains[ii].nSeg = mol1->chains[ii].nSeg;
+     mol2->nApC[ii]   = mol1->nApC[ii];
+     mol2->nRpC[ii]   = mol1->nApC[ii];
+     mol2->nSpC[ii]   = mol1->nApC[ii];
+     mol2->chains[ii].pSegm =  &mol2->segment[previouschainssegs];
+     previouschainssegs += mol2->chains[ii].nSeg;
+
+   }
    for( ii=0; ii<mol2->nSeg; ii++ )
    {
      mol2->nApS[ii] = mol1->nApS[ii];
@@ -3713,6 +3754,7 @@ int GetSele ( char *selestring, Selection *selestr, Molecule *molecule )
 
   Selection    seleTmp;                                                 // Temporary Selection Structure
   
+  //fprintf( stdout, "DEBUG : %s\n", selestring ); fflush(stdout);
   strcpy(pcOriginalSeleString, selestring);
   
   piSelectedAtoms = (int *) calloc(molecule->nato, sizeof(int));
@@ -3935,6 +3977,7 @@ int GetSeleAtoms ( char *selestring, Selection *selestr, Molecule *molecule )
   /* selection loops proper */
   selestr->nselatm = 0;
   for(nn=0; nn<molecule->nChains; nn++)
+  {
     if( !fnmatch(chastring, &molecule->chains[nn].chainId, FNM_EXTMATCH) )
       for(ii=0; ii<molecule->chains[nn].nSeg; ii++)
         if( !fnmatch(segstring, molecule->chains[nn].pSegm[ii].segName, FNM_EXTMATCH) )
@@ -3971,6 +4014,7 @@ int GetSeleAtoms ( char *selestring, Selection *selestr, Molecule *molecule )
                 }
             }
           }
+  }
   /*
   for(nn=0; nn<molecule->nChains; nn++)
   {

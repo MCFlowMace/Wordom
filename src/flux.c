@@ -36,12 +36,12 @@ Read_iFlux (char **input, int inp_index, struct inp_flux *inp_flux, char *printo
     int  gotit, i;
 
     /* Set default values */
-    strncpy(title, "flux", 4);
-    strncpy(inp_flux->sele.selestring, "/*/*/OH2", 8);
+    strcpy(title, "flux");
+    strcpy(inp_flux->sele.selestring, "/*/*/OH2");
     inp_flux->upper=INFINITY;
     inp_flux->lower=INFINITY;
     inp_flux->delta=5.0;
-    strncpy(inp_flux->seleCenter.selestring, "/*/*/CA", 7);
+    strcpy(inp_flux->seleCenter.selestring, "/*/*/CA");
     inp_flux->Rcut=0;
 
     /* Parsing options */

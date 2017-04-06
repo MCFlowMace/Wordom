@@ -24,7 +24,6 @@
 #ifndef ENM
 #define ENM
 
-
 typedef struct load_dist 
 {
  float   drdx;    // difference beween x coor divided by distance
@@ -134,6 +133,7 @@ struct inp_enm
 
 //ENM CORRELATION & FLUCTUATION  
   float      **cov;
+  float      **cov2;
   float      **avg;
   float       *fluc;
 

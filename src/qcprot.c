@@ -228,14 +228,15 @@ int FastCalcRMSDAndRotation(float *rot, float *A, float *rmsd, float E0, int len
             break;
     }
 
-    if (i == 50)
+	//Disabled for now since the backup method used right now produces worse results than simply using the non converged rotation
+	/*if (i == 50)
     {
       // modified to signal silently that another method is needed
       //fprintf(stderr,"More than %d iterations needed!\n", i);
       //fflush(stderr); // DEBUG
-      //(*rmsd) = -1;
-      //return 0;
-    }
+      (*rmsd) = -1;
+      return 0;
+    }*/
     rms = sqrt(2.0 * (E0 - mxEigenV)/len);
     (*rmsd) = rms;
 

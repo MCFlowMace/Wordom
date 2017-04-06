@@ -378,9 +378,9 @@ void Head_Mod ( struct sopt   *OPT    )
     }
    sscanf (OPT->MOD_STRING, "%[^=]%*c", field);
    
-   if ( strcmp (field, "begstp") && strcmp (field, "numstp") && strcmp (field, "nframe") && strcmp (field, "tmstp") && strcmp (field, "skpstp") && strcmp (field, "varpbc") )
+   if ( strcmp (field, "begstp") && strcmp (field, "numstp") && strcmp (field, "nframe") && strcmp (field, "tmstp") && strcmp (field, "skpstp") && strcmp (field, "varpbc") && strcmp (field, "64made") )
     {
-      printf("Unknown field in -mod option\n");
+      printf("Unknown field in -mod option: %s\n", field);
       exit(0);
     }
    printf("Field is: %s\n", field);
@@ -394,7 +394,8 @@ void Head_Mod ( struct sopt   *OPT    )
     {
      sscanf( OPT->MOD_STRING, "%*[^=]%*c%f", &valuef );
      traj->hdr->tmstp = valuef;
-     printf ("I read tmstp: %f\n", valuef);
+     printf ("I read  tmstp: %f\n", valuef);
+     printf ("I write tmstp: %f\n", traj->hdr->tmstp);
     }
     else if ( !strcmp (field, "64made"))
     {
@@ -437,7 +438,7 @@ void MolConv ( struct sopt *OPT )
    Molecule    *molecule, *selmol;
    Selection    selestr;
    int          ii;
-   char        *outname, suffix[3];
+   char        *outname, suffix[4];
    
    molecule = ReadMolecule( OPT->IMOL_FILE, OPT->IMOL_TYPE );
    

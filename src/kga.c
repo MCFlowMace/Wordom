@@ -1703,12 +1703,12 @@ int Equil ( char **input, int inp_index, FILE *output )
    
 }
 // =======================================================
-intlistd * readSymbTrj( char *filename )
+intlist * readSymbTrj( char *filename )
 {
   int  ii, nlines;
   FILE *inputfile;
   char  buffer[64];
-  intlistd  *strj;
+  intlist  *strj;
   
   inputfile = fopen( filename, "r");
   nlines = -1;
@@ -1722,7 +1722,7 @@ intlistd * readSymbTrj( char *filename )
   }
   rewind(inputfile);
    
-  strj = (intlistd *)calloc( 1, sizeof(intlistd));
+  strj = (intlist *)calloc( 1, sizeof(intlist));
   strj->data = (int *)calloc( nlines, sizeof(int));
   strj->ndata = nlines;
   for( ii=0; ii<nlines; ii++)
@@ -1731,7 +1731,7 @@ intlistd * readSymbTrj( char *filename )
   return strj;
 }
 //--------------------------------------------------------------------==
-graph * sTrj2Graph( intlistd *strj )
+graph * sTrj2Graph( intlist *strj )
 {
   int  ii;
   int  nnodes=0;
@@ -1766,7 +1766,7 @@ int imin( int num1, int num2 )
     return num1;
 }
 //--------------------------------------------------------------------==
-int whereinlist( intlistd *list, int number )
+int whereinlist( intlist *list, int number )
 {
   int   ii;
   
@@ -1776,7 +1776,7 @@ int whereinlist( intlistd *list, int number )
   return -1;
 }
 //--------------------------------------------------------------------==
-int addtolist( intlistd *list, int number )
+int addtolist( intlist *list, int number )
 {
   list->ndata ++;
   //list->data = realloc( list->data, list->ndata * sizeof(int) );
@@ -1784,13 +1784,13 @@ int addtolist( intlistd *list, int number )
   return 0;
 }
 //--------------------------------------------------------------------==
-int popfromlist( intlistd *list )
+int popfromlist( intlist *list )
 {
   list->ndata --;
   return list->data[list->ndata];
 }
 //--------------------------------------------------------------------==
-void printlist( intlistd *ilist )
+void printlist( intlist *ilist )
 {
   int   ii;
   
@@ -1903,7 +1903,7 @@ int addtograph1( graph *lgraph, int key, int value) // this adds to the current 
   lgraph->nnodes ++;
   lgraph->nodes = realloc( lgraph->nodes, lgraph->nnodes*sizeof(int) );
   lgraph->nodes[lgraph->nnodes-1] = key;
-  lgraph->leenklist = realloc( lgraph->leenklist, lgraph->nnodes*sizeof(intlistd) );
+  lgraph->leenklist = realloc( lgraph->leenklist, lgraph->nnodes*sizeof(intlist) );
   lgraph->leenklist[lgraph->nnodes-1].ndata = 1;
   lgraph->leenklist[lgraph->nnodes-1].data = (int *)calloc( 1, sizeof(int));
   lgraph->leenklist[lgraph->nnodes-1].data[0] = value;
@@ -1915,7 +1915,7 @@ int addtograph2( graph *lgraph, int key, int value) // this changes the current 
 {
   int       ii;
   int     * itmp;
-  intlistd * tmp;
+  intlist * tmp;
   
   for ( ii=0; ii<lgraph->nnodes; ii++)
   {
@@ -1937,7 +1937,7 @@ int addtograph2( graph *lgraph, int key, int value) // this changes the current 
   
   lgraph->nodes[lgraph->nnodes-1] = key;
   
-  tmp = (intlistd *)realloc( lgraph->leenklist, (lgraph->nnodes+1)*sizeof(int) );
+  tmp = (intlist *)realloc( lgraph->leenklist, (lgraph->nnodes+1)*sizeof(int) );
   if( tmp != NULL)
     lgraph->leenklist = tmp;
   else
@@ -1949,7 +1949,7 @@ int addtograph2( graph *lgraph, int key, int value) // this changes the current 
   return 0;
 }
 //--------------------------------------------------------------------==
-intlistd * getgraphval( graph *lgraph, int key )
+intlist * getgraphval( graph *lgraph, int key )
 {
   int       ii;
   
@@ -1986,7 +1986,7 @@ graph * Tarjan_ite( graph *grapho )
   graph               todo;
   intdlist            number;   // list of int couples, used as dictionary (int key, int value)
   intdlist            low;      // list of int couples, used as dictionary (int key, int value)
-  intlistd             explored, stack;
+  intlist             explored, stack;
   
   // set up some of the structures
   //number.ndata = 0;
@@ -2011,7 +2011,7 @@ graph * Tarjan_ite( graph *grapho )
   // copy grapho to local copy, ie todo
   todo.nnodes = grapho->nnodes;
   todo.nodes = calloc( todo.nnodes, sizeof(int));
-  todo.leenklist = (intlistd *)calloc( todo.nnodes, sizeof( intlistd));
+  todo.leenklist = (intlist *)calloc( todo.nnodes, sizeof( intlist));
   for( ii=0; ii<todo.nnodes; ii++)
   {
     todo.nodes[ii] = grapho->nodes[ii];
@@ -2076,7 +2076,7 @@ int ELEC( char **input, int inp_index )
   int           gotit;
   char          buffer[64];
   char          filename[512], outfilename[512];    
-  intlistd      *sTrj;
+  intlist      *sTrj;
   graph        *test1, *out;
   
   while( strncmp (buffer, "END", 3))

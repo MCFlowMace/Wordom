@@ -23,6 +23,7 @@
 #include "datahandler.h"
 #include "psn.h"
 #include <signal.h>
+#include <limits.h>
 
 #define TRUE  1
 #define FALSE 0
@@ -318,7 +319,6 @@ void GetImin(struct inp_psn *inp_psn, struct sopt *OPT, Molecule *molecule)
   iDecNum   = inp_psn->iDecNum;
   fEpsilon  = (1.0 / (float) (pow(10.0, (float) iDecNum)));
   fHalfImin = (((fHigherImin - fLowerImin) / 2.0) + fLowerImin);
-  //fIcSize   = (fIcSize / fPCNSize); It is uninitialized!
   
   FRawFile = fopen(inp_psn->cRawFileName, "r");
   if(FRawFile == NULL)
@@ -556,6 +556,11 @@ void GetImin(struct inp_psn *inp_psn, struct sopt *OPT, Molecule *molecule)
   for(ii=0; ii<inp_psn->iNumOfNoLinkPairs; ii++)
     fprintf( inp_psn->outfile, "# No Link       : %d %d   %d\n", ii+1, inp_psn->ppiNoLinkPairs[ii][0]+1, inp_psn->ppiNoLinkPairs[ii][1]+1);
   
+  fprintf( inp_psn->outfile, "#\n");
+  fprintf( inp_psn->outfile, "# Num Of ForceLink : %d\n", inp_psn->iNumOfForceLinkPairs);
+  for(ii=0; ii<inp_psn->iNumOfForceLinkPairs; ii++)
+    fprintf( inp_psn->outfile, "# Force Link       : %d %d   %d\n", ii+1, inp_psn->ppiForceLinkPairs[ii][0]+1, inp_psn->ppiForceLinkPairs[ii][1]+1);
+  
   fprintf(inp_psn->outfile, "# Num Of Merge  : %d\n", inp_psn->iNumOfMerge);
   for(ii=0; ii<inp_psn->iNumOfMerge; ii++)
     fprintf(inp_psn->outfile, "# Merge         : %d %s\n", ii+1, inp_psn->ppcMergedResidues[ii]);
@@ -563,6 +568,10 @@ void GetImin(struct inp_psn *inp_psn, struct sopt *OPT, Molecule *molecule)
   fprintf(inp_psn->outfile, "# Num Of Param  : %d\n", inp_psn->iNumOfParam);
   for(ii=0; ii<inp_psn->iNumOfParam; ii++)
     fprintf(inp_psn->outfile, "# Param         : %d %5s %f\n", ii+1, inp_psn->pcParamResVect[ii], inp_psn->pfParamValVect[ii]);
+  
+  fprintf(inp_psn->outfile, "# NoProxSeg Num : %d\n", inp_psn->iNumOfNoProxSeg);
+  for(ii=0; ii<inp_psn->iNumOfNoProxSeg; ii++)
+    fprintf(inp_psn->outfile, "# NoProxSeg     : #%d %s\n", ii+1, inp_psn->pcNoProxSeg[ii]);
   
   fprintf( inp_psn->outfile, "# ======================================================================\n");
   fprintf( inp_psn->outfile, "\n");
@@ -683,11 +692,13 @@ double GetBigClsSize(FILE *FRawFile, int *piNodeClusters, int *piClustSize, floa
   int           iBigSize=0;
   int           iLastCluster=0;
   int           iAtmNum=0;
+  int           iAlloNumOfChars=999999;
   
   float         fTmpRIS, fTmpHIS;
   double        fAvgBigSize=0.0;
   
-  char          cLine[5000];
+  char          cLine[iAlloNumOfChars];
+  char          cAtmList[iAlloNumOfChars];
   char          cMagic[8];
   
   GetIminClearAll(iNumOfNodes, piNodeClusters, piClustSize, iLastCluster);
@@ -699,15 +710,16 @@ double GetBigClsSize(FILE *FRawFile, int *piNodeClusters, int *piClustSize, floa
   
   rewind(FRawFile);
   
-  while(fgets(cLine, 5000, FRawFile) != NULL)
+  while(fgets(cLine, iAlloNumOfChars, FRawFile) != NULL)
   {
     if(strncmp(cLine, ">INT", 4) == 0)
     {
       // skip header
-     if(fgets(cLine, 5000, FRawFile)==NULL && ( !feof(FRawFile) || ferror(FRawFile) ))
-     {
-        fprintf(stderr, "Warning! Premature end of file reached!\n");
-     }
+      if(fgets(cLine, iAlloNumOfChars, FRawFile)==NULL && ( !feof(FRawFile) || ferror(FRawFile) ))
+      {
+        fprintf(stderr, "PSN Error: found corrupted file while calculating best Imin value\n");
+        exit(1);
+      }
       
       iNumOfFrames++;
       GetIminClearAll(iNumOfNodes, piNodeClusters, piClustSize, iLastCluster);
@@ -716,11 +728,12 @@ double GetBigClsSize(FILE *FRawFile, int *piNodeClusters, int *piClustSize, floa
       
       while(1)
       {
-        if(fgets(cLine, 5000, FRawFile)==NULL && ( !feof(FRawFile) || ferror(FRawFile) ))
+        if(fgets(cLine, iAlloNumOfChars, FRawFile)==NULL && ( !feof(FRawFile) || ferror(FRawFile) ))
         {
-            fprintf(stderr, "Warning! Premature end of file reached!\n");
+          fprintf(stderr, "PSN Error: found a corrupted file while calculating best Imin value\n");
+          exit(1);
         }
-        sscanf(cLine, "%s %d %d %f %f %d", cMagic, &iTmpRes1, &iTmpRes2, &fTmpRIS, &fTmpHIS, &iAtmNum);
+        sscanf(cLine, "%s %d %d %f %f %d %s", cMagic, &iTmpRes1, &iTmpRes2, &fTmpRIS, &fTmpHIS, &iAtmNum, cAtmList);
 
         if(strcmp(cMagic, "&") != 0)
           break;
@@ -819,7 +832,7 @@ int Read_iPSG ( char **input, int inp_index, struct inp_psn *inp_psn, char *prin
   int              iTempInt;
   int              natmhere, gotit;
   
-  char             bbatoms[50], buffer[10240], cIntMinRange[50];
+  char             bbatoms[1024], buffer[10240], cIntMinRange[50];
   char             cCOOTerAtoms[50], cNHTerAtoms[50], cResName[6];
   char             cTmpString1[50], cTmpString2[50];
   char            *cToken, cMergeResType[5], cTempChArray[50];
@@ -836,29 +849,31 @@ int Read_iPSG ( char **input, int inp_index, struct inp_psn *inp_psn, char *prin
   
   // === Default Options ===
   sprintf(inp_psn->title, "PSNANALYSIS");
-  inp_psn->fDistCutoff       = 4.5;
-  inp_psn->fIntMinStart      = 0.0;
-  inp_psn->fIntMinStop       = 0.0;
-  inp_psn->fIntMinStep       = 1.0;
-  inp_psn->iHubContCutoff    = 3;
-  inp_psn->fStableCutoff     = 0.5;
-  inp_psn->iWarningFlag      = 0;
-  inp_psn->iVerboseFlag      = 0;
-  inp_psn->iTerminiFlag      = 1;
-  inp_psn->iProxCutOff       = 3;
-  inp_psn->iNumOfNoLinkPairs = 0;
-  inp_psn->iNumOfMerge       = 0;
-  inp_psn->iMergeMaxResNum   = 0;
-  inp_psn->iNumOfParam       = 0;
-  inp_psn->iNumOfFrames      = iNumOfFrames;
-  inp_psn->iIntType          = 0;
-  inp_psn->iHubEqFlag        = 1;
+  inp_psn->fDistCutoff          = 4.5;
+  inp_psn->fIntMinStart         = 0.0;
+  inp_psn->fIntMinStop          = 0.0;
+  inp_psn->fIntMinStep          = 1.0;
+  inp_psn->iHubContCutoff       = 3;
+  inp_psn->fStableCutoff        = 0.5;
+  inp_psn->iWarningFlag         = 0;
+  inp_psn->iVerboseFlag         = 0;
+  inp_psn->iTerminiFlag         = 1;
+  inp_psn->iProxCutOff          = 3;
+  inp_psn->iNumOfNoLinkPairs    = 0;
+  inp_psn->iNumOfForceLinkPairs = 0;
+  inp_psn->iNumOfNoProxSeg      = 0;
+  inp_psn->iNumOfMerge          = 0;
+  inp_psn->iMergeMaxResNum      = 0;
+  inp_psn->iNumOfParam          = 0;
+  inp_psn->iNumOfFrames         = iNumOfFrames;
+  inp_psn->iIntType             = 0;
+  inp_psn->iHubEqFlag           = 1;
   
   // === getimin section ===
-  inp_psn->iGetIminFlag      =  0;
-  inp_psn->iDecNum           =  2;
-  inp_psn->fPCNSize          = 50.0;
-  inp_psn->iSecondRound      =  0;
+  inp_psn->iGetIminFlag         =  0;
+  inp_psn->iDecNum              =  2;
+  inp_psn->fPCNSize             = 50.0;
+  inp_psn->iSecondRound         =  0;
   // =======================
   
   while( strncmp (buffer, "END", 3))
@@ -959,9 +974,19 @@ int Read_iPSG ( char **input, int inp_index, struct inp_psn *inp_psn, char *prin
       inp_psn->iNumOfNoLinkPairs++;
       gotit = 1;
     }
+    else if ( !strncmp(buffer, "--FORCELINK", 11))
+    {
+      inp_psn->iNumOfForceLinkPairs++;
+      gotit = 1;
+    }
     else if ( !strncmp(buffer, "--PARAM", 7))
     {
       inp_psn->iNumOfParam++;
+      gotit = 1;
+    }
+    else if ( !strncmp(buffer, "--NOPROXSEG", 11))
+    {
+      inp_psn->iNumOfNoProxSeg += 1;
       gotit = 1;
     }
     else if ( !strncmp(buffer, "--MERGE", 7))
@@ -1063,7 +1088,6 @@ int Read_iPSG ( char **input, int inp_index, struct inp_psn *inp_psn, char *prin
     inp_psn->iVerboseFlag = 1;
   // =====================
   
-  //tot_residues = molecule->nRes;
   inp_psn->tot_nresidues = 0;
   for( ii=0; ii<molecule->nSeg ; ii++ )
    for( jj=0; jj<molecule->segment[ii].nRpS ; jj++ )
@@ -1103,6 +1127,86 @@ int Read_iPSG ( char **input, int inp_index, struct inp_psn *inp_psn, char *prin
         
         inp_psn->ppiNoLinkPairs[ii][0] = iTempRes1 - 1;
         inp_psn->ppiNoLinkPairs[ii][1] = iTempRes2 - 1;
+      }
+      inp_index++;
+    }
+  }
+  // ===================================================================
+  
+  // === NoProxSeg Section =============================================
+  if(inp_psn->iNumOfNoProxSeg != 0)
+  {
+    inp_psn->pcNoProxSeg = calloc(inp_psn->iNumOfNoProxSeg, sizeof(char *));
+    for(ii=0; ii<inp_psn->iNumOfNoProxSeg; ii++)
+      inp_psn->pcNoProxSeg[ii] = calloc(1, sizeof(char));
+    
+    inp_index = iInputFileStartingLine;
+    sprintf( buffer, "%s", input[inp_index]);
+    ii = -1;
+    while( strncmp (buffer, "END", 3))
+    {
+      sprintf( buffer, "%s", input[inp_index]);
+      if ( !strncmp(buffer, "--NOPROXSEG", 11))
+      {
+        ii++;
+        sscanf(buffer, "--NOPROXSEG %s", inp_psn->pcNoProxSeg[ii]);
+      }
+      inp_index++;
+    }
+    
+    for(ii=0; ii<inp_psn->iNumOfNoProxSeg; ii++)
+    {
+      gotit = 0;
+      for(kk=0; kk<molecule->nSeg; kk++)
+      {
+        if(strcmp(molecule->segment[kk].segName, inp_psn->pcNoProxSeg[ii])==0)
+        {
+          gotit = 1;
+          break;
+        }
+      }
+      
+      if(gotit == 0)
+      {
+        fprintf( stderr, "PSN module: Invalid segment identifier ``%s'' in --NOPROXSEG option #%d\n", inp_psn->pcNoProxSeg[ii], ii+1);
+        exit(99);
+      }
+    }
+  }
+  // ===================================================================
+  
+  // === ForceLink Section =============================================
+  if(inp_psn->iNumOfForceLinkPairs != 0)
+  {
+    inp_psn->ppiForceLinkPairs = calloc(inp_psn->iNumOfForceLinkPairs, sizeof(int *));
+    for(ii=0; ii<inp_psn->iNumOfForceLinkPairs; ii++)
+      inp_psn->ppiForceLinkPairs[ii] = calloc(2, sizeof(float));
+    
+    inp_index = iInputFileStartingLine;
+    sprintf( buffer, "%s", input[inp_index]);
+    ii = -1;
+    while( strncmp (buffer, "END", 3))
+    {
+      sprintf( buffer, "%s", input[inp_index]);
+      if ( !strncmp(buffer, "--FORCELINK", 11))
+      {
+        ii++;
+        sscanf(buffer, "--FORCELINK %d %d", &iTempRes1, &iTempRes2);
+        
+        if(iTempRes1 > inp_psn->tot_nresidues)
+        {
+          fprintf( stderr, "PSN module: Invalid residue number in --FORCELINK option : %d\n", iTempRes1);
+          exit(99);
+        }
+
+        if(iTempRes2 > inp_psn->tot_nresidues)
+        {
+          fprintf( stderr, "PSN module: Invalid residue number in --FORCELINK option : %d\n", iTempRes2);
+          exit(99);
+        }
+
+        inp_psn->ppiForceLinkPairs[ii][0] = iTempRes1 - 1;
+        inp_psn->ppiForceLinkPairs[ii][1] = iTempRes2 - 1;
       }
       inp_index++;
     }
@@ -1148,7 +1252,7 @@ int Read_iPSG ( char **input, int inp_index, struct inp_psn *inp_psn, char *prin
   if(inp_psn->iIntType == 0)
   {
     // SC atoms only
-    sprintf( bbatoms, "@(CA|C|N|O|O*T?|H*)");
+    sprintf( bbatoms, "@(CA|C|N|O|O*T?|H*|1HG1|2HG1|3HG1|1HG2|2HG2|3HG2|1HE2|2HE2|1HD1|2HD1|3HD1|1HD2|2HD2|3HD2|1HH1|2HH1|1HH2|2HH2)");
     if(inp_psn->iTerminiFlag==1)
     {
       sprintf(cCOOTerAtoms, "@(C|O*T?)");
@@ -1159,7 +1263,7 @@ int Read_iPSG ( char **input, int inp_index, struct inp_psn *inp_psn, char *prin
   else if(inp_psn->iIntType == 1)
   {
     // SC + CA atoms
-    sprintf( bbatoms, "@(C|N|O|O*T?|H*)");
+    sprintf( bbatoms, "@(C|N|O|O*T?|H*|1HG1|2HG1|3HG1|1HG2|2HG2|3HG2|1HE2|2HE2|1HD1|2HD1|3HD1|1HD2|2HD2|3HD2|1HH1|2HH1|1HH2|2HH2)");
     if(inp_psn->iTerminiFlag==1)
     {
       sprintf(cCOOTerAtoms, "@(C|O*T?)");
@@ -1170,7 +1274,7 @@ int Read_iPSG ( char **input, int inp_index, struct inp_psn *inp_psn, char *prin
   else if(inp_psn->iIntType == 2)
   {
     // ALL atoms
-    sprintf( bbatoms, "@(H*)");
+    sprintf( bbatoms, "@(H*|1HG1|2HG1|3HG1|1HG2|2HG2|3HG2|1HE2|2HE2|1HD1|2HD1|3HD1|1HD2|2HD2|3HD2|1HH1|2HH1|1HH2|2HH2)");
     if(inp_psn->iTerminiFlag==1)
     {
       sprintf(cCOOTerAtoms, "@(C|O*T?)");
@@ -1180,12 +1284,15 @@ int Read_iPSG ( char **input, int inp_index, struct inp_psn *inp_psn, char *prin
   
   // sprintf( bbatoms, "@(CA|C|N|O|H|OT1|OT2|OXT|H*)");
   
-  inp_psn->reslength = calloc( molecule->nRes, sizeof(int));
+  inp_psn->reslength  = calloc( molecule->nRes, sizeof(int));
   inp_psn->reslength2 = calloc( molecule->nRes, sizeof(int));
   
   inp_psn->atmList = calloc( molecule->nRes, sizeof(int *));
   for( ii=0; ii<molecule->nRes; ii++ )
+  {
     inp_psn->atmList[ii] = calloc(500, sizeof(int)); // 500 as maximum number of atoms in a residue
+    inp_psn->atmList[ii][0] = -1;                    // set all res as "non selected"
+  }
   
   inp_psn->res_norm = calloc( molecule->nRes, sizeof(float));
   atm_idx = 0;
@@ -1245,13 +1352,16 @@ int Read_iPSG ( char **input, int inp_index, struct inp_psn *inp_psn, char *prin
   {
     if( inp_psn->reslength[ii] == 0 )
       continue;
+    
     found = 0;
     for( jj=0; jj<inp_psn->sele.nselatm; jj++ )
+    {
       if( inp_psn->atmList[ii][0] == inp_psn->sele.selatm[jj] )
       {
         found = 1;
         break;
       }
+    }
     if (!found)
       inp_psn->atmList[ii][0] = -1;
   }
@@ -1277,6 +1387,7 @@ int Read_iPSG ( char **input, int inp_index, struct inp_psn *inp_psn, char *prin
     This is a NumOfRes x NumOfRes matrix that stores the
     the number of interacting atom pairs at a given frame
   */
+  
   inp_psn->ppiIntAtomPairs=(int **) calloc(molecule->nRes, sizeof (int *));
   for(ii=0; ii<molecule->nRes; ii++)
     inp_psn->ppiIntAtomPairs[ii] = (int *) calloc(molecule->nRes, sizeof(int));
@@ -1559,10 +1670,30 @@ int Read_iPSG ( char **input, int inp_index, struct inp_psn *inp_psn, char *prin
       strcpy(cTmpString2, cTmpString1);
     }
   }
+
+  // $-$
+  cTmpString1[0] = '\0';
+  cTmpString2[0] = '\0';
+  iTempInt       =   -1;
+  inp_psn->pcSeleResSegId = calloc(inp_psn->tot_nresidues, sizeof(char *));
+  inp_psn->piPDBResNum    = calloc(inp_psn->tot_nresidues, sizeof(int));
+  for(ii=0; ii<inp_psn->tot_nresidues; ii++)
+    inp_psn->pcSeleResSegId[ii] = calloc(1, sizeof(char));
+  
+  for(ii=0; ii<molecule->nato; ii++)
+  {
+    sprintf(cTmpString1, "%s%d", molecule->rawmol.segId[ii], molecule->rawmol.resn[ii]);
+    if(strcmp(cTmpString1, cTmpString2)!=0)
+    {
+      iTempInt++;
+      sprintf(inp_psn->pcSeleResSegId[iTempInt], "%s", molecule->rawmol.segId[ii]);
+      inp_psn->piPDBResNum[iTempInt] = molecule->rawmol.resn[ii];
+      strcpy(cTmpString2, cTmpString1);
+    }
+  }
   
   time(&inp_psn->time_tToday);
-  
-  
+
   if(inp_psn->iVerboseFlag==1)
   {
     fprintf( inp_psn->outfile, "# ======================================================================\n");
@@ -1610,12 +1741,16 @@ int Read_iPSG ( char **input, int inp_index, struct inp_psn *inp_psn, char *prin
       fprintf( inp_psn->outfile, "# Int Type      : SC+CA\n");
     else if(inp_psn->iIntType == 2)
       fprintf( inp_psn->outfile, "# Int Type      : ALL\n");
-    fprintf( inp_psn->outfile, "# Int Type      : %d\n", inp_psn->iIntType);
     
     fprintf( inp_psn->outfile, "#\n");
     fprintf( inp_psn->outfile, "# Num Of NoLink : %d\n", inp_psn->iNumOfNoLinkPairs);
     for(ii=0; ii<inp_psn->iNumOfNoLinkPairs; ii++)
       fprintf( inp_psn->outfile, "# No Link       : %d %d   %d\n", ii+1, inp_psn->ppiNoLinkPairs[ii][0]+1, inp_psn->ppiNoLinkPairs[ii][1]+1);
+    
+    fprintf( inp_psn->outfile, "#\n");
+    fprintf( inp_psn->outfile, "# Num Of ForceLink : %d\n", inp_psn->iNumOfForceLinkPairs);
+    for(ii=0; ii<inp_psn->iNumOfForceLinkPairs; ii++)
+      fprintf( inp_psn->outfile, "# Force Link       : %d %d   %d\n", ii+1, inp_psn->ppiForceLinkPairs[ii][0]+1, inp_psn->ppiForceLinkPairs[ii][1]+1);
     
     fprintf(inp_psn->outfile, "# Num Of Merge  : %d\n", inp_psn->iNumOfMerge);
     for(ii=0; ii<inp_psn->iNumOfMerge; ii++)
@@ -1624,6 +1759,10 @@ int Read_iPSG ( char **input, int inp_index, struct inp_psn *inp_psn, char *prin
     fprintf(inp_psn->outfile, "# Num Of Param  : %d\n", inp_psn->iNumOfParam);
     for(ii=0; ii<inp_psn->iNumOfParam; ii++)
       fprintf(inp_psn->outfile, "# Param         : %d %5s %f\n", ii+1, inp_psn->pcParamResVect[ii], inp_psn->pfParamValVect[ii]);
+
+    fprintf(inp_psn->outfile, "# NoProxSeg Num : %d\n", inp_psn->iNumOfNoProxSeg);
+    for(ii=0; ii<inp_psn->iNumOfNoProxSeg; ii++)
+      fprintf(inp_psn->outfile, "# NoProxSeg     : #%d %s\n", ii+1, inp_psn->pcNoProxSeg[ii]);
     
     fprintf( inp_psn->outfile, "# ======================================================================\n");
     fprintf( inp_psn->outfile, "\n");
@@ -1683,6 +1822,7 @@ int Read_iPSG ( char **input, int inp_index, struct inp_psn *inp_psn, char *prin
     }
     fprintf( inp_psn->outfile, "========================\n");
   }
+
   return 0;
 }
 // ------------------------------------------------------------------
@@ -1690,15 +1830,16 @@ int Compute_PSG ( struct inp_psn *inp_psn, struct sopt *OPT, CoorSet *trj_crd, c
 {
   int                   ii, jj, kk, ll, ww, yy;
   int                   iTempRes1, iTempRes2;
-  int                   resnumber1, resnumber2, interacting;
-  int                   iClustSize;
+  int                   resnumber1, resnumber2, nclusters, interacting;
+  int                   toofar, iClustSize, iSkipThisPairFlag;
   long double           dist;   
   float                 fIntMinIterator;
   float                 fIntStrength;
   int                   iIntMinIterationNum, iContactsCounter;
   int                   res1, res2;
   char                  res1_atmname[10], res2_atmname[10], cDistRep[100];
-
+  char                  cTmpChar1[100], cTmpChar2[100];
+  
   inp_psn->iFrameNum++;  // update the number of actual frame
 
   if(inp_psn->iVerboseFlag==1)
@@ -1726,18 +1867,161 @@ int Compute_PSG ( struct inp_psn *inp_psn, struct sopt *OPT, CoorSet *trj_crd, c
   */
 
   // compute I.S. for each residue pair and place it in inp_psn->ppfIntStrength
+  //for(ii=0; ii<inp_psn->tot_nresidues; ii++)
+  //{
+  //  if(inp_psn->atmList[ii][0] == -1 )
+  //    continue;
+  //  
+  //  for( jj=ii+inp_psn->iProxCutOff; jj<inp_psn->tot_nresidues; jj++)
+  //  {
+  //    if(inp_psn->atmList[jj][0] == -1 )
+  //      continue;
+  //      
+  //    interacting = 0;
+  //    toofar = 0;
+  //    
+  //    if(trj_crd->pbc_flag == 0 || trj_crd->pbc_flag == -1)
+  //    {
+  //      // No PBC 
+  //      for( kk=0; kk<inp_psn->reslength[ii]; kk++)
+  //      {
+  //        for( ll=0; ll<inp_psn->reslength[jj]; ll++)
+  //        {
+  //          
+  //          dist = sqrt( (trj_crd->xcoor[inp_psn->atmList[ii][kk] - 1] - trj_crd->xcoor[inp_psn->atmList[jj][ll] - 1])*(trj_crd->xcoor[inp_psn->atmList[ii][kk] - 1] - trj_crd->xcoor[inp_psn->atmList[jj][ll] - 1]) +
+  //                       (trj_crd->ycoor[inp_psn->atmList[ii][kk] - 1] - trj_crd->ycoor[inp_psn->atmList[jj][ll] - 1])*(trj_crd->ycoor[inp_psn->atmList[ii][kk] - 1] - trj_crd->ycoor[inp_psn->atmList[jj][ll] - 1]) +
+  //                       (trj_crd->zcoor[inp_psn->atmList[ii][kk] - 1] - trj_crd->zcoor[inp_psn->atmList[jj][ll] - 1])*(trj_crd->zcoor[inp_psn->atmList[ii][kk] - 1] - trj_crd->zcoor[inp_psn->atmList[jj][ll] - 1]) );
+  //          
+  //          if( dist <= inp_psn->fDistCutoff )
+  //          {
+  //            interacting++;
+  //            
+  //            res1_atmname[0] = '\0';
+  //            res2_atmname[0] = '\0';
+  //            cDistRep    [0] = '\0';
+  //            
+  //            strcat(res1_atmname, molecule->rawmol.atmtype[inp_psn->atmList[ii][kk] - 1]);
+  //            strcat(res2_atmname, molecule->rawmol.atmtype[inp_psn->atmList[jj][ll] - 1]);
+  //            sprintf(cDistRep, "%.3Lf", dist);
+  //            
+  //            strcat(inp_psn->pppcIntAtomNamePairs[ii][jj], res1_atmname);
+  //            strcat(inp_psn->pppcIntAtomNamePairs[ii][jj], ":");
+  //            strcat(inp_psn->pppcIntAtomNamePairs[ii][jj], res2_atmname);
+  //            strcat(inp_psn->pppcIntAtomNamePairs[ii][jj], ":");
+  //            strcat(inp_psn->pppcIntAtomNamePairs[ii][jj], cDistRep);
+  //            strcat(inp_psn->pppcIntAtomNamePairs[ii][jj], ",");
+  //            
+  //            strcat(inp_psn->pppcIntAtomNamePairs[jj][ii], res1_atmname);
+  //            strcat(inp_psn->pppcIntAtomNamePairs[jj][ii], ":");
+  //            strcat(inp_psn->pppcIntAtomNamePairs[jj][ii], res2_atmname);
+  //            strcat(inp_psn->pppcIntAtomNamePairs[jj][ii], ":");
+  //            strcat(inp_psn->pppcIntAtomNamePairs[jj][ii], cDistRep);
+  //            strcat(inp_psn->pppcIntAtomNamePairs[jj][ii], ",");
+  //          }
+  //        }
+  //      }
+  //    }
+  //    
+  //    else
+  //    {
+  //      // PBC !
+  //      for( kk=0; kk<inp_psn->reslength[ii]; kk++)
+  //      {
+  //        for( ll=0; ll<inp_psn->reslength[jj]; ll++)
+  //        {
+  //          dist = DistanceCoor(trj_crd->xcoor[inp_psn->atmList[ii][kk] - 1], trj_crd->ycoor[inp_psn->atmList[ii][kk] - 1], trj_crd->zcoor[inp_psn->atmList[ii][kk] - 1],
+  //                              trj_crd->xcoor[inp_psn->atmList[jj][ll] - 1], trj_crd->ycoor[inp_psn->atmList[jj][ll] - 1], trj_crd->zcoor[inp_psn->atmList[jj][ll] - 1],
+  //                              trj_crd->pbc);
+  //          
+  //          if( dist<=inp_psn->fDistCutoff )
+  //            interacting++;
+  //        }
+  //      }
+  //    }
+  //    
+  //    // Update ppiIntAtomPairs
+  //    inp_psn->ppiIntAtomPairs[ii][jj] = interacting;
+  //    inp_psn->ppiIntAtomPairs[jj][ii] = interacting;
+  //    //strcat(inp_psn->pppcIntAtomNamePairs[ii][jj], "?:?,");
+  //
+  //
+  //    // Update ppfIntStrength
+  //    fIntStrength = (interacting/sqrt(inp_psn->res_norm[ii]*inp_psn->res_norm[jj]))*100;
+  //    inp_psn->ppfIntStrength[ii][jj] = fIntStrength;
+  //    inp_psn->ppfIntStrength[jj][ii] = fIntStrength;
+  //    
+  //    // Update ppiResResIntFreq
+  //    if(fIntStrength != 0.0)
+  //    {
+  //      inp_psn->ppiResResIntFreq[ii][jj]++;
+  //      inp_psn->ppiResResIntFreq[jj][ii]++;
+  //    }
+  //    
+  //    // Update IntStrength for Hubs identification
+  //    if(inp_psn->iHubEqFlag == 1)
+  //    {
+  //      // use modified equation for hubs
+  //      inp_psn->ppfHubsIntStrength[ii][jj] = (interacting/inp_psn->res_norm[ii])*100;
+  //      inp_psn->ppfHubsIntStrength[jj][ii] = (interacting/inp_psn->res_norm[jj])*100;
+  //    }
+  //    
+  //    else
+  //    {
+  //      // use normal equation
+  //      inp_psn->ppfHubsIntStrength[ii][jj] = fIntStrength;
+  //      inp_psn->ppfHubsIntStrength[jj][ii] = fIntStrength;
+  //    }
+  // }
+  //}
+  
+  // === new IS calculation routine ====================================
+  // compute I.S. for each residue pair and place it in inp_psn->ppfIntStrength
+  //for(ii=0; ii<inp_psn->tot_nresidues; ii++)
+  //{
+  //  cTmpChar1[0] = '\0';
+  //  Res3ToRes1(molecule->rawmol.restype[inp_psn->sele.selres[ii]-1], cTmpChar1);
+  //  printf("res %s:%s%d\n", molecule->rawmol.segId[inp_psn->sele.selres[ii]-1], cTmpChar1, inp_psn->sele.selres[ii]);
+  //}
+  //exit(99);
+  
   for(ii=0; ii<inp_psn->tot_nresidues; ii++)
   {
     if(inp_psn->atmList[ii][0] == -1 )
       continue;
     
-    for( jj=ii+inp_psn->iProxCutOff; jj<inp_psn->tot_nresidues; jj++)
+    for(jj=ii+1; jj<inp_psn->tot_nresidues; jj++)
     {
+
       if(inp_psn->atmList[jj][0] == -1 )
         continue;
+      
+      // $-$
+      iSkipThisPairFlag = 0;
+      if(strcmp(inp_psn->pcSeleResSegId[ii], inp_psn->pcSeleResSegId[jj]) == 0)
+      {
+
+        if((inp_psn->piPDBResNum[jj] - inp_psn->piPDBResNum[ii]) < inp_psn->iProxCutOff)
+        {
+          iSkipThisPairFlag = 1;
+        }
         
+        if(inp_psn->iNumOfNoProxSeg > 0)
+        {
+          for(ww=0; ww<inp_psn->iNumOfNoProxSeg; ww++)
+          {
+            if(strcmp(inp_psn->pcSeleResSegId[ii], inp_psn->pcNoProxSeg[ww])==0)
+            {
+              iSkipThisPairFlag = 0;
+            }
+          }
+        }
+      }
+      
+      if(iSkipThisPairFlag == 1)
+        continue;
+
       interacting = 0;
-      //toofar = 0;
+      toofar = 0;
       
       if(trj_crd->pbc_flag == 0 || trj_crd->pbc_flag == -1)
       {
@@ -1830,23 +2114,42 @@ int Compute_PSG ( struct inp_psn *inp_psn, struct sopt *OPT, CoorSet *trj_crd, c
         inp_psn->ppfHubsIntStrength[ii][jj] = fIntStrength;
         inp_psn->ppfHubsIntStrength[jj][ii] = fIntStrength;
       }
-   }
+    }
   }
-  
+  // ===================================================================
+
   // === NoLink Section ================================================
   if(inp_psn->iNumOfNoLinkPairs != 0)
   {
-    // Set to 0.0 Interaction Strength
+    // Set Interaction Strength to 0.0
     for(ii=0; ii<inp_psn->iNumOfNoLinkPairs; ii++)
     {
       iTempRes1 = inp_psn->ppiNoLinkPairs[ii][0];
       iTempRes2 = inp_psn->ppiNoLinkPairs[ii][1];
       
-      inp_psn->ppfIntStrength[iTempRes1][iTempRes2] = 0.0;
-      inp_psn->ppfIntStrength[iTempRes2][iTempRes1] = 0.0;
+      inp_psn->ppfIntStrength[iTempRes1][iTempRes2]     = 0.0;
+      inp_psn->ppfIntStrength[iTempRes2][iTempRes1]     = 0.0;
       
       inp_psn->ppfHubsIntStrength[iTempRes1][iTempRes2] = 0.0;
       inp_psn->ppfHubsIntStrength[iTempRes2][iTempRes1] = 0.0;
+    }
+  }
+  // ===================================================================
+  
+  // === ForceLink Section =============================================
+  if(inp_psn->iNumOfForceLinkPairs != 0)
+  {
+    // Set to 0.0 Interaction Strength
+    for(ii=0; ii<inp_psn->iNumOfForceLinkPairs; ii++)
+    {
+      iTempRes1  = inp_psn->ppiForceLinkPairs[ii][0];
+      iTempRes2  = inp_psn->ppiForceLinkPairs[ii][1];
+      
+      inp_psn->ppfIntStrength[iTempRes1][iTempRes2]     = 999.999;
+      inp_psn->ppfIntStrength[iTempRes2][iTempRes1]     = 999.999;
+      
+      inp_psn->ppfHubsIntStrength[iTempRes1][iTempRes2] = 999.999;
+      inp_psn->ppfHubsIntStrength[iTempRes2][iTempRes1] = 999.999;
     }
   }
   // ===================================================================
@@ -1868,7 +2171,6 @@ int Compute_PSG ( struct inp_psn *inp_psn, struct sopt *OPT, CoorSet *trj_crd, c
       {
         if(inp_psn->ppfIntStrength[ii][jj]!=0.0 || inp_psn->ppfHubsIntStrength[ii][jj]!=0.0)
         {
-          
           inp_psn->pppcIntAtomNamePairs[ii][jj][strlen(inp_psn->pppcIntAtomNamePairs[ii][jj]) - 1] = '\0';
           
           fprintf( inp_psn->outfile, "& %4d %4d %6.3f %6.3f    %3d   %s\n", molecule->pRes[ii]->presn, molecule->pRes[jj]->presn, inp_psn->ppfIntStrength[ii][jj], inp_psn->ppfHubsIntStrength[ii][jj], inp_psn->ppiIntAtomPairs[ii][jj], inp_psn->pppcIntAtomNamePairs[ii][jj]);
@@ -1921,7 +2223,7 @@ int Compute_PSG ( struct inp_psn *inp_psn, struct sopt *OPT, CoorSet *trj_crd, c
       
     }
     
-    linkwalk( molecule->nRes, inp_psn->ppiInteractions, inp_psn->piNumResInteractions, &inp_psn->cluster);
+    nclusters = linkwalk( molecule->nRes, inp_psn->ppiInteractions, inp_psn->piNumResInteractions, &inp_psn->cluster);
     iClustSize=0;
     // run over the number of found clusters
     if(inp_psn->iVerboseFlag==1)
@@ -2009,6 +2311,7 @@ int Compute_PSG ( struct inp_psn *inp_psn, struct sopt *OPT, CoorSet *trj_crd, c
   
   // === post-proc === 
   inp_psn->iPBCFlag = trj_crd->pbc_flag;
+  
   return 0;
 }
 // ------------------------------------------------------------------
@@ -2017,7 +2320,7 @@ int Post_PSG(struct inp_psn *inp_psn, int iNumOfFrames, Molecule *molecule, stru
   
   int                   ii, jj, kk, mm, ww, xx, yy, zz;
   int                   atmCounter1, atmCounter2, resindex;
-  int                   iHubFlag, iClustNum, iClustSize, iResIntStabFlag=0;
+  int                   iHubFlag, iClustNum, iClustSize, nclusters, iResIntStabFlag=0;
   char                  cFileName[80], cPDBFileName[80], cResName[6];
   float                 fStable, fFreq, fImin, fStableAvgIntStrength;
   float                 fHubCorr, fHubTimes, fNotHubTimes;
@@ -2117,6 +2420,11 @@ int Post_PSG(struct inp_psn *inp_psn, int iNumOfFrames, Molecule *molecule, stru
   fprintf(DistilledOutput, "# Num Of NoLink : %d\n", inp_psn->iNumOfNoLinkPairs);
   for(ii=0; ii<inp_psn->iNumOfNoLinkPairs; ii++)
     fprintf(DistilledOutput, "# No Link       : #%d %d   %d\n", ii+1, inp_psn->ppiNoLinkPairs[ii][0]+1, inp_psn->ppiNoLinkPairs[ii][1]+1);
+
+  fprintf(DistilledOutput, "#\n");
+  fprintf(DistilledOutput, "# Num Of ForceLink : %d\n", inp_psn->iNumOfForceLinkPairs);
+  for(ii=0; ii<inp_psn->iNumOfForceLinkPairs; ii++)
+    fprintf(DistilledOutput, "# Force Link       : #%d %d   %d\n", ii+1, inp_psn->ppiForceLinkPairs[ii][0]+1, inp_psn->ppiForceLinkPairs[ii][1]+1);
   
   fprintf(DistilledOutput, "# Num Of Merge  : %d\n", inp_psn->iNumOfMerge);
   for(ii=0; ii<inp_psn->iNumOfMerge; ii++)
@@ -2125,6 +2433,10 @@ int Post_PSG(struct inp_psn *inp_psn, int iNumOfFrames, Molecule *molecule, stru
   fprintf(DistilledOutput, "# Num Of Param  : %d\n", inp_psn->iNumOfParam);
   for(ii=0; ii<inp_psn->iNumOfParam; ii++)
     fprintf(DistilledOutput, "# Param         : #%d %s %f\n", ii+1, inp_psn->pcParamResVect[ii], inp_psn->pfParamValVect[ii]);
+  
+  fprintf(DistilledOutput, "# NoProxSeg Num : %d\n", inp_psn->iNumOfNoProxSeg);
+  for(ii=0; ii<inp_psn->iNumOfNoProxSeg; ii++)
+    fprintf(DistilledOutput, "# NoProxSeg     : #%d %s\n", ii+1, inp_psn->pcNoProxSeg[ii]);
   
   fprintf(DistilledOutput, "# ======================================================================\n");
 
@@ -2358,7 +2670,7 @@ int Post_PSG(struct inp_psn *inp_psn, int iNumOfFrames, Molecule *molecule, stru
         }
       }
     }
-    linkwalk( molecule->nRes, inp_psn->ppiInteractions, inp_psn->piNumResInteractions, &inp_psn->cluster);
+    nclusters = linkwalk( molecule->nRes, inp_psn->ppiInteractions, inp_psn->piNumResInteractions, &inp_psn->cluster);
     fprintf(DistilledOutput, "Imin: %5.3f\n", fImin);
 
     iClustNum=0;
@@ -2539,6 +2851,8 @@ int     iCalcStep=0;                                                    // Used 
 int     iPSNTypeFlag=0;                                                 // Type of PSN file: 0 = raw, 1 = avg
 int    *piNodeIndex;                                                    // List of node indexes, used with ppcNodeLabel
 int     iNumOfPoxInt=0;                                                 // Num of possible interactions among nodes
+int     iNumOfForceLinkPairs=0;                                         // Num Of Forced Links
+int   **ppiForceLinkPairs;                                              // Forced Link Pairs
 
 float  *pfTmpScore;                                                     // Tmp Path score
 float  *pfTmpWeights;                                                   // Tmp Path weights
@@ -2560,6 +2874,7 @@ float **ppfAvgIntFrequencies;                                           // Avg R
 float **ppfStableLink;                                                  // Stable links: 1 stable, 0 unstable
 float  *pfIntFreqValList;                                               // List of all interaction frequency values
 float **ppfIntMatrixBackup;                                             // A copy of ppfIntMatrix
+float   fMaxResResIntStrength;                                          // The strongest res-res interaction strength
 
 FILE   *FRawFile;                                                       // rawPSN file handler
 FILE   *FAvgFile;                                                       // avgPSN file handler
@@ -2577,27 +2892,29 @@ void PSNPathError(int iErrNum)
 {
   
   /*
-    PSNPATH         <--->  0
-    GetPSNParam     <--->  1
-    SequenceCheck   <--->  2
-    GetCorrData     <--->  3
-    SetIntVar       <--->  4
-    ClearAll        <--->  5
-    GetBadFrames    <--->  6
-    GetCorrRes      <--->  7
-    GetPaths        <--->  8
-    FindPath        <--->  9
-    GenPath         <---> 10
-    SavePath        <---> 11
-    SaveData        <---> 12
-    ClearIntMatrix  <---> 13
-    ClearAllLite    <---> 14
-    GetFrameInt     <---> 15
-    SavePathLite    <---> 16
-    GetPSGData      <---> 17
-    LoadAvgLabIdx   <---> 18
-    LoadStableLinks <---> 19
-    IntMatrixFilter <---> 20
+    PSNPATH                 <--->  0
+    GetPSNParam             <--->  1
+    SequenceCheck           <--->  2
+    GetCorrData             <--->  3
+    SetIntVar               <--->  4
+    ClearAll                <--->  5
+    GetBadFrames            <--->  6
+    GetCorrRes              <--->  7
+    GetPaths                <--->  8
+    FindPath                <--->  9
+    GenPath                 <---> 10
+    SavePath                <---> 11
+    SaveData                <---> 12
+    ClearIntMatrix          <---> 13
+    ClearAllLite            <---> 14
+    GetFrameInt             <---> 15
+    SavePathLite            <---> 16
+    GetPSGData              <---> 17
+    LoadAvgLabIdx           <---> 18
+    LoadStableLinks         <---> 19
+    IntMatrixFilter         <---> 20
+    GetIcritFromFile        <---> 21
+    GetStrongestInteraction <---> 22
   */
   
   char  cErrorFileName[512];
@@ -2721,16 +3038,19 @@ int PSNPATH(char **ppcInput, int iInputLineNum)
   int     iTmpResNum;                                                   // Used to generate output file names
   int     iBlockCont;                                                   // Save frame in current block
   int     iCalcFlag;                                                    // Used with iCheckClustFlag
+  int     iTempRes1, iTempRes2;
+  int     iGetIcriticFlag=0;                                            // 0: user defined; 1: pre; 2: post; 3: best; 4: first; 5: last
   
   int     iAVGFILEOptFlag = 0;
   int     iMININTFREQOptFlag = 0;
   
   char    cTmpSegName[5], cTmpResCode[2];                               // Used to generate output file names
-  char    pcInputLine[10240];                                            // Input lines
+  char    pcInputLine[10240];                                           // Input lines
   char   *pcTest1, *pcTest2;                                            // Used to check if a residue is a file name
   char    cTmpRes1[10240], cTmpRes2[10240];                             // Used to get --PAIR options
   char    cMatchMode[10];                                               // Used to get --MATCH mode
-  char    cLine[10240];                                                   // Residue file lines
+  char    cTemp[80];                                                    // misc temp char
+  char    cLine[10240];                                                 // Residue file lines
   
   float   fBadFramesVal=0.0;                                            // Temp Bad frames freq value
   
@@ -2748,6 +3068,7 @@ int PSNPATH(char **ppcInput, int iInputLineNum)
   // Process input file directives
   while(strncmp(pcInputLine, "END", 3) != 0)
   {
+    
     iOptionFlag = 0;
     sprintf(pcInputLine, "%s", ppcInput[iInputLineNum]);
     
@@ -2805,7 +3126,42 @@ int PSNPATH(char **ppcInput, int iInputLineNum)
 
     else if (strncmp(pcInputLine, "--IMIN", 6) == 0)
     {
-      sscanf(pcInputLine, "--IMIN %f", &fIntMinCutOff);
+      sscanf(pcInputLine, "--IMIN %s", cTemp);
+      if(strcmp(cTemp, "PRE") == 0)
+      {
+        iGetIcriticFlag = 1;
+        fIntMinCutOff   = -999.999;
+      }
+      
+      else if(strcmp(cTemp, "POST") == 0)
+      {
+        iGetIcriticFlag = 2;
+        fIntMinCutOff   = -999.999;
+      }
+      
+      else if(strcmp(cTemp, "BEST") == 0)
+      {
+        iGetIcriticFlag = 3;
+        fIntMinCutOff   = -999.999;
+      }
+
+      else if(strcmp(cTemp, "FIRST") == 0)
+      {
+        iGetIcriticFlag = 4;
+        fIntMinCutOff   = -999.999;
+      }
+
+      else if(strcmp(cTemp, "LAST") == 0)
+      {
+        iGetIcriticFlag = 5;
+        fIntMinCutOff   = -999.999;
+      }
+      
+      else
+      {
+        iGetIcriticFlag = 0;
+        sscanf(pcInputLine, "--IMIN %f", &fIntMinCutOff);
+      }
       iOptionFlag = 1;
     }
 
@@ -2855,13 +3211,16 @@ int PSNPATH(char **ppcInput, int iInputLineNum)
     else if (strncmp(pcInputLine, "--WEIGHT", 8) == 0)
     {
       sscanf(pcInputLine, "--WEIGHT %d", &iWeightFlag);
-      if(iWeightFlag != 0 && iWeightFlag != 1 && iWeightFlag != 2)
+      if(iWeightFlag >= 0 && iWeightFlag <= 12)
+      {
+        iOptionFlag = 1;
+      }
+      
+      else
       {
         fprintf( stderr, "PSNPATH module: Invalid --WEIGHT value: %i\n", iWeightFlag);
         return 1;
       }
-
-      iOptionFlag = 1;
     }
 
     else if (strncmp(pcInputLine, "--CHECKCLUST", 12) == 0)
@@ -3010,6 +3369,12 @@ int PSNPATH(char **ppcInput, int iInputLineNum)
       iOptionFlag = 1;
     }
     
+    else if (strncmp(pcInputLine, "--FORCELINK", 11) == 0)
+    {
+      iNumOfForceLinkPairs++;
+      iOptionFlag = 1;
+    }
+
     if(iOptionFlag == 0)
     {
       fprintf( stderr, "PSNPATH module: Could NOT understand option: %s\n", pcInputLine);
@@ -3018,7 +3383,12 @@ int PSNPATH(char **ppcInput, int iInputLineNum)
     
     iInputLineNum++;
   }
-
+  
+  if(iGetIcriticFlag != 0)
+  {
+    fIntMinCutOff = GetIcritFromFile(iGetIcriticFlag);
+  }
+  
   // Check some option values
   if(fIntMinCutOff < 0.0)
   {
@@ -3089,6 +3459,34 @@ int PSNPATH(char **ppcInput, int iInputLineNum)
     fprintf(FLogFile, "#  Pair    Res1      Res2     BadFrames     NullFrames   TotPaths   HighFreqVal   HighFreqLen   HighFreqCor   HighFreqPath\n");
   }
   
+  // === ForceLink Section ================================================
+  if(iNumOfForceLinkPairs != 0)
+  {
+    ppiForceLinkPairs = calloc(iNumOfForceLinkPairs, sizeof(int *));
+    for(ii=0; ii<iNumOfForceLinkPairs; ii++)
+      ppiForceLinkPairs[ii] = calloc(2, sizeof(float));
+    
+    ii = -1;
+    memset ( pcInputLine, '\0', sizeof(pcInputLine));
+    iInputLineNum = iOriginalInputLineNum;
+    signal(SIGSEGV, PSNPathError);
+    iCalcStep = 0;
+    while(strncmp(pcInputLine, "END", 3) != 0)
+    {
+      sprintf(pcInputLine, "%s", ppcInput[iInputLineNum]);
+
+      if (strncmp(pcInputLine, "--FORCELINK", 11) == 0)
+      {
+        ii++;
+        sscanf(pcInputLine, "--FORCELINK %d %d", &iTempRes1, &iTempRes2);
+        ppiForceLinkPairs[ii][0] = iTempRes1 - 1;
+        ppiForceLinkPairs[ii][1] = iTempRes2 - 1;
+      }
+      
+      iInputLineNum++;
+    }
+  }
+  // ===================================================================
   
   if(iPSNTypeFlag == 1)
     iCheckClustFlag = 0;
@@ -3197,6 +3595,9 @@ int PSNPATH(char **ppcInput, int iInputLineNum)
     return 1;
   
   iNumOfPoxInt = (int) ((((float) iNumOfRes * (float) iNumOfRes) - (float) iNumOfRes) / 2.0);
+  
+  
+  
   
   // *** Allocations ***
   
@@ -3330,6 +3731,12 @@ int PSNPATH(char **ppcInput, int iInputLineNum)
     LoadStableLinks();                                                  // Loads link frequencies
   }
   
+  if(iWeightFlag == 8 || iWeightFlag == 9 || iWeightFlag == 10)
+  {
+    // found the strongest res-res interaction
+    GetStrongestInteraction();
+  }
+  
   if(iModeFlag == 0)
   {
     // --MODE FULL
@@ -3347,6 +3754,7 @@ int PSNPATH(char **ppcInput, int iInputLineNum)
     // Loops over all selected pairs
     if(iMatchMode == 0)
     {
+
       // --MATCH CROSS
       for(ii=0; ii<iNumOfRes1; ii++)
       {
@@ -3656,17 +4064,24 @@ int PSNPATH(char **ppcInput, int iInputLineNum)
             
             // skip non-productive pairs
             iCalcFlag = 1;
-            if(iCheckClustFlag == 1) {
+            if(iCheckClustFlag == 1){
               if(piClusters[iRes1] == piClusters[iRes2] && piClusters[iRes1] != 0)
+              {
                 iCalcFlag = 1;
+              }
+              
               else
+              {
                 iCalcFlag = 0;
+              }
             }
-
+            
             if(iCalcFlag == 1)
             {
               if(iPSNTypeFlag == 2 && fIntMinFreq == 0.0)
+              {
                 IntMatrixFilter();
+              }
               
               ClearAllLite();
               SetIntVar();                                              // Set internal variables
@@ -3691,17 +4106,24 @@ int PSNPATH(char **ppcInput, int iInputLineNum)
 
           // skip non-productive pairs
           iCalcFlag = 1;
-          if(iCheckClustFlag == 1) {
+          if(iCheckClustFlag == 1)
+          {
             if(piClusters[iRes1] == piClusters[iRes2] && piClusters[iRes1] != 0)
+            {
               iCalcFlag = 1;
+            }
             else
+            {
               iCalcFlag = 0;
+            }
           }
-
+         
           if(iCalcFlag == 1)
           {
             if(iPSNTypeFlag == 2 && fIntMinFreq == 0.0)
+            {
               IntMatrixFilter();
+            }
             
             ClearAllLite();
             SetIntVar();                                                // Set internal variables
@@ -3719,6 +4141,139 @@ int PSNPATH(char **ppcInput, int iInputLineNum)
   
   fclose(FRawFile);
   return 0;                                                             // All ok
+}
+
+float GetIcritFromFile(int iGetIcriticFlag)
+{
+  int     ii, jj;                                                       // Some iterators
+  int     iFoundFlag=0;                                                 // Some iterators
+  float   fPre, fPost, fBest, fFirst, fLast;
+  float   fIcritc;
+  char    cLine[1000];
+  char    cJunk[80], cTemp[80];
+  
+  // iGetIcriticFlag values:
+  // 1: pre
+  // 2: post
+  // 3: best
+  // 4: first
+  // 5: last
+  
+  fPre   = -999.999;
+  fPost  = -999.999;
+  fBest  = -999.999;
+  fFirst = -999.999;
+  fLast  = -999.999;
+  
+  iCalcStep = 21;
+  
+  iFoundFlag=0;
+  rewind(FRawFile);
+  while(1)
+  {
+    fgets(cLine, 1000, FRawFile);
+    if(strncmp(cLine, "# Pre  Ic Val   : ", 18) == 0)
+    {
+      //1 2    3  4     5 6        7      8
+      //# Pre  Ic Val   : 4.460000 (delta 3.67)
+      sscanf(cLine, "%s %s %s %s %s %f %s %s", cJunk, cJunk, cJunk, cJunk, cJunk, &fPre, cJunk, cJunk);
+    }
+    
+    if(strncmp(cLine, "# Post Ic Val   : ", 18) == 0)
+    {
+      //1 2    3  4     5 6        7      8
+      //# Post Ic Val   : 4.500000 (delta 0.15)
+      sscanf(cLine, "%s %s %s %s %s %f %s %s", cJunk, cJunk, cJunk, cJunk, cJunk, &fPost, cJunk, cJunk);
+    }
+
+    if(strncmp(cLine, "# Best Ic Val   : ", 18) == 0)
+    {
+      //1 2    3  4     5 6
+      //# Best Ic Val   : POST
+      sscanf(cLine, "%s %s %s %s %s %s", cJunk, cJunk, cJunk, cJunk, cJunk, cTemp);
+      if(strcmp(cTemp, "PRE") == 0)
+      {
+        fBest = fPre;
+      }
+      
+      if(strcmp(cTemp, "POST") == 0)
+      {
+        fBest = fPost;
+      }
+      
+      if(strcmp(cTemp, "BOTH") == 0)
+      {
+        fBest = fPre;
+      }
+    }
+      
+    if(strncmp(cLine, "# IntMinStart   : ", 18) == 0)
+    {
+      //1 2             3 4
+      //# IntMinStart   : 3.500000
+      sscanf(cLine, "%s %s %s %f", cJunk, cJunk, cJunk, &fFirst);
+    }
+      
+    if(strncmp(cLine, "# IntMinStop    : ", 18) == 0)
+    {
+      //1 2             3 4
+      //# IntMinStop    : 5.000000
+      sscanf(cLine, "%s %s %s %f", cJunk, cJunk, cJunk, &fLast);
+    }
+    
+    if(strcmp(cLine, "*** Seg Info ***\n")==0)
+    {
+      break;
+    }
+  }
+  rewind(FRawFile);
+  
+  if(iGetIcriticFlag >= 1 && iGetIcriticFlag <= 3)
+  {
+    if(fPre == -999.999 || fPost == -999.999 || fBest == -999.999)
+    {
+      fprintf( stderr, "PSNPATH module: PRE/POST Ic info not present in file: %s\n", cRawPSNFileName);
+      return 1;
+    }
+  }
+
+  if(iGetIcriticFlag >= 4 && iGetIcriticFlag <= 5)
+  {
+    if(fFirst == -999.999 || fLast == -999.999)
+    {
+      fprintf( stderr, "PSNPATH module: Ic range info not present in file: %s\n", cRawPSNFileName);
+      return 1;
+    }
+  }
+
+  if(iGetIcriticFlag == 1)
+  {
+    fIcritc = fPre;
+  }
+  
+  else if(iGetIcriticFlag == 2)
+  {
+    fIcritc = fPost;
+  }
+  
+  else if(iGetIcriticFlag == 3)
+  {
+    fIcritc = fBest;
+  }
+  
+  else if(iGetIcriticFlag == 4)
+  {
+    fIcritc = fFirst;
+  }
+  
+  else if(iGetIcriticFlag == 5)
+  {
+    fIcritc = fLast;
+  }
+
+  iCalcStep = 0;
+  
+  return fIcritc;
 }
 
 int GetPSNParam(char **ppcInput, int iInputLineNum)
@@ -3748,7 +4303,7 @@ int GetPSNParam(char **ppcInput, int iInputLineNum)
   char    cTmpSegName[10], cTmpResType[5];                              // Res seg and type used to add offest using -o option
   char    cResCode[15];                                                 // used to read sequence in the form segname:resname+resnum
   char    cSeleSeg1[10], cSeleSeg2[10];                                 // selected segnames
-  char    cLine[100], cJunk[10], cSeg[10];                              // string buffers
+  char    cLine[1000], cJunk[10], cSeg[10];                             // string buffers
   
   iCalcStep = 1;
   
@@ -3774,11 +4329,13 @@ int GetPSNParam(char **ppcInput, int iInputLineNum)
   // Reads number of segments, residues and frames from psn file header
   while(1)
   {
+    
     if(fgets(cLine, 100, FRawFile)==NULL && ( !feof(FRawFile) || ferror(FRawFile) ))
     {
-      fprintf(stderr, "Warning! Premature end of file reached!\n");
+      fprintf(stderr, "PSN Error: found corrupted file while reading psn params\n");
+      exit(1);
     }
-    
+  
     if(strncmp(cLine, "# Seg Num       : ", 18) == 0)
     {
       sscanf(cLine, "%s %s %s %s %d", cJunk, cJunk, cJunk, cJunk, &iNumOfSeg);
@@ -3818,10 +4375,13 @@ int GetPSNParam(char **ppcInput, int iInputLineNum)
 
   for(ii=0; ii<iNumOfSeg; ii++)
   {
+    
     if(fgets(cLine, 100, FRawFile)==NULL && ( !feof(FRawFile) || ferror(FRawFile) ))
     {
-      fprintf(stderr, "Warning! Premature end of file reached!\n");
+      fprintf(stderr, "PSN Error: found corrupted file while reading psn params\n");
+      exit(1);
     }
+    
     sscanf(cLine, "%s %s %d %d", cJunk, cSeg, &iMaxResNum, &iFirstResNum);
     iSegNum=-1;
     for(jj=0; jj<iNumOfSeg; jj++)
@@ -3904,7 +4464,8 @@ int GetPSNParam(char **ppcInput, int iInputLineNum)
   {
     if(fgets(cLine, 100, FRawFile)==NULL && ( !feof(FRawFile) || ferror(FRawFile) ))
     {
-      fprintf(stderr, "Warning! Premature end of file reached!\n");
+      fprintf(stderr, "PSN Error: found corrupted file while reading psn params\n");
+      exit(1);
     }
     
     // reading a raw file
@@ -4273,8 +4834,10 @@ void LoadAvgLabIdx()
   {
     if(fgets(cLine, 1000, FileHandler)==NULL && ( !feof(FileHandler) || ferror(FileHandler) ))
     {
-      fprintf(stderr, "Warning! Premature end of file reached!\n");
+      fprintf(stderr, "PSN Error: found corrupted file while reading node labels and indexes\n");
+      exit(1);
     }
+    
     if(strncmp(cLine, "*** Seq ***", 11) == 0)
       break;
   }
@@ -4283,7 +4846,8 @@ void LoadAvgLabIdx()
   {
     if(fgets(cLine, 1000, FileHandler)==NULL && ( !feof(FileHandler) || ferror(FileHandler) ))
     {
-      fprintf(stderr, "Warning! Premature end of file reached!\n");
+      fprintf(stderr, "PSN Error: found corrupted file while reading node labels and indexes\n");
+      exit(1);
     }
     
     if(strncmp(cLine, "========================", 24) == 0)
@@ -4316,6 +4880,48 @@ int NodeLabToIndex(char *cNodeLab)
   exit(1);
 }
 
+float GetLinkWeight(float fIntStrength)
+{
+  if(iWeightFlag == 0)
+    return 1.0;
+  
+  else if(iWeightFlag == 1)
+    return (100 - fIntStrength);
+  
+  else if(iWeightFlag == 2)
+    return ((100.0 / fIntStrength) * (100.0 / fIntStrength));
+  
+  else if(iWeightFlag == 3)
+    return (100.0 / fIntStrength);
+  
+  else if(iWeightFlag == 4)
+    return (1.0 / fIntStrength);
+  
+  else if(iWeightFlag == 5)
+    return (100.0 / logf(fIntStrength + 1.0));
+
+  else if(iWeightFlag == 6)
+    return (100.0 / log10f(fIntStrength + 1.0));
+
+  else if(iWeightFlag == 7)
+    return (1.0 - (fIntStrength/100.0));
+
+  else if(iWeightFlag == 8)
+    return (fMaxResResIntStrength - fIntStrength);
+
+  else if(iWeightFlag == 9)
+    return (fMaxResResIntStrength / fIntStrength);
+  
+  else if(iWeightFlag == 10)
+    return ((fMaxResResIntStrength / fIntStrength) * 100.0);
+  
+  else if(iWeightFlag == 11)
+    return (1.0 / logf(fIntStrength + 1.0));
+
+  else if(iWeightFlag == 12)
+    return (1.0 / log10f(fIntStrength + 1.0));
+}
+
 void GetPSGData()
 {
   // Get PSG data from an avg file
@@ -4343,15 +4949,14 @@ void GetPSGData()
   {
     if(fgets(cLine, 1000, FRawFile)==NULL && ( !feof(FRawFile) || ferror(FRawFile) ))
     {
-      fprintf(stderr, "Warning! Premature end of file reached!\n");
+      fprintf(stderr, "PSN Error: found corrupted file while reading psg data from avg file\n");
+      exit(1);
     }
+    
     if(strncmp(cLine, "*** Stable Residue Interactions ***", 35) == 0)
     {
       // skip header
-      if(fgets(cLine, 1000, FRawFile)==NULL && ( !feof(FRawFile) || ferror(FRawFile) ))
-      {
-        fprintf(stderr, "Warning! Premature end of file reached!\n");
-      }
+      fgets(cLine, 1000, FRawFile);
       break;
     }
   }
@@ -4360,7 +4965,8 @@ void GetPSGData()
   {
     if(fgets(cLine, 1000, FRawFile)==NULL && ( !feof(FRawFile) || ferror(FRawFile) ))
     {
-      fprintf(stderr, "Warning! Premature end of file reached!\n");
+      fprintf(stderr, "PSN Error: found corrupted file while reading psg data from avg file\n");
+      exit(1);
     }
     
     sscanf(cLine, "%f %s %s %d %f %f", &fTmpImin, cTmpRes1, cTmpRes2, &iJunk, &fTmpFreq, &fTmpAvgInt);
@@ -4381,17 +4987,9 @@ void GetPSGData()
         ppfRealIntMatrix[iTmpRes1][iTmpRes2]     = fTmpAvgInt;
         ppfRealIntMatrix[iTmpRes2][iTmpRes1]     = fTmpAvgInt;
         
-        if(iWeightFlag == 0)
-        {
-          ppfIntMatrix[iTmpRes1][iTmpRes2] = 1.0;
-          ppfIntMatrix[iTmpRes2][iTmpRes1] = 1.0;
-        }
-        
-        else
-        {
-          ppfIntMatrix[iTmpRes1][iTmpRes2] = (100 - ppfAvgIntStrengths[iTmpRes1][iTmpRes2]);
-          ppfIntMatrix[iTmpRes2][iTmpRes1] = (100 - ppfAvgIntStrengths[iTmpRes2][iTmpRes1]);
-        }
+        ppfIntMatrix[iTmpRes1][iTmpRes2] = GetLinkWeight(ppfAvgIntStrengths[iTmpRes1][iTmpRes2]);
+        ppfIntMatrix[iTmpRes2][iTmpRes1] = ppfIntMatrix[iTmpRes1][iTmpRes2];
+
       }
       
       break;
@@ -4402,7 +5000,8 @@ void GetPSGData()
   {
     if(fgets(cLine, 1000, FRawFile)==NULL && ( !feof(FRawFile) || ferror(FRawFile) ))
     {
-      fprintf(stderr, "Warning! Premature end of file reached!\n");
+      fprintf(stderr, "PSN Error: found corrupted file while reading psg data from avg file\n");
+      exit(1);
     }
     
     if(strncmp(cLine, "========================", 24) == 0)
@@ -4426,17 +5025,9 @@ void GetPSGData()
         ppfRealIntMatrix[iTmpRes1][iTmpRes2]     = fTmpAvgInt;
         ppfRealIntMatrix[iTmpRes2][iTmpRes1]     = fTmpAvgInt;
         
-        if(iWeightFlag == 0)
-        {
-          ppfIntMatrix[iTmpRes1][iTmpRes2] = 1.0;
-          ppfIntMatrix[iTmpRes2][iTmpRes1] = 1.0;
-        }
-        
-        else
-        {
-          ppfIntMatrix[iTmpRes1][iTmpRes2] = (100 - ppfAvgIntStrengths[iTmpRes1][iTmpRes2]);
-          ppfIntMatrix[iTmpRes2][iTmpRes1] = (100 - ppfAvgIntStrengths[iTmpRes2][iTmpRes1]);
-        }
+        ppfIntMatrix[iTmpRes1][iTmpRes2] = GetLinkWeight(ppfAvgIntStrengths[iTmpRes1][iTmpRes2]);
+        ppfIntMatrix[iTmpRes2][iTmpRes1] = ppfIntMatrix[iTmpRes1][iTmpRes2];
+      
       }
     }
     
@@ -4447,6 +5038,115 @@ void GetPSGData()
   iCalcStep = 0;
 
 }
+
+void GetStrongestInteraction()
+{
+  // Get the strongest res-res interaction
+  
+  int     ii, jj;
+  int     iTmpRes1, iTmpRes2, iAtmPairs, iJunk;
+  char    cLine[5000], cMagic[5], cAtmList[5000], cTmpRes1[20], cTmpRes2[20];
+  float   fTmpImin, fTmpFreq, fTmpAvgInt, fTmpRIS, fTmpHIS;
+  
+  iCalcStep = 22;
+  
+  fMaxResResIntStrength = 0.0;
+  
+  rewind(FRawFile);
+  
+  if(iPSNTypeFlag == 0 || iPSNTypeFlag == 2)
+  {
+    // mode RAW or MIX
+    
+    // =========================
+    while(1)
+    {
+      if(feof(FRawFile))
+        break;
+      
+      fgets(cLine, 5000, FRawFile);
+      if(cLine[0] == '&')
+      {
+        sscanf(cLine, "%s %d %d %f %f %d %s", cMagic, &iTmpRes1, &iTmpRes2, &fTmpRIS, &fTmpHIS, &iAtmPairs, cAtmList);
+        if(iPSNTypeFlag == 2)
+        {
+          if(ppfStableLink[iTmpRes1][iTmpRes2] < fIntMinFreq)
+            continue;
+        }
+        
+        if(fTmpRIS > fMaxResResIntStrength)
+        {
+          fMaxResResIntStrength = fTmpRIS;
+        }
+      }
+    }
+    // =========================
+    
+  }
+  
+  else if(iPSNTypeFlag == 1)
+  {
+    // mode AVG
+    while(1)
+    {
+      fgets(cLine, 5000, FRawFile);
+      if(strncmp(cLine, "*** Stable Residue Interactions ***", 35) == 0)
+      {
+        // skip header
+        fgets(cLine, 5000, FRawFile);
+        break;
+      }
+    }
+    
+    while(1)
+    {
+      fgets(cLine, 5000, FRawFile);
+      
+      sscanf(cLine, "%f %s %s %d %f %f", &fTmpImin, cTmpRes1, cTmpRes2, &iJunk, &fTmpFreq, &fTmpAvgInt);
+      
+      if(fTmpImin == fIntMinCutOff)
+      {
+        if(fTmpFreq >= fIntMinFreq)
+        {
+          if(fTmpAvgInt > fMaxResResIntStrength)
+          {
+            fMaxResResIntStrength = fTmpAvgInt;
+          }
+        }
+        break;
+      }
+    }
+    
+    while(1)
+    {
+      fgets(cLine, 5000, FRawFile);
+      
+      if(strncmp(cLine, "========================", 24) == 0)
+        break;
+      
+      sscanf(cLine, "%f %s %s %d %f %f", &fTmpImin, cTmpRes1, cTmpRes2, &iJunk, &fTmpFreq, &fTmpAvgInt);
+      
+      if(fTmpImin == fIntMinCutOff)
+      {
+        if(fTmpFreq >= fIntMinFreq)
+        {
+          if(fTmpAvgInt > fMaxResResIntStrength)
+          {
+            fMaxResResIntStrength = fTmpAvgInt;
+          }
+        }
+      }
+      
+      else
+        break;
+    }
+  }
+  
+  fMaxResResIntStrength = fMaxResResIntStrength + 1.0;
+  
+  iCalcStep = 0;
+}
+
 
 void GetUniqIntFreqList()
 {
@@ -4512,15 +5212,13 @@ void LoadStableLinks()
   {
     if(fgets(cLine, 1000, FAvgFile)==NULL && ( !feof(FAvgFile) || ferror(FAvgFile) ))
     {
-      fprintf(stderr, "Warning! Premature end of file reached!\n");
+      fprintf(stderr, "PSN Error: found corrupted file while reading stable links from avg file\n");
+      exit(1);
     }
     if(strncmp(cLine, "*** Stable Residue Interactions ***", 35) == 0)
     {
       // skip header
-      if(fgets(cLine, 1000, FAvgFile)==NULL && ( !feof(FAvgFile) || ferror(FAvgFile) ))
-      {
-        fprintf(stderr, "Warning! Premature end of file reached!\n");
-      }
+      fgets(cLine, 1000, FAvgFile);
       break;
     }
   }
@@ -4529,7 +5227,8 @@ void LoadStableLinks()
   {
     if(fgets(cLine, 1000, FAvgFile)==NULL && ( !feof(FAvgFile) || ferror(FAvgFile) ))
     {
-      fprintf(stderr, "Warning! Premature end of file reached!\n");
+      fprintf(stderr, "PSN Error: found corrupted file while reading stable links from avg file\n");
+      exit(1);
     }
     sscanf(cLine, "%f %s %s %d %f %f", &fTmpImin, cTmpRes1, cTmpRes2, &iJunk, &fTmpFreq, &fTmpAvgInt);
     if(fTmpImin == fIntMinCutOff)
@@ -4549,7 +5248,8 @@ void LoadStableLinks()
   {
     if(fgets(cLine, 1000, FAvgFile)==NULL && ( !feof(FAvgFile) || ferror(FAvgFile) ))
     {
-      fprintf(stderr, "Warning! Premature end of file reached!\n");
+      fprintf(stderr, "PSN Error: found corrupted file while reading stable links from avg file\n");
+      exit(1);
     }
     
     if(strncmp(cLine, "========================", 24) == 0)
@@ -4573,15 +5273,21 @@ void LoadStableLinks()
   iCalcStep = 0;
 }
 
+
+
 void GetPaths()
 {
   /*
      Reads res-res interactions from raw_psn_file and computes paths
   */
 
+  int     ii;
   int     iTmpRes1, iTmpRes2, iTmpFrame;
+  int     iFlag;
+  int     iAtmPairs;
   char    cMagic[20];
-  char    cLine[1000];
+  char    cLine[999999];
+  char    cAtmList[999999];
   float   fTmpRIS, fTmpHIS;
   
   iCalcStep = 8;
@@ -4591,9 +5297,10 @@ void GetPaths()
   {
     while(1)
     {
-      if(fgets(cLine, 1000, FRawFile)==NULL && ( !feof(FRawFile) || ferror(FRawFile) ))
+      if(fgets(cLine, 999999, FRawFile)==NULL && ( !feof(FRawFile) || ferror(FRawFile) ))
       {
-        fprintf(stderr, "Warning! Premature end of file reached!\n");
+        fprintf(stderr, "PSN Error: found corrupted file while reading res-res interactions from raw file\n");
+        exit(1);
       }
       if(strncmp(cLine, "nFr:", 4) == 0)
       {
@@ -4614,13 +5321,16 @@ void GetPaths()
       }
     }
     
-    if(fgets(cLine, 1000, FRawFile)==NULL && ( !feof(FRawFile) || ferror(FRawFile) ))
+    if(fgets(cLine, 999999, FRawFile)==NULL && ( !feof(FRawFile) || ferror(FRawFile) ))
     {
-      fprintf(stderr, "Warning! Premature end of file reached!\n");
+      fprintf(stderr, "PSN Error: found corrupted file while reading res-res interactions from raw file\n");
+      exit(1);
     }
-    if(fgets(cLine, 1000, FRawFile)==NULL && ( !feof(FRawFile) || ferror(FRawFile) ))
+    
+    if(fgets(cLine, 999999, FRawFile)==NULL && ( !feof(FRawFile) || ferror(FRawFile) ))
     {
-      fprintf(stderr, "Warning! Premature end of file reached!\n");
+      fprintf(stderr, "PSN Error: found corrupted file while reading res-res interactions from raw file\n");
+      exit(1);
     }
     
     iNumOfEdges=0;
@@ -4629,11 +5339,12 @@ void GetPaths()
 
     while(1)
     {
-      if(fgets(cLine, 100, FRawFile)==NULL && ( !feof(FRawFile) || ferror(FRawFile) ))
+      if(fgets(cLine, 999999, FRawFile)==NULL && ( !feof(FRawFile) || ferror(FRawFile) ))
       {
-        fprintf(stderr, "Warning! Premature end of file reached!\n");
+        fprintf(stderr, "PSN Error: found corrupted file while reading res-res interactions from raw file\n");
+        exit(1);
       }
-      sscanf(cLine, "%s %d %d %f %f", cMagic, &iTmpRes1, &iTmpRes2, &fTmpRIS, &fTmpHIS);
+      sscanf(cLine, "%s %d %d %f %f %d %s", cMagic, &iTmpRes1, &iTmpRes2, &fTmpRIS, &fTmpHIS, &iAtmPairs, cAtmList);
       
       if(strcmp(cMagic, "&")!=0)
         break;
@@ -4653,25 +5364,40 @@ void GetPaths()
         
         ppfRealIntMatrix[iTmpRes1][iTmpRes2] = fTmpRIS;
         
-        if(iWeightFlag == 0)
-        {
-          ppfIntMatrix[iTmpRes1][iTmpRes2] = 1.0;
-          if(iPSNTypeFlag == 2 && fIntMinFreq == 0.0)
-            ppfIntMatrixBackup[iTmpRes1][iTmpRes2] = ppfIntMatrix[iTmpRes1][iTmpRes2];
+        ppfIntMatrix[iTmpRes1][iTmpRes2] = GetLinkWeight(fTmpRIS);
+        if(iPSNTypeFlag == 2 && fIntMinFreq == 0.0)
+          ppfIntMatrixBackup[iTmpRes1][iTmpRes2] = ppfIntMatrix[iTmpRes1][iTmpRes2];
+
+      }
+    }
+    
+    
+    if(iNumOfForceLinkPairs != 0)
+    {
+      for(ii=0; ii<iNumOfForceLinkPairs; ++ii)
+      {
+        
+        iTmpRes2 = ppiForceLinkPairs[ii][0];
+        iTmpRes2 = ppiForceLinkPairs[ii][1];
+        
+        if(iWeightFlag == 0){
+          fTmpRIS = 1.0;
         }
         
-        else if(iWeightFlag == 1)
+        else
         {
-          ppfIntMatrix[iTmpRes1][iTmpRes2] = (100.0 - fTmpRIS);
-          if(iPSNTypeFlag == 2 && fIntMinFreq == 0.0)
-            ppfIntMatrixBackup[iTmpRes1][iTmpRes2] = ppfIntMatrix[iTmpRes1][iTmpRes2];
+          fTmpRIS = 0.1;
         }
         
-        else if(iWeightFlag == 2)
+        ppfRealIntMatrix[iTmpRes2][iTmpRes2]   = fTmpRIS;
+        ppfRealIntMatrix[iTmpRes2][iTmpRes1]   = fTmpRIS;
+        ppfIntMatrix[iTmpRes1][iTmpRes2]       = fTmpRIS;
+        ppfIntMatrix[iTmpRes2][iTmpRes1]       = fTmpRIS;
+        
+        if(iPSNTypeFlag == 2 && fIntMinFreq == 0.0)
         {
-          ppfIntMatrix[iTmpRes1][iTmpRes2] = (100.0/fTmpRIS) * (100.0/fTmpRIS);
-          if(iPSNTypeFlag == 2 && fIntMinFreq == 0.0)
-            ppfIntMatrixBackup[iTmpRes1][iTmpRes2] = ppfIntMatrix[iTmpRes1][iTmpRes2];
+          ppfIntMatrixBackup[iTmpRes1][iTmpRes2] = fTmpRIS;
+          ppfIntMatrixBackup[iTmpRes2][iTmpRes1] = fTmpRIS;
         }
       }
     }
@@ -4700,7 +5426,8 @@ void GetFrameInt()
   int     iAtm;
   
   char    cMagic[20];
-  char    cLine[5000];
+  char    cLine[999999];
+  char    cAtmList[999999];
   char    cJunk[100], cBuffer[10];
   
   float   fTmpRIS=0.0, fTmpHIS=0.0, fImin=-9.9;
@@ -4710,26 +5437,30 @@ void GetFrameInt()
   // Reach interaction section
   while(1)
   {
-    if(fgets(cLine, 5000, FRawFile)==NULL && ( !feof(FRawFile) || ferror(FRawFile) ))
+    if(fgets(cLine, 999999, FRawFile)==NULL && ( !feof(FRawFile) || ferror(FRawFile) ))
     {
-      fprintf(stderr, "Warning! Premature end of file reached!\n");
+      fprintf(stderr, "PSN Error: found corrupted file while reading res-res interactions from raw file\n");
+      exit(1);
     }
     if(strncmp(cLine, ">INT", 4) == 0)
       break;
   }
-  if(fgets(cLine, 5000, FRawFile)==NULL && ( !feof(FRawFile) || ferror(FRawFile) ))
+  if(fgets(cLine, 999999, FRawFile)==NULL && ( !feof(FRawFile) || ferror(FRawFile) ))
   {
-    fprintf(stderr, "Warning! Premature end of file reached!\n");
+    fprintf(stderr, "PSN Error: found corrupted file while reading res-res interactions from raw file\n");
+    exit(1);
   }
+  
   // Load interactions
   iNumOfEdges=0;
   while(1)
   {
-    if(fgets(cLine, 5000, FRawFile)==NULL && ( !feof(FRawFile) || ferror(FRawFile) ))
+    if(fgets(cLine, 999999, FRawFile)==NULL && ( !feof(FRawFile) || ferror(FRawFile) ))
     {
-      fprintf(stderr, "Warning! Premature end of file reached!\n");
+      fprintf(stderr, "PSN Error: found corrupted file while reading res-res interactions from raw file\n");
+      exit(1);
     }
-    sscanf(cLine, "%s %d %d %f %f %d", cMagic, &iTmpRes1, &iTmpRes2, &fTmpRIS, &fTmpHIS, &iAtm);
+    sscanf(cLine, "%s %d %d %f %f %d %s", cMagic, &iTmpRes1, &iTmpRes2, &fTmpRIS, &fTmpHIS, &iAtm, cAtmList);
     
     if(strcmp(cMagic, "&")!=0)
       break;
@@ -4749,30 +5480,10 @@ void GetFrameInt()
 
       ppfRealIntMatrix[iTmpRes1][iTmpRes2] = fTmpRIS;
       
-      if(iWeightFlag == 0)
-      {
-        ppfIntMatrix[iTmpRes1][iTmpRes2] = 1.0;
-        if(iPSNTypeFlag == 2 && fIntMinFreq == 0.0)
-          ppfIntMatrixBackup[iTmpRes1][iTmpRes2] = ppfIntMatrix[iTmpRes1][iTmpRes2];
-      }
-      
-      else
-      {
-        if(iPSNTypeFlag != 2)
-        {
-          if(iWeightFlag == 1)
-            ppfIntMatrix[iTmpRes1][iTmpRes2] = (100.0 - fTmpRIS);
-          
-          else if(iWeightFlag == 2)
-            ppfIntMatrix[iTmpRes1][iTmpRes2] = (100.0/fTmpRIS) * (100.0/fTmpRIS);
-        }
-        
-        if(iPSNTypeFlag == 2)
-          ppfIntMatrix[iTmpRes1][iTmpRes2] = (100.0/ppfStableLink[iTmpRes1][iTmpRes2]) * (100.0/ppfStableLink[iTmpRes1][iTmpRes2]);
-        
-        if(iPSNTypeFlag == 2 && fIntMinFreq == 0.0)
-          ppfIntMatrixBackup[iTmpRes1][iTmpRes2] = ppfIntMatrix[iTmpRes1][iTmpRes2];
-      }
+      ppfIntMatrix[iTmpRes1][iTmpRes2] = GetLinkWeight(fTmpRIS);
+      if(iPSNTypeFlag == 2 && fIntMinFreq == 0.0)
+        ppfIntMatrixBackup[iTmpRes1][iTmpRes2] = ppfIntMatrix[iTmpRes1][iTmpRes2];
+
     }
   }
   
@@ -4784,9 +5495,10 @@ void GetFrameInt()
       if(feof(FRawFile))
         break;
       
-      if(fgets(cLine, 5000, FRawFile)==NULL && ( !feof(FRawFile) || ferror(FRawFile) ))
+      if(fgets(cLine, 999999, FRawFile)==NULL && ( !feof(FRawFile) || ferror(FRawFile) ))
       {
-        fprintf(stderr, "Warning! Premature end of file reached!\n");
+        fprintf(stderr, "PSN Error: found corrupted file while reading res-res interactions from raw file\n");
+        exit(1);
       }
       if(strncmp(cLine, "nFr: ", 5) == 0)
         break;
@@ -4822,6 +5534,36 @@ void GetFrameInt()
             }
           }
         }
+      }
+    }
+  }
+  
+  if(iNumOfForceLinkPairs != 0)
+  {
+    for(ii=0; ii<iNumOfForceLinkPairs; ++ii)
+    {
+      
+      iTmpRes2 = ppiForceLinkPairs[ii][0];
+      iTmpRes2 = ppiForceLinkPairs[ii][1];
+      
+      if(iWeightFlag == 0){
+        fTmpRIS = 1.0;
+      }
+      
+      else
+      {
+        fTmpRIS = 0.1;
+      }
+      
+      ppfRealIntMatrix[iTmpRes2][iTmpRes2]   = fTmpRIS;
+      ppfRealIntMatrix[iTmpRes2][iTmpRes1]   = fTmpRIS;
+      ppfIntMatrix[iTmpRes1][iTmpRes2]       = fTmpRIS;
+      ppfIntMatrix[iTmpRes2][iTmpRes1]       = fTmpRIS;
+      
+      if(iPSNTypeFlag == 2 && fIntMinFreq == 0.0)
+      {
+        ppfIntMatrixBackup[iTmpRes1][iTmpRes2] = fTmpRIS;
+        ppfIntMatrixBackup[iTmpRes2][iTmpRes1] = fTmpRIS;
       }
     }
   }
@@ -5161,7 +5903,6 @@ void GenPath(int iDest, int iDepth)
   
   iCalcStep = 10;
 
-
   if(iLastDepth >= MAXNUMOFPATHS || iDepth >= MAXNUMOFPATHS)
     PSNPathError(-1);
 
@@ -5175,13 +5916,29 @@ void GenPath(int iDest, int iDepth)
   {
     iLastDepth++;
     for(ii=0; ii<iDepth; ii++)
+    {
       ppiPathMatrix[iLastDepth][ii] = ppiPathMatrix[iLastDepth-1][ii];
-      
+    }
+
     ppiPathMatrix[iLastDepth][iDepth] = iDest;
   }
 
   for(ii=1; ii<=ppiPrevNode[iDest][0]; ii++)
+  {
+    
+    //printf("xNFOx %s %d\n", "iLastDepth", iLastDepth);
+    //printf("xNFOx %s %d\n", "iDepth", iDepth);
+    //printf("xNFOx %s %d\n", "MAXNUMOFPATHS", MAXNUMOFPATHS);
+    //printf("xNFOx %s %d\n", "iNumOfGenPaths", iNumOfGenPaths);
+    //printf("xNFOx %s %d\n", "iNumOfRes", iNumOfRes);
+    //printf("xNFOx %s %d\n", "ii", ii);
+    //printf("xNFOx %s %d\n", "iDest", iDest);
+    //printf("xNFOx %s %d\n", "ppiPrevNode[iDest][ii]", ppiPrevNode[iDest][ii]);
+    //printf("\n");
+    
+
     GenPath(ppiPrevNode[iDest][ii], iDepth+1);
+  }
 
 }
 
@@ -5503,8 +6260,9 @@ void SaveData()
   
   for(ii=0; ii<iNumOfPaths; ii++)
   {
+    
     // Discards paths with frequencies under user-defined limit
-    if(((piPathFreq[ii]*100)/(float)(iFrameCont)) < fMinFreq)
+    if(((piPathFreq[ii]*100.0)/(float)(iFrameCont)) < fMinFreq)
       continue;
 
     iFinalNumOfPaths++;
@@ -5720,6 +6478,8 @@ void SaveData()
   
   fprintf(FOutFile, "# =========================================\n\n");
   
+  
+  
   for(ii=0; ii<iNumOfPaths; ii++)
   {
     // Discards paths with frequencies under user-defined limit
@@ -5760,21 +6520,21 @@ void SaveData()
 // === PSN Param Section ===============================================
 int InitPSNParam(char **ppcInput, int iInputLineNum)
 {
-  int     ii;                                                           // Some iterators
+  int     ii, jj;                                                       // Some iterators
   int     iTmpCont1, iTmpCont2;
   int     iOriginalInputLineNum;
   int     iOptionFlag;                                                  // Used to catch invalid options
   
   char    pcInputLine[1024];                                            // Input lines
   char    cFileName[1024], cSeleString[1024];                           // Temporary strings
-  char   *cTemp1;
+  char   *cTemp1, cTemp2[1024];
   
   float   fParam;                                                       // Normalization factor
   
   struct inp_psnparam inp_psnparam;
   
   // === Default values ==================
-  inp_psnparam.iAvgMode          = 0;
+  inp_psnparam.iAvgMode            = 0;
   inp_psnparam.iNumOfIgnore        = 0;
   inp_psnparam.iNumOfMol           = 0;
   inp_psnparam.iNumOfTargetAtoms   = 0;
@@ -6003,6 +6763,7 @@ void CalcPSNParam(struct inp_psnparam *inp_psnparam, int iMolIndex)
   int     iNumOfInteractions;                                           // the number of target interactions
   int     iNumOfThisTargetAtoms;                                        // the number of this target atoms
   int     iNumOfIgnoredInt;                                             // the number of ingored interactions
+  int     iIsHydrogenFlag;
   
   char    cLastRes[15], cThisRes[15], cTestRes[15];
   char    cBestTarget[100], cThisTarget[100];
@@ -6039,6 +6800,16 @@ void CalcPSNParam(struct inp_psnparam *inp_psnparam, int iMolIndex)
   iNumOfTarget  = 0;
   for(ii=0; ii<inp_psnparam->sele.nselatm; ++ii)
   {
+    // skip all hydrogens
+    if(inp_psnparam->molecule->rawmol.atmtype[inp_psnparam->sele.selatm[ii]-1][0] == 'H')
+      continue;
+    
+    //if(inp_psnparam->molecule->rawmol.atmtype[inp_psnparam->sele.selatm[ii]-1][0] == 'H')
+    //  iIsHydrogenFlag = 1;
+    //else
+    //  iIsHydrogenFlag = 0;
+    //printf("??? %d %s %d\n", ii, inp_psnparam->molecule->rawmol.atmtype[inp_psnparam->sele.selatm[ii]-1], iIsHydrogenFlag);
+    
     sprintf(cThisRes, "%s:%s%d",
             inp_psnparam->molecule->rawmol.segId[inp_psnparam->sele.selatm[ii]-1],
             inp_psnparam->molecule->rawmol.restype[inp_psnparam->sele.selatm[ii]-1],
@@ -6059,7 +6830,7 @@ void CalcPSNParam(struct inp_psnparam *inp_psnparam, int iMolIndex)
   }
 
   if(inp_psnparam->iVerboseFlag == 1 && iSetTargetAtmNumFlag == 1)
-    fprintf(inp_psnparam->FVerboseFile, "Target Ref Atm Num                    : %d\n\n", inp_psnparam->iNumOfTargetAtoms);
+    fprintf(inp_psnparam->FVerboseFile, "Target Ref Atm Num                    : %d non hydrogen atoms\n\n", inp_psnparam->iNumOfTargetAtoms);
   
   // some fancy info about this molecule                                       
   if(inp_psnparam->iVerboseFlag == 1)                                          
@@ -6105,8 +6876,12 @@ void CalcPSNParam(struct inp_psnparam *inp_psnparam, int iMolIndex)
   iTargetId             = 0;
   iNumOfThisTargetAtoms = 0;
   iNumOfIgnoredInt      = 0;
+  
   for(ii=0; ii<inp_psnparam->sele.nselatm; ++ii)
   {
+    if(inp_psnparam->molecule->rawmol.atmtype[inp_psnparam->sele.selatm[ii]-1][0] == 'H')
+      continue;
+    
     if(strcmp(inp_psnparam->molecule->rawmol.restype[inp_psnparam->sele.selatm[ii]-1], inp_psnparam->cTarget) == 0)
     {
       sprintf(cThisRes, "%s:%s%d",
@@ -6117,7 +6892,8 @@ void CalcPSNParam(struct inp_psnparam *inp_psnparam, int iMolIndex)
       if(strcmp(cThisRes, cLastRes) != 0)
       {
         sprintf(cThisTarget, "#%d/%s/%d", iTargetId, cLastRes, iNumOfThisTargetAtoms);
-        if(inp_psnparam->iVerboseFlag == 1 && iTargetId != 0) {
+        if(inp_psnparam->iVerboseFlag == 1 && iTargetId != 0)
+        {
           if(iNumOfThisTargetAtoms == inp_psnparam->iNumOfTargetAtoms)
             fprintf(inp_psnparam->FVerboseFile, "Target %-30s : %d (%d ignored)\n", cThisTarget, iNumOfInteractions, iNumOfIgnoredInt);
           else
@@ -6126,7 +6902,7 @@ void CalcPSNParam(struct inp_psnparam *inp_psnparam, int iMolIndex)
             fprintf(inp_psnparam->FVerboseFile, "Target %-30s : %d (%d ignored) WARNING: target of different size %d atoms instead of %d\n", cThisTarget, iNumOfInteractions, iNumOfThisTargetAtoms, inp_psnparam->iNumOfTargetAtoms, iNumOfIgnoredInt);
           }
         }
-
+        
         if(inp_psnparam->iAvgMode == 0)
         {
           if(fMaxInteractions < iNumOfInteractions)
@@ -6152,6 +6928,9 @@ void CalcPSNParam(struct inp_psnparam *inp_psnparam, int iMolIndex)
       
       for(jj=0; jj<inp_psnparam->sele.nselatm; ++jj)
       {
+
+        if(inp_psnparam->molecule->rawmol.atmtype[inp_psnparam->sele.selatm[jj]-1][0] == 'H')
+          continue;
 
         sprintf(cTestRes, "%s:%s%d",
               inp_psnparam->molecule->rawmol.segId[inp_psnparam->sele.selatm[jj]-1],
@@ -6217,12 +6996,12 @@ void CalcPSNParam(struct inp_psnparam *inp_psnparam, int iMolIndex)
     fMaxInteractions = fMaxInteractions / (float) iNumOfTarget;
   }
 
-  if(inp_psnparam->iVerboseFlag == 1) {
+  if(inp_psnparam->iVerboseFlag == 1)
     if(inp_psnparam->iAvgMode == 0)
       fprintf(inp_psnparam->FVerboseFile, "Max Num Of Interactions               : %d by target %s\n\n", (int) fMaxInteractions, cBestTarget);
     else
       fprintf(inp_psnparam->FVerboseFile, "Max Num Of Interactions               : %f by target %s\n\n", fMaxInteractions, cBestTarget);
-  }
+  
   // de-allocate molecule
   DelMolecule(inp_psnparam->molecule);
 

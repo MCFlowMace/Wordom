@@ -52,6 +52,10 @@ struct inp_psn
   int          iPBCFlag;
   int          iNumOfNoLinkPairs;
   int        **ppiNoLinkPairs;
+  int          iNumOfForceLinkPairs;
+  int          iNumOfNoProxSeg;
+  int         *piPDBResNum;
+  int        **ppiForceLinkPairs;
   int          iNumOfMerge;
   int          iMergeMaxResNum;
   int       ***pppiStableResInt;
@@ -79,6 +83,8 @@ struct inp_psn
   char       **pcParamResVect;
   char         cIminRange[512];
   char      ***pppcIntAtomNamePairs;
+  char       **pcNoProxSeg;
+  char       **pcSeleResSegId;
   
   float      **ppfIntStrength;
   float      **ppfHubsIntStrength;
@@ -164,6 +170,9 @@ void    LoadStableLinks();                                              // Loads
 void    GetUniqIntFreqList();                                           // Gets the list of interaction frequency values
 void    IntMatrixFilter();                                              // Filters ppfIntMatrix for mix-paths-search
 float   GetBadFrames();                                                 // Gets Bad frames
+float   GetIcritFromFile(int);                                          // Returns the Icritic value from raw file
+float   GetLinkWeight(float);                                           // Calculates the weight of passed link on the basis of iWeightFlag and res-res interaction strength
+void    GetStrongestInteraction();                                      // Finds the strongest res-res interaction strength
 // =====================================================================
 
 

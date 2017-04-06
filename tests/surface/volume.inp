@@ -1,5 +1,0 @@
-BEGIN volume
---SUPERMOL looprad.pdb
---MOLLIST ../loop1.dcd
---STEP 1
-END

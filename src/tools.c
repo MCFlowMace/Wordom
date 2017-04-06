@@ -69,7 +69,6 @@ void DiagMatrix ( _eigen *eigen)
    //fprintf(stderr, "got into diagmatrix (size %d)\n", eigen->size); fflush(stderr);
    
   #ifdef LAPACK
-  
    if ( W == NULL )
    {
     No    = eigen->size;
@@ -637,30 +636,26 @@ int applyRotTrans( float **moving, float rotmatrix[3][3], float transvec[3], int
   
   for ( ii=0; ii<nato; ii++)
    {
-    
     aa = moving[0][ii]*rotmatrix[0][0] + moving[1][ii]*rotmatrix[0][1] + moving[2][ii]*rotmatrix[0][2] ;
     bb = moving[0][ii]*rotmatrix[1][0] + moving[1][ii]*rotmatrix[1][1] + moving[2][ii]*rotmatrix[1][2] ;
     cc = moving[0][ii]*rotmatrix[2][0] + moving[1][ii]*rotmatrix[2][1] + moving[2][ii]*rotmatrix[2][2] ;
     moving[0][ii] = aa + transvec[0]; //+ xcenter
     moving[1][ii] = bb + transvec[1]; //+ ycenter
     moving[2][ii] = cc + transvec[2]; //+ zcenter
-    
    }
    
    return 0;
 }
-
 // ------------------------------------------------------------------
-float RmsdCalc(float **refcoor, float **movcoor, int nato, int super)
+float RmsdCalc(float **refcoor, float **movcoor, int nato, int super )
 {
-
   float rmsd=-1;
   float rotmat[9];
   
   if( super == 0 )
     return RmsdCalc_nosup( refcoor, movcoor, nato );
   
-  rmsd = RmsdCalcQCP( refcoor, movcoor, nato, super);
+  rmsd = RmsdCalcQCP( refcoor, movcoor, nato, super );
   if( rmsd == -1 )
     return RmsdCalcKabsch3n( refcoor, movcoor, nato, super );
   
@@ -711,17 +706,15 @@ float RmsdCalcKabsch3n(float **refcoor, float **movcoor, int nato, int super )
    
   if ( super )
   {
-    CalcRMSDRotTrans ( nato, refcoor, movcoor, rotmatrix, transvec);
-    applyRotTrans( movcoor, rotmatrix, transvec, nato);
+    CalcRMSDRotTrans ( nato, refcoor, movcoor, rotmatrix, transvec );
+    applyRotTrans( movcoor, rotmatrix, transvec, nato );
   }
   
   rmsd = RmsdCalc_nosup( refcoor, movcoor, nato );
-  //fprintf(stderr, "RMSD: %f\n", rmsd);
   return rmsd;
 }
-
 // ------------------------------------------------------------------
-float RmsdCalcQCP(float **refcoor, float **movcoor, int nato, int super)
+float RmsdCalcQCP(float **refcoor, float **movcoor, int nato, int super )
 {
   float   rotmat[9];
   float   rmsd=0.0;
@@ -1242,6 +1235,7 @@ float DistanceCoor( float xcoor1, float ycoor1, float zcoor1, float xcoor2, floa
    {
     if( pbc->angle1 == 0.0 && pbc->angle2 == 0.0 && pbc->angle3 == 0.0 )
     {
+
       distance = 0;
       temp = xcoor1 - xcoor2;
       temp -= pbc->a_size * rintf(temp/pbc->a_size);
@@ -1374,7 +1368,8 @@ float * DistanceSelCoor( CoorSet *coorset1, Selection *sele1, CoorSet *coorset2,
    }
    else if( coorset1->pbc_flag == 1 && coorset2->pbc_flag == 0 )
    {
-     if( coorset1->pbc->angle1 == 0 && coorset1->pbc->angle2 == 0 && coorset1->pbc->angle3 == 0.0 )
+     if( abs(coorset1->pbc->angle1 - 0.0)< 1e-6 && abs(coorset1->pbc->angle2 - 0.0)< 1e-6 && abs(coorset1->pbc->angle3 - 0.0)< 1e-6 )
+     //if( coorset1->pbc->angle1 == 1 && coorset1->pbc->angle2 == 1 && coorset1->pbc->angle3 == 1 )
        for( ii=0; ii<nato; ii++)
          distances[ii] = PBC1( coorset1, sele1->selatm[ii], coorset2, sele2->selatm[ii]);
      else
@@ -1386,7 +1381,8 @@ float * DistanceSelCoor( CoorSet *coorset1, Selection *sele1, CoorSet *coorset2,
    }
    else if( coorset1->pbc_flag == 0 && coorset2->pbc_flag == 1 )
    {
-     if( coorset2->pbc->angle1 == 0 && coorset2->pbc->angle2 == 0 && coorset2->pbc->angle3 == 0.0 )
+     if( abs(coorset2->pbc->angle1 - 0.0)< 1e-6 && abs(coorset2->pbc->angle2 - 0.0)< 1e-6 && abs(coorset2->pbc->angle3 - 0.0)< 1e-6 )
+     //if( coorset2->pbc->angle1 == 1 && coorset2->pbc->angle2 == 1 && coorset2->pbc->angle3 == 1 )
        for( ii=0; ii<nato; ii++)
          distances[ii] = PBC1( coorset2, sele2->selatm[ii], coorset1, sele1->selatm[ii]);
      else
@@ -1398,7 +1394,8 @@ float * DistanceSelCoor( CoorSet *coorset1, Selection *sele1, CoorSet *coorset2,
    }
    else if( coorset1->pbc_flag == 1 && coorset2->pbc_flag == 1 )
    {
-     if( coorset1->pbc->angle1 == 0.0 && coorset1->pbc->angle2 == 0.0 && coorset1->pbc->angle3 == 0.0 )
+     if( abs(coorset1->pbc->angle1 - 0.0)< 1e-6 && abs(coorset1->pbc->angle2 - 0.0)< 1e-6 && abs(coorset1->pbc->angle3 - 0.0)< 1e-6 )
+     //if( ((int ) coorset1->pbc->angle1) == 1 && ((int ) coorset1->pbc->angle2) == 1 && ((int ) coorset1->pbc->angle3) == 1 )
      {
        if(coorset1->pbc->a_size!=coorset2->pbc->a_size || coorset1->pbc->b_size!=coorset2->pbc->b_size || coorset1->pbc->c_size!=coorset2->pbc->c_size ||
           coorset1->pbc->angle1!=coorset2->pbc->angle1 || coorset1->pbc->angle2!=coorset2->pbc->angle2 || coorset1->pbc->angle3!=coorset2->pbc->angle3 )
@@ -1614,7 +1611,7 @@ float snrm2( int * k, float * x1, int * n)
   for(i=0;i<(*k);i++){
     snrm+=x1[i]*x1[i];
   }
-  snrm=sqrtf(snrm);
+  snrm=sqrt(snrm);
   return (snrm);
 }
 // ------------------------------------------------------------------

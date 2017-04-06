@@ -930,7 +930,7 @@ BEGIN PCA
 END
 \end{verbatim}
 
-The module does not output to \emph{stdout} - only a list of frames is to be found there. Wordom-PCA writes 3 files with the PCA results: title-eigvec.txt with the eigenvectors in columns, title-eigval.txt with the eigenvalues and title-matrix.txt with the covariance matrix. When using the -{}-NPRINT flag, a number (given with the flag) of pdb files are also written, where the $\beta{}$-factor field of each atom is substituted with the value of the projection of an eigenvector on the subspace defined by the coordinates of the atom itself. pdb file \#1 refers to eigenvalue \#1, file \#2 to eigenvalue \#2 etc. Coloring such pdb according to the $\beta{}$-factor field allows to visualize the relative ``weight'' of each residue in defining the eigenvector.
+The module does not output to \emph{stdout} - only a list of frames is to be found there. Wordom-PCA writes 4 files with the PCA results: title-eigvec.txt with the eigenvectors in columns, title-eigval.txt with the eigenvalues, title-matrix.txt with the covariance matrix and title-fractvar.txt with the fraction of variance explained by all eigenvectors. When using the -{}-NPRINT flag, a number (given with the flag) of pdb files are also written, where the $\beta{}$-factor field of each atom is substituted with the value of the projection of an eigenvector on the subspace defined by the coordinates of the atom itself. pdb file \#1 refers to eigenvalue \#1, file \#2 to eigenvalue \#2 etc. Coloring such pdb according to the $\beta{}$-factor field allows to visualize the relative ``weight'' of each residue in defining the eigenvector.
 
 \subsection{Principal Component Analysis Projection (PROJECT)}
 The projection of each frame along a selected eigenvector is computed. This is what is often found in literature graphs where PCA1 vs PCA2 projections (projections along the first and second eigenvectors) are plotted\\
@@ -1275,22 +1275,31 @@ END
 \clearpage
 
 \section{Correlation (CORR)}
-This module allows the calculation of the extent of the correlation of atom-atom or residue-residue displacements along a trajectory using two different correlation algorithms. The former is the established method called Dynamic Cross-Correlation\cite{mccammon1988dynamics}, which, for a given residue or atom pair, returns a value that can vary from -1.0 (completely anti-correlated motion) to +1.0 (completely correlated motion). The latter algorithm is an innotive method called Linear Mutual Information\cite{kraskov2004estimating, lange2006generalized}, which returns a results that can vary from 0.0 (non-correlated motion) to 1.0 (fully correlated motion).
+This module allows the calculation of the extent of the correlation of atom-atom or residue-residue displacements along a trajectory using three different correlation algorithms. The first is the established method called Dynamic Cross-Correlation\cite{mccammon1988dynamics}, which, for a given residue or atom pair, returns a value that can vary from -1.0 (completely anti-correlated motion) to +1.0 (completely correlated motion). The second algorithm is a robust method called Linear Mutual Information\cite{kraskov2004estimating, lange2006generalized}, which returns a results that can vary from 0.0 (non-correlated motion) to 1.0 (fully correlated motion). The latter, is an innovative\cite{dcormethod} distance covariance based method which returns a correlation value in the range 0.0 .. 1.0.
 
 \textbf{\large Options}:\\\\
 \begin{tabular}{l|c|p{7.0cm}}
 Flag & Argument & Input \\
 \hline
--{}-TYPE          & DCC/LMI                       & Algorithm to use in calculation\\
+-{}-TYPE          & DCC|LMI|DCOR                  & Type of correlation\\
 -{}-TITLE         & string                        & Used as template output file name\\
 -{}-SELE          & sele\_string                  & Atoms selection\\
--{}-LEVEL         & ATM/RES                       & If ``RES'', groups together all selected atoms which belong to the same residue\\
--{}-MASS          & 0/1                           & If 1, takes into account the mass of selected atoms\\
+-{}-LEVEL         & ATM|RES                       & If ``RES'', groups together all selected atoms which belong to the same residue\\
+-{}-MASS          & 0|1                           & If 1, takes into account the mass of selected atoms\\
+-{}-NT            & int > 0                       & Number of threads, only available if -{}-TYPE is DCOR\\
+-{}-SPEEDYT       & int <= -{}-NT                 & Use more memory to speed-up the calculation for the passed number of threds, only available if -{}-TYPE is DCOR\\
 \end{tabular}\\\\
 
 In order to use this module you should first align all trajectory frames (see RMSD module section) and then generate the average structure along the aligned trajectory (see Average over a trajectory section). After these two preparation steps you can calculates correlations using the averaged molecule structure and the aligned trajectory.\\
 The -{}-LEVEL option accepts either ``ATM'' and ``RES'' values. If ``ATM'' is used, the modules calculates the correlations of all selected atoms independently. If -{}-LEVEL is setted to ``RES'' then the module groups all selected atoms that belong to the same residue and calculates the geometrical centre of grouped atoms, finally these geometrical centres are used in correlation calculations. If -{}-MASS is setted to 1 the module reads the atom masses from the $\beta{}$ fields of passed molecule file and then uses these values in calculation.\\
-The output is written to a file whose name is the -{}-TITLE field argument.\\
+The output is written to a file whose name is the -{}-TITLE field argument.
+-{}-NT option activates multithreading, only available if -{}-TYPE is DCOR.
+-{}-SPEEDYT uses more memory to speed-up the calculation of the passed number of threads, this option is only available if -{}-TYPE is DCOR and -{}-NT is > 1. The value of this option can be <= -{}-NT but use with caution, the memory usage is:
+\begin{equation}
+\frac{(F*F+F)}{2}*T*S
+\end{equation}
+where \textit{F} is the number of frames, \textit{T} in the number of threads and \textit{S} is the size of a float number expressed in bytes (machine dependent, usually 4).
+So, for a trajectory of 50k frames and 2 threads you will need about 10 GB of memory.\\
 
 \textbf{\large Sample Input}:
 \begin{verbatim}
@@ -2237,8 +2246,12 @@ O. S. Smart, J. G. Neduvelil, X. Wang, B. A. Wallace, and M. S. P. Sansom, {\em 
 \bibitem{bondi1964vanderwaals}
 A. Bondi, {\em Journal of Physical Chemistry}, {\bf 1964}, {\em 68}, 441--451.
 
+\bibitem{dcormethod}
+A. Roy and C. B. Post, {\em Journal of Chemical Theory and Computation}, {\bf 2012}, {\em 8}, 3009--3014.
+
 \bibitem{vtfplugin}
 O. Lenz, {\em VTF Plugin}. Available at: \url{https://github.com/olenz/vtfplugin}
+
 
 
 \end{thebibliography}

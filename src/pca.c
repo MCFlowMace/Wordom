@@ -29,6 +29,624 @@
 // ------------------------------------------------------------------
 // PCA module
 // ------------------------------------------------------------------
+
+// === *** ANF *** ================================================== //
+int PCAToolsReadInp(char **ppcInput, int iInputLineNum)
+{
+  int     ii, jj;                                                       // Some iterators
+  int     iTmpCont1, iTmpCont2;
+  int     iOriginalInputLineNum;
+  int     iOptionFlag;                                                  // Used to catch invalid options
+  
+  char    pcInputLine[1024];                                            // Input lines
+  char    cFileName[1024], cSeleString[1024];                           // Temporary strings
+  char   *cTemp1, cTemp2[1024];
+  
+  float   fTemp;                                                        // Temporary flaot
+  
+  struct inp_pcatools inp_pcatools;
+  
+  // === Default values ==================
+  inp_pcatools.eCalcFlag         = NONE;
+  
+  inp_pcatools.iVerboseFlag      =  0;
+  inp_pcatools.iEVRangeBeg1      = -1;
+  inp_pcatools.iEVRangeEnd1      = -1;
+  inp_pcatools.iEVRangeBeg2      = -1;
+  inp_pcatools.iEVRangeEnd2      = -1;
+  inp_pcatools.iNumOfFittedAtoms = -1;
+  inp_pcatools.iNumOfEigenVals1  = -1;
+  inp_pcatools.iNumOfEigenVals2  = -1;
+  
+  inp_pcatools.fRMSD             = -1.0;
+  inp_pcatools.fRMSDDeform       = -1.0;
+
+  strcpy(inp_pcatools.cTitle, "NoTitle");
+  inp_pcatools.cLogFileName[0]   = '\0';
+  inp_pcatools.cEVFile1[0]       = '\0';
+  inp_pcatools.cEVFile2[0]       = '\0';
+  // =====================================
+
+  memset(pcInputLine, '\0', sizeof(pcInputLine));
+  iOriginalInputLineNum = iInputLineNum;
+  
+  // Process input file directives
+  while(strncmp(pcInputLine, "END", 3) != 0)
+  {
+    iOptionFlag = 0;
+    sprintf(pcInputLine, "%s", ppcInput[iInputLineNum]);
+    
+    if(!strncmp(pcInputLine, "BEGIN", 5) || !strncmp(pcInputLine, "END", 3) || pcInputLine[0] == '#')
+      iOptionFlag = 1;
+    
+    else if(strncmp(pcInputLine, "--TITLE", 7) == 0)
+    {
+      sscanf(pcInputLine, "--TITLE %s", inp_pcatools.cTitle);
+      iOptionFlag = 1;
+    }
+    
+    else if(strncmp(pcInputLine, "--EVFILE1", 9) == 0)
+    {
+      sscanf(pcInputLine, "--EVFILE1 %s", inp_pcatools.cEVFile1);
+      iOptionFlag = 1;
+    }
+    
+    else if(strncmp(pcInputLine, "--EVFILE2", 9) == 0)
+    {
+      sscanf(pcInputLine, "--EVFILE2 %s", inp_pcatools.cEVFile2);
+      iOptionFlag = 1;
+    }
+    
+    else if(strncmp(pcInputLine, "--VERBOSE", 9) == 0)
+    {
+      inp_pcatools.iVerboseFlag = 1;
+      iOptionFlag = 1;
+    }
+    
+    else if(strncmp(pcInputLine, "--CALC", 6) == 0)
+    {
+      sscanf(pcInputLine, "--CALC %s", cTemp2);
+      if(!strcmp(cTemp2, "EVEVOVERLAP"))
+      {
+        inp_pcatools.eCalcFlag = EVEVOVER;
+      }
+      
+      else if(!strcmp(cTemp2, "EVDVOVERLAP"))
+      {
+        inp_pcatools.eCalcFlag = EVDVOVER;
+      }
+      
+      else
+      {
+        fprintf(stderr, "PCATools module: Invalid --CALC option: %s; valid values are: EVEVOVER, EVDVOVER\n", pcInputLine);
+        return 1;
+      }
+        
+      iOptionFlag = 1;
+    }
+    
+    else if(strncmp(pcInputLine, "--EVRANGE1", 10) == 0)
+    {
+      sscanf(pcInputLine, "--EVRANGE1 %d %d", &inp_pcatools.iEVRangeBeg1, &inp_pcatools.iEVRangeEnd1);
+      if(inp_pcatools.iEVRangeBeg1 < 1 || inp_pcatools.iEVRangeEnd1 < 1)
+      {
+        fprintf(stderr, "PCATools module: --EVRANGE1 needs two integer numbers >= 1, %d and %d passed\n", inp_pcatools.iEVRangeBeg1, inp_pcatools.iEVRangeEnd1);
+        return 1;
+      }
+      
+      if(inp_pcatools.iEVRangeBeg1 > inp_pcatools.iEVRangeEnd1)
+      {
+        fprintf(stderr, "PCATools module: the first value passed to --EVRANGE1 must be <= to the second value, %d and %d passed\n", inp_pcatools.iEVRangeBeg1, inp_pcatools.iEVRangeEnd1);
+        return 1;
+      }
+      iOptionFlag = 1;
+    }
+    
+    else if(strncmp(pcInputLine, "--EVRANGE2", 10) == 0)
+    {
+      sscanf(pcInputLine, "--EVRANGE2 %d %d", &inp_pcatools.iEVRangeBeg2, &inp_pcatools.iEVRangeEnd2);
+      if(inp_pcatools.iEVRangeBeg2 < 1 || inp_pcatools.iEVRangeEnd2 < 1)
+      {
+        fprintf(stderr, "PCATools module: --EVRANGE2 needs two integer numbers >= 1, %d and %d passed\n", inp_pcatools.iEVRangeBeg2, inp_pcatools.iEVRangeEnd2);
+        return 1;
+      }
+      
+      if(inp_pcatools.iEVRangeBeg2 > inp_pcatools.iEVRangeEnd2)
+      {
+        fprintf(stderr, "PCATools module: the first value passed to --EVRANGE2 must be <= to the second value, %d and %d passed\n", inp_pcatools.iEVRangeBeg2, inp_pcatools.iEVRangeEnd2);
+        return 1;
+      }
+      iOptionFlag = 1;
+    }
+    
+    else if(strncmp(pcInputLine, "--RMSD", 6) == 0)
+    {
+      sscanf(pcInputLine, "--RMSD %f", &inp_pcatools.fRMSD);
+      if(inp_pcatools.fRMSD < 0)
+      {
+        fprintf(stderr, "PCATools module: Needs a --RMSD value >= 0, %f passed\n", inp_pcatools.fRMSD);
+        return 1;
+      }
+      iOptionFlag = 1;
+    }
+    
+    else if(strncmp(pcInputLine, "--FITTEDATOMS", 13) == 0)
+    {
+      sscanf(pcInputLine, "--FITTEDATOMS %d", &inp_pcatools.iNumOfFittedAtoms);
+      if(inp_pcatools.iNumOfFittedAtoms < 0)
+      {
+        fprintf(stderr, "PCATools module: Needs a --FITTEDATOMS value > 0, %d passed \n", inp_pcatools.iNumOfFittedAtoms);
+        return 1;
+      }
+      iOptionFlag = 1;
+    }
+    
+    if(iOptionFlag == 0)
+    {
+      fprintf(stderr, "PCATools module: Could NOT understand option: %s\n", pcInputLine);
+      return 1;
+    }
+    
+    iInputLineNum++;
+  }
+  
+  PCAToolsInpCheckAndSetup(&inp_pcatools);
+  PCAToolsVerbose(&inp_pcatools);
+  
+  if(inp_pcatools.eCalcFlag == EVEVOVER)
+    PCAToolsEVEVCalcOverlaps(&inp_pcatools);
+  
+  else if(inp_pcatools.eCalcFlag == EVDVOVER)
+    PCAToolsEVDVCalcOverlaps(&inp_pcatools);
+  
+  if(inp_pcatools.eCalcFlag == EVEVOVER || inp_pcatools.eCalcFlag == EVDVOVER)
+  {
+    PCAToolsCalcCSO(&inp_pcatools);
+    
+    PCAToolsWriteOverlapData(&inp_pcatools);
+    PCAToolsWriteCSOData(&inp_pcatools);
+  }
+}
+
+void PCAToolsWriteOverlapData(struct inp_pcatools *inp_pcatools)
+{
+  int    ii, jj;
+  char   pcFileName[1024];
+  char   pcLine[1024];
+  FILE  *datFile;
+  
+  sprintf(pcFileName, "%s-overlap_matrix.dat", inp_pcatools->cTitle);
+  datFile = fopen(pcFileName, "w");
+  if(datFile == NULL)
+  {
+    printf("PCATools Module: Unable to open output file : %s\n", pcFileName);
+    exit(1);
+  }
+  
+  fprintf(datFile, "EVOverlap");
+  for(ii=0; ii<inp_pcatools->iEVNum2; ++ii)
+    fprintf(datFile, ",EV%d", (ii+inp_pcatools->iEVRangeBeg2));
+  fprintf(datFile, "\n");
+  
+  for(ii=0; ii<inp_pcatools->iEVNum1; ++ii)
+  {
+    fprintf(datFile, "EV%d", (ii+inp_pcatools->iEVRangeBeg1));
+    for(jj=0; jj<inp_pcatools->iEVNum2; ++jj)
+      fprintf(datFile, ",%.2f", fabs(inp_pcatools->ppfOverlapMatrix[ii][jj]));
+    fprintf(datFile, "\n");
+  }
+  fclose(datFile);
+}
+
+void PCAToolsWriteCSOData(struct inp_pcatools *inp_pcatools)
+{
+  int    ii, jj;
+  char   pcFileName[1024];
+  char   cTempString1[1024], cTempString2[1024];
+  FILE  *datFile;
+  
+  // --- cso file 1 --- //
+  sprintf(pcFileName, "%s-cso_1vs2.dat", inp_pcatools->cTitle);
+  datFile = fopen(pcFileName, "w");
+  if(datFile == NULL)
+  {
+    printf("PCATools Module: Unable to open output file : %s\n", pcFileName);
+    exit(1);
+  }
+  
+  
+  sprintf(cTempString1, "%sEV",  inp_pcatools->cEVFile2);
+  sprintf(cTempString2, "%sCSO", inp_pcatools->cEVFile1);
+  fprintf(datFile, "%30s   %s\n", cTempString1, cTempString2);
+  for(ii=0; ii<inp_pcatools->iEVNum2; ++ii)
+    fprintf(datFile, "%30d   %.2f\n", ii+1, inp_pcatools->pfCSOVect1[ii]);
+  fclose(datFile);
+  
+  // --- cso file 2 --- //
+  sprintf(pcFileName, "%s-cso_2vs1.dat", inp_pcatools->cTitle);
+  datFile = fopen(pcFileName, "w");
+  if(datFile == NULL)
+  {
+    printf("PCATools Module: Unable to open output file : %s\n", pcFileName);
+    exit(1);
+  }
+  sprintf(cTempString1, "%sEV",  inp_pcatools->cEVFile1);
+  sprintf(cTempString2, "%sCSO", inp_pcatools->cEVFile2);
+  fprintf(datFile, "%30s   %s\n", cTempString1, cTempString2);
+  for(ii=0; ii<inp_pcatools->iEVNum1; ++ii)
+    fprintf(datFile, "%30d   %.2f\n", ii+1, inp_pcatools->pfCSOVect2[ii]);
+  fclose(datFile);
+  
+}
+
+void PCAToolsCalcCSO(struct inp_pcatools *inp_pcatools)
+{
+  int   iEVIdx1, iEVIdx2;
+  
+  // this is OK, inp_pcatools->pfCSOVect1 has the length of inp_pcatools->iEVNum2 and viceversa
+  SetVector(inp_pcatools->pfCSOVect1, inp_pcatools->iEVNum2, 0.0);
+  SetVector(inp_pcatools->pfCSOVect2, inp_pcatools->iEVNum1, 0.0);
+  
+  for(iEVIdx2=0; iEVIdx2<inp_pcatools->iEVNum2; ++iEVIdx2)
+  {
+    for(iEVIdx1=0; iEVIdx1<inp_pcatools->iEVNum1; ++iEVIdx1)
+    {
+      inp_pcatools->pfCSOVect1[iEVIdx2] += pow(inp_pcatools->ppfOverlapMatrix[iEVIdx1][iEVIdx2], 2);
+    }
+    inp_pcatools->pfCSOVect1[iEVIdx2] = sqrt(inp_pcatools->pfCSOVect1[iEVIdx2]);
+  }
+  
+  for(iEVIdx1=0; iEVIdx1<inp_pcatools->iEVNum1; ++iEVIdx1)
+  {
+    for(iEVIdx2=0; iEVIdx2<inp_pcatools->iEVNum2; ++iEVIdx2)
+    {
+      inp_pcatools->pfCSOVect2[iEVIdx1] += pow(inp_pcatools->ppfOverlapMatrix[iEVIdx1][iEVIdx2], 2);
+    }
+    inp_pcatools->pfCSOVect2[iEVIdx1] = sqrt(inp_pcatools->pfCSOVect2[iEVIdx1]);
+  }
+}
+
+void PCAToolsInpCheckAndSetup(struct inp_pcatools *inp_pcatools)
+{
+  // performs some sanity checks on passed input and setup some internals
+  
+  int   ii, jj;
+
+  if(inp_pcatools->eCalcFlag == NONE)
+  {
+    fprintf(stderr, "PCATools module: Needs a --CALC option, valid values are: EVEVOVER, EVDVOVER\n");
+    exit(1);
+  }
+  
+  else if(inp_pcatools->eCalcFlag == EVEVOVER)
+  {
+    
+    if(inp_pcatools->iEVRangeBeg1 < 1 || inp_pcatools->iEVRangeEnd1 < 1)
+    {
+      fprintf(stderr, "PCATools module: --EVRANGE1 needs two integer numbers >= 1\n");
+      exit(1);
+    }
+    
+    if(inp_pcatools->iEVRangeBeg2 < 1 || inp_pcatools->iEVRangeEnd2 < 1)
+    {
+      fprintf(stderr, "PCATools module: --EVRANGE2 needs two integer numbers >= 1\n");
+      exit(1);
+    }
+    
+    if(inp_pcatools->fRMSD != -1.0)
+      fprintf(stderr, "PCATools module: with --CALC EVEVOVERLAP, the value of --RMSD flag will be ignored\n");
+    
+    if(inp_pcatools->iNumOfFittedAtoms != -1)
+      fprintf(stderr, "PCATools module: with --CALC EVEVOVERLAP, the value of --FITTEDATOMS flag will be ignored\n");
+
+  }
+  
+  else if(inp_pcatools->eCalcFlag == EVDVOVER)
+  {
+    if(inp_pcatools->iEVRangeBeg1 < 1 || inp_pcatools->iEVRangeEnd1 < 1)
+    {
+      fprintf(stderr, "PCATools module: --EVRANGE1 needs two integer numbers >= 1\n");
+      exit(1);
+    }
+    
+    if(inp_pcatools->fRMSD < 0)
+    {
+      fprintf(stderr, "PCATools module: Needs a --RMSD value >= 0\n");
+      exit(1);
+    }
+    
+    if(inp_pcatools->iNumOfFittedAtoms < 0)
+    {
+      fprintf(stderr, "PCATools module: Needs a --FITTEDATOMS value > 0\n");
+      exit(1);
+    }
+    
+    if(inp_pcatools->iEVRangeBeg2 != -1)
+      fprintf(stderr, "PCATools module: with --CALC EVEVOVERLAP, the values of --EVRANGE2 flag will be ignored\n");
+  }
+  
+  // if --CALC is EVDVOVER, set to 1 both, iEVRangeBeg2 and iEVRangeEnd2 opt
+  if(inp_pcatools->eCalcFlag == EVDVOVER)
+  {
+    inp_pcatools->iEVRangeBeg2 = 1;
+    inp_pcatools->iEVRangeEnd2 = 1;
+    inp_pcatools->fRMSDDeform  = (inp_pcatools->fRMSD * inp_pcatools->fRMSD) * inp_pcatools->iNumOfFittedAtoms;
+    inp_pcatools->pfNormalizedVect = (float *) calloc(inp_pcatools->iEVNum1, sizeof(float));
+  }
+  
+  if(inp_pcatools->eCalcFlag == EVEVOVER || inp_pcatools->eCalcFlag == EVDVOVER)
+  {
+    inp_pcatools->iEVNum1 = inp_pcatools->iEVRangeEnd1 - inp_pcatools->iEVRangeBeg1 + 1;
+    inp_pcatools->piEVList1 = calloc(inp_pcatools->iEVNum1, sizeof(int));
+    for(ii=0; ii<inp_pcatools->iEVNum1; ++ii)
+      inp_pcatools->piEVList1[ii] = ii + inp_pcatools->iEVRangeBeg1;
+    
+    inp_pcatools->iEVNum2 = inp_pcatools->iEVRangeEnd2 - inp_pcatools->iEVRangeBeg2 + 1;
+    inp_pcatools->piEVList2 = calloc(inp_pcatools->iEVNum2, sizeof(int));
+    for(ii=0; ii<inp_pcatools->iEVNum2; ++ii)
+      inp_pcatools->piEVList2[ii] = ii + inp_pcatools->iEVRangeBeg2;
+      
+    // allocates a matrix; iEVNum1 x iEVNum2
+    inp_pcatools->ppfOverlapMatrix = (float **) calloc(inp_pcatools->iEVNum1, sizeof(float *));
+    for(ii=0; ii<inp_pcatools->iEVNum1; ++ii)
+      inp_pcatools->ppfOverlapMatrix[ii] = (float *) calloc(inp_pcatools->iEVNum2, sizeof(float));
+    
+    // cumulative square overlap vectors
+    // this is OK, inp_pcatools->pfCSOVect1 must have the length of inp_pcatools->iEVNum2 and viceversa
+    inp_pcatools->pfCSOVect1 = (float *) calloc(inp_pcatools->iEVNum2, sizeof(float));
+    inp_pcatools->pfCSOVect2 = (float *) calloc(inp_pcatools->iEVNum1, sizeof(float));
+  }
+  
+  // loads eigenvectors
+  PCAToolsLoadEigenVect(inp_pcatools);
+  
+  if(inp_pcatools->iNumOfEigenVals1 != inp_pcatools->iNumOfEigenVals2)
+  {
+    fprintf(stderr, "PCATools module: the eigenvectors in file %s and file %s have different lengths: %d and %d\n", inp_pcatools->cEVFile1, inp_pcatools->cEVFile2, inp_pcatools->iNumOfEigenVals1, inp_pcatools->iNumOfEigenVals2);
+    exit(1);
+  }
+}
+
+void PCAToolsVerbose(struct inp_pcatools *inp_pcatools)
+{
+  // set output file name
+  sprintf(inp_pcatools->cLogFileName, "%s-pcaoverlap.log", inp_pcatools->cTitle);
+  inp_pcatools->logFile = fopen(inp_pcatools->cLogFileName, "w");
+  if(inp_pcatools->logFile == NULL)
+  {
+    printf("PCATools Module: Unable to open log file : %s\n", inp_pcatools->cLogFileName);
+    exit(1);
+  }
+  time(&inp_pcatools->time_tToday);
+  fprintf(inp_pcatools->logFile, "# ==========================================\n");
+  fprintf(inp_pcatools->logFile, "#       *** WORDOM PCATools MODULE ***      \n");
+  fprintf(inp_pcatools->logFile, "# ==========================================\n");
+  fprintf(inp_pcatools->logFile, "#\n");
+  fprintf(inp_pcatools->logFile, "# Version         : 0.1a\n");
+  fprintf(inp_pcatools->logFile, "# License         : GPL 3\n");
+  fprintf(inp_pcatools->logFile, "# Copyright       : Fanelli, Felline\n");
+  fprintf(inp_pcatools->logFile, "#                   University of Modena\n");
+  fprintf(inp_pcatools->logFile, "#                   Modena - Italy\n");
+  fprintf(inp_pcatools->logFile, "#\n");
+  fprintf(inp_pcatools->logFile, "# Date            : %s", asctime(localtime(&inp_pcatools->time_tToday)));
+  fprintf(inp_pcatools->logFile, "#\n");
+  fprintf(inp_pcatools->logFile, "# Title           : %s\n", inp_pcatools->cTitle);
+  fprintf(inp_pcatools->logFile, "# EV File1        : %s\n", inp_pcatools->cEVFile1);
+  fprintf(inp_pcatools->logFile, "# EV File2        : %s\n", inp_pcatools->cEVFile2);
+  fprintf(inp_pcatools->logFile, "# EV Sele1        : %d from %d to %d\n", inp_pcatools->iEVNum1, inp_pcatools->iEVRangeBeg1, inp_pcatools->iEVRangeEnd1);
+  fprintf(inp_pcatools->logFile, "# EV Sele2        : %d from %d to %d\n", inp_pcatools->iEVNum2, inp_pcatools->iEVRangeBeg2, inp_pcatools->iEVRangeEnd2);
+  fprintf(inp_pcatools->logFile, "# EV Length       : %d\n", inp_pcatools->iNumOfEigenVals1);
+  if(inp_pcatools->eCalcFlag == EVEVOVER)
+  {
+    fprintf(inp_pcatools->logFile, "# Calc            : EV vs EV Overlap\n");
+    fprintf(inp_pcatools->logFile, "# RMSD            : -\n");
+    fprintf(inp_pcatools->logFile, "# Fitted Atoms    : -\n");
+  }
+  
+  else if(inp_pcatools->eCalcFlag == EVDVOVER)
+  {
+    fprintf(inp_pcatools->logFile, "# Calc            : EV vs DV Overlap\n");
+    fprintf(inp_pcatools->logFile, "# RMSD            : %f\n", inp_pcatools->fRMSD);
+    fprintf(inp_pcatools->logFile, "# Fitted Atoms    : %d\n", inp_pcatools->iNumOfFittedAtoms);
+  }
+
+  fprintf(inp_pcatools->logFile, "#\n");
+  
+  if(inp_pcatools->eCalcFlag == EVEVOVER || inp_pcatools->eCalcFlag == EVDVOVER)
+  {
+    fprintf(inp_pcatools->logFile, "# Overlap Matrix  : %s-overlap_matrix.dat\n", inp_pcatools->cTitle);
+    fprintf(inp_pcatools->logFile, "# CSO File 1      : %s vs %s in %s-cso_1vs2.dat\n", inp_pcatools->cEVFile1, inp_pcatools->cEVFile2, inp_pcatools->cTitle);
+    fprintf(inp_pcatools->logFile, "# CSO File 2      : %s vs %s in %s-cso_2vs1.dat\n", inp_pcatools->cEVFile2, inp_pcatools->cEVFile1, inp_pcatools->cTitle);
+  }
+  
+  else
+  {
+    fprintf(inp_pcatools->logFile, "# Overlap Matrix  : -\n");
+    fprintf(inp_pcatools->logFile, "# CSO File 1      : -\n");
+    fprintf(inp_pcatools->logFile, "# CSO File 2      : -\n");
+  }
+
+  fprintf(inp_pcatools->logFile, "# ==========================================\n");
+  fclose(inp_pcatools->logFile);
+}
+
+void SetMatrix(float **ppfMatrix, int iRowNum, int iColNum, float fVal)
+{
+  int   rr, cc;
+  for(rr=0; rr<iRowNum; ++rr)
+    for(cc=0; cc<iColNum; ++cc)
+      ppfMatrix[rr][cc] = fVal;
+}
+
+void SetVector(float *pfVector, int iVectSize, float fVal)
+{
+  int   vv;
+  for(vv=0; vv<iVectSize; ++vv)
+    pfVector[vv] = fVal;
+}
+
+void PCAToolsEVEVCalcOverlaps(struct inp_pcatools *inp_pcatools)
+{
+  int     rr, cc;
+  int     iEVectId1, iEVectId2, iEValId;
+  float   thisOverlap;
+  
+  // reset overlap matrix
+  SetMatrix(inp_pcatools->ppfOverlapMatrix, inp_pcatools->iEVNum1, inp_pcatools->iEVNum2, 0.0);
+  
+  iEValId     = -1;
+  thisOverlap = -1.0;
+  
+  for(iEVectId1=0; iEVectId1<inp_pcatools->iEVNum1; ++iEVectId1)
+  {
+    for(iEVectId2=0; iEVectId2<inp_pcatools->iEVNum2; ++iEVectId2)
+    {
+      thisOverlap = 0.0;
+      for(iEValId=0; iEValId<inp_pcatools->iNumOfEigenVals1; ++iEValId)
+      {
+        thisOverlap += (inp_pcatools->ppfEVMatrix1[iEVectId1][iEValId] * inp_pcatools->ppfEVMatrix2[iEVectId2][iEValId]);
+      }
+      inp_pcatools->ppfOverlapMatrix[iEVectId1][iEVectId2] = thisOverlap;
+    }
+  }
+}
+
+void PCAToolsEVDVCalcOverlaps(struct inp_pcatools *inp_pcatools)
+{
+  int     rr, cc;
+  int     iEVectId1, iEVectId2, iEValId;
+  float   thisOverlap;
+  
+  // reset overlap matrix
+  SetMatrix(inp_pcatools->ppfOverlapMatrix, inp_pcatools->iEVNum1, inp_pcatools->iEVNum2, 0.0);
+  SetVector(inp_pcatools->pfNormalizedVect, inp_pcatools->iEVNum1, 0.0);
+  
+  iEValId     = -1;
+  thisOverlap = -1.0;
+  
+  for(iEVectId1=0; iEVectId1<inp_pcatools->iEVNum1; ++iEVectId1)
+  {
+    for(iEValId=0; iEValId<inp_pcatools->iNumOfEigenVals1; ++iEValId)
+    {
+      inp_pcatools->pfNormalizedVect[iEVectId1] += (inp_pcatools->ppfEVMatrix1[iEVectId1][iEValId] * inp_pcatools->ppfEVMatrix1[iEVectId1][iEValId]);
+      inp_pcatools->ppfOverlapMatrix[iEVectId1][0] += (inp_pcatools->ppfEVMatrix1[iEVectId1][iEValId] * inp_pcatools->ppfEVMatrix2[0][iEValId]);
+    }
+    
+    inp_pcatools->pfNormalizedVect[iEVectId1] = sqrtf(inp_pcatools->pfNormalizedVect[iEVectId1]) * sqrt(inp_pcatools->fRMSDDeform);
+    inp_pcatools->ppfOverlapMatrix[iEVectId1][0] = inp_pcatools->ppfOverlapMatrix[iEVectId1][0] / inp_pcatools->pfNormalizedVect[iEVectId1];
+    
+  }
+}
+
+void PCAToolsLoadEigenVect(struct inp_pcatools *inp_pcatools)
+{
+  int     ii, jj;
+  int     iEVectNum, iEVectIdx, iEValNum;
+  int     iAssignedValues;
+  float   fTempFloat;
+  char    *pLastToken;
+  char    pcLine[999999];
+  FILE   *tempFile;
+  
+  // --- EV File 1 --- //
+  tempFile = fopen(inp_pcatools->cEVFile1, "r");
+  if(tempFile == NULL)
+  {
+    printf("PCATools Module: Unable to open eigenvector file1 : %s\n", inp_pcatools->cEVFile1);
+    exit(1);
+  }
+  
+  // counts the number of eigenvalues in passed file, i.e. the number of line
+  inp_pcatools->iNumOfEigenVals1 = 0;
+  while(fgets(pcLine, 999999, tempFile) != NULL)
+    inp_pcatools->iNumOfEigenVals1++;
+
+  // allocates a matrix; iEVNum1 x iNumOfEigenVals
+  inp_pcatools->ppfEVMatrix1 = (float **) calloc(inp_pcatools->iEVNum1, sizeof(float *));
+  for(ii=0; ii<inp_pcatools->iEVNum1; ++ii)
+    inp_pcatools->ppfEVMatrix1[ii] = (float *) calloc(inp_pcatools->iNumOfEigenVals1, sizeof(float));
+  rewind(tempFile);
+  
+  iEValNum = -1;
+  iAssignedValues = 0;
+  while(fgets(pcLine, 999999, tempFile) != NULL)
+  {
+    iEValNum++;     // one eigenvalue per line
+    iEVectNum = 0;  // real eigenvector number
+    iEVectIdx = -1; // eigenvector number index in EVMatrix
+    pLastToken = strtok(pcLine, " ");
+    while (pLastToken != NULL)
+    {
+      iEVectNum++;
+      if(iEVectNum >= inp_pcatools->iEVRangeBeg1 && iEVectNum <= inp_pcatools->iEVRangeEnd1)
+      {
+        iAssignedValues++;
+        iEVectIdx++;
+        sscanf(pLastToken, "%f", &fTempFloat);
+        inp_pcatools->ppfEVMatrix1[iEVectIdx][iEValNum] = fTempFloat;
+        //printf("%d/%d:%d %s %f\n", iEVectNum, iEVectIdx, iEValNum, pLastToken, ppfEVMatrix[iEVectIdx][iEValNum]);
+      }
+      pLastToken = strtok (NULL, " ");
+    }
+    if(iAssignedValues < inp_pcatools->iEVNum1)
+    {
+      printf("PCATools Module: the number of eigvect does not match with the number of column in passed file: %d vs %d in file %s\n", iAssignedValues, inp_pcatools->iEVNum1, inp_pcatools->cEVFile1);
+      exit(1);
+    }
+  }
+  fclose(tempFile);
+  
+  // --- EV File 2 --- //
+  tempFile = fopen(inp_pcatools->cEVFile2, "r");
+  if(tempFile == NULL)
+  {
+    printf("PCATools Module: Unable to open eigenvector file1 : %s\n", inp_pcatools->cEVFile2);
+    exit(1);
+  }
+  
+  // counts the number of eigenvalues in passed file, i.e. the number of line
+  inp_pcatools->iNumOfEigenVals2 = 0;
+  while(fgets(pcLine, 999999, tempFile) != NULL)
+    inp_pcatools->iNumOfEigenVals2++;
+
+  // allocates a matrix; iEVNum1 x iNumOfEigenVals
+  inp_pcatools->ppfEVMatrix2 = (float **) calloc(inp_pcatools->iEVNum2, sizeof(float *));
+  for(ii=0; ii<inp_pcatools->iEVNum2; ++ii)
+    inp_pcatools->ppfEVMatrix2[ii] = (float *) calloc(inp_pcatools->iNumOfEigenVals2, sizeof(float));
+  rewind(tempFile);
+  
+  iEValNum = -1;
+  iAssignedValues = 0;
+  while(fgets(pcLine, 999999, tempFile) != NULL)
+  {
+    iEValNum++;     // one eigenvalue per line
+    iEVectNum = 0;  // real eigenvector number
+    iEVectIdx = -1; // eigenvector number index in EVMatrix
+    pLastToken = strtok(pcLine, " ");
+    while (pLastToken != NULL)
+    {
+      iEVectNum++;
+      if(iEVectNum >= inp_pcatools->iEVRangeBeg2 && iEVectNum <= inp_pcatools->iEVRangeEnd2)
+      {
+        iAssignedValues++;
+        iEVectIdx++;
+        sscanf(pLastToken, "%f", &fTempFloat);
+        inp_pcatools->ppfEVMatrix2[iEVectIdx][iEValNum] = fTempFloat;
+        //printf("%d/%d:%d %s %f\n", iEVectNum, iEVectIdx, iEValNum, pLastToken, ppfEVMatrix[iEVectIdx][iEValNum]);
+      }
+      pLastToken = strtok (NULL, " ");
+    }
+    if(iAssignedValues < inp_pcatools->iEVNum2)
+    {
+      printf("PCATools Module: the number of eigvect does not match with the number of column in passed file: %d vs %d in file %s\n", iAssignedValues, inp_pcatools->iEVNum2, inp_pcatools->cEVFile2);
+      exit(1);
+    }
+  }
+  fclose(tempFile);
+}
+
+// === *** ANF *** ================================================== //
+
 int Read_ipca ( char **input, int inp_index, struct inp_pca *inp_pca, char *printout, Molecule *molecule , int totnframe)
 {
    int   ii, jj, kk, ll;

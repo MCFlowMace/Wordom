@@ -177,9 +177,8 @@ struct inp_Cluster
   struct ll_clus_neig  *tmp_llneig;
   struct ll_conf_neig  **llconfneig;
   int                   *conf_nneig;
-  // for Gcluster array of distance matrices
+  // for Gcluster array of distance matrices or array of all coords
   float 		*gclust_dmtx;
-  //float			**gclust_coords;
   float			*gclust_coords;
 };
 

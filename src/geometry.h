@@ -25,7 +25,6 @@
 #ifndef GEOM
 #define GEOM
 
-
 //=== DISTANCE =========================================================
 //! Distance Structure
 struct inp_dist

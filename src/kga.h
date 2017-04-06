@@ -23,7 +23,7 @@
 */
 #ifndef KGA
 #define KGA
-#pragma once
+
 // ------------------------------------------------------------------
 // ** logbin Structure
 struct inp_lb
@@ -115,7 +115,7 @@ typedef struct _intlist
 {
   int     ndata;
   int *   data;
-} intlistd;
+} intlist;
 // ------------------------------------------------------------------
 typedef struct _intdlist
 {
@@ -128,24 +128,24 @@ typedef struct _graph
 {
   int               nnodes;
   int     *         nodes;
-  intlistd *         leenklist;
+  intlist *         leenklist;
 } graph;
 // ------------------------------------------------------------------
 // ** Tarjan reduction Functions
-intlistd * readSymbTrj( char *filename );
-graph * sTrj2Graph( intlistd *strj );
+intlist * readSymbTrj( char *filename );
+graph * sTrj2Graph( intlist *strj );
 int imin( int num1, int num2 );
-int whereinlist( intlistd *list, int number );
-int addtolist( intlistd *list, int number );
-int popfromlist( intlistd *list );
-void printlist( intlistd *ilist );
+int whereinlist( intlist *list, int number );
+int addtolist( intlist *list, int number );
+int popfromlist( intlist *list );
+void printlist( intlist *ilist );
 int addtodlist( intdlist *dlist, int key, int value );
 int getfromdlist( intdlist *dlist, int key );
 void printdlist( intdlist *dlist );
 int whereingraph( graph *graph1, int number );
 int addtograph1( graph *lgraph, int key, int value); // this adds to the current value of the 'value'
 int addtograph2( graph *lgraph, int key, int value); // this changes the current value of the 'value'
-intlistd * getgraphval( graph *lgraph, int key );
+intlist * getgraphval( graph *lgraph, int key );
 void printgraph( graph *grapho );
 graph * Tarjan_ite( graph *grapho );
 int ELEC( char **input, int inp_index );

@@ -1397,7 +1397,7 @@ int Compute_Within(struct inp_within *inp_within, Molecule *molecule, CoorSet *t
   }
   
   GetSele(inp_within->sele.selestring, &inp_within->sele, inp_within->TmpMolecule);
-  
+
   if(inp_within->iLevelFlag == 0)
   {
     // --LEVEL ATM

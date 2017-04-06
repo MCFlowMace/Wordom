@@ -16,6 +16,26 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
    ========================================================================= */
+   
+   
+/*
+  The algorithms implemented in this module were written from scratch
+  following the methods described in these papers:
+    DCC: 
+    * J.A. McCammon and S.C. Harvey, Dynamics of proteins and nucleic acids; Cambridge Univ Pr, 1988.
+
+    LMI
+    * A. Kraskov, H. Stoegbauer, and P. Grassberger, Physical Review E, 2004, 69(6), 66138.
+    * O.F. Lange and H. Grubmuller, PROTEINS-NEW YORK-, 2006, 62(4), 1053.
+
+    DCOR:
+    * A. Roy and C. B. Post, JCTC. 2012, 8, 3009−3014
+
+    FLUCT
+    * ???
+*/
+
+
 #include "wordom.h"
 #include "tools.h"
 #include "fileio.h"
@@ -23,9 +43,12 @@
 #include "time.h"
 #include "corr.h"
 
-#define  VERSTRING "0.3b"
+#define  VERSTRING "0.4a"
 #define  PI        3.14159265358979323846
 
+// a pointer to inp_corr, used in multithreadning
+struct inp_corr  *pInpCorr;
+                  
 void CovarMatrix(struct inp_corr *inp_corr)
 {
   int     ii, jj;
@@ -247,9 +270,12 @@ void GaussCorrMatrix(struct inp_corr *inp_corr)
 
 int Read_CORR(char **input, int input_index, struct inp_corr *inp_corr, Molecule *molecule, char *outstring, int iNumOfFrames)
 {
-  int     ii, jj;
+  int     ii, jj, kk, mm;
   int     iWinpOptFlag=0;
   int     iResNum, iResCont, iVirtAtom;
+  int     iInputBegIndex;
+  int     iSeleIdx;
+  int     iMoleculeItems;
   
   char    cWordomInpBuffer[1024], cTmpString[10];
   char    cLastRes[50], cOutPutFileName[512];
@@ -264,23 +290,30 @@ int Read_CORR(char **input, int input_index, struct inp_corr *inp_corr, Molecule
   memset ( cWordomInpBuffer, '\0', sizeof(cWordomInpBuffer));
   
   // === example winp file ===
-  //BEGIN
+  //BEGIN CORR
   //--TITLE CORR
-  //--TYPE DCCM
+  //--TYPE DCC
   //--SELE /*/*/*
   //--LEVEL RES
-  //--TYPE DCC
   //--MASS 0
   //END
   // =========================
   
-  // === Default Values ======
+  // === Default Values ================================================
+  inp_corr->iPDBFlag         =  0;
   sprintf(inp_corr->sele.selestring, "/*/*/CA");
-  inp_corr->iMassFlag = 0;
-  inp_corr->iResFlag  = 1;
-  inp_corr->iCorrType = 0;
-  // =========================
+  inp_corr->iMassFlag        =  0;
+  inp_corr->iResFlag         =  1;
+  inp_corr->iCorrType        =  0;
+  inp_corr->iNumOfThreads    =  0;
+  inp_corr->iFirstRoundFlag  =  0;
+  inp_corr->iVerboseFlag     =  0;
+  inp_corr->iMatchSubSele    =  0;
+  inp_corr->iNumOfSubMatch   =  0;
+  inp_corr->iStdDevFlag      =  0;
+  // ===================================================================
   
+  iInputBegIndex = input_index;
   while( strncmp (cWordomInpBuffer, "END", 3))
   {
     iWinpOptFlag = 0;
@@ -292,6 +325,21 @@ int Read_CORR(char **input, int input_index, struct inp_corr *inp_corr, Molecule
       sscanf( cWordomInpBuffer, "--TITLE %s", inp_corr->cTitle);
       iWinpOptFlag = 1;
     }
+    else if ( !strncmp(cWordomInpBuffer, "--VERBOSE", 9))
+    {
+      inp_corr->iVerboseFlag = 1;
+      iWinpOptFlag = 1;
+    }
+    else if ( !strncmp(cWordomInpBuffer, "--STDEV", 7))
+    {
+      inp_corr->iStdDevFlag = 1;
+      iWinpOptFlag = 1;
+    }
+    else if ( !strncmp(cWordomInpBuffer, "--MATCHSUBSELE", 10))
+    {
+      inp_corr->iMatchSubSele = 1;
+      iWinpOptFlag = 1;
+    }
     else if ( !strncmp(cWordomInpBuffer, "--TYPE", 6))
     {
       sscanf( cWordomInpBuffer, "--TYPE %s", cTmpString);
@@ -299,6 +347,10 @@ int Read_CORR(char **input, int input_index, struct inp_corr *inp_corr, Molecule
         inp_corr->iCorrType=0;
       else if(strcmp(cTmpString, "LMI")==0)
         inp_corr->iCorrType=1;
+      else if(strcmp(cTmpString, "DCOR")==0)
+        inp_corr->iCorrType=2;
+      else if(strcmp(cTmpString, "FLUCT")==0)
+        inp_corr->iCorrType=3;
       else
       {
         fprintf( stderr, "CORR module: Could NOT understand --TYPE option: %s\n", cTmpString);
@@ -330,9 +382,25 @@ int Read_CORR(char **input, int input_index, struct inp_corr *inp_corr, Molecule
         
       iWinpOptFlag = 1;
     }
+    else if ( !strncmp(cWordomInpBuffer, "--NT ", 5))
+    {
+      sscanf(cWordomInpBuffer, "--NT %d", &inp_corr->iNumOfThreads);
+      if(inp_corr->iNumOfThreads<0)
+      {
+        fprintf( stderr, "CORR module: --NT option needs a number >= 0, passed %d\n", inp_corr->iNumOfThreads);
+        exit(5);
+      }
+
+      iWinpOptFlag = 1;
+    }
     else if ( !strncmp(cWordomInpBuffer, "--SELE", 6))
     {
       sscanf(cWordomInpBuffer, "--SELE %[^\n]%*c ", inp_corr->sele.selestring);
+      iWinpOptFlag = 1;
+    }
+    else if ( !strncmp(cWordomInpBuffer, "--SUBSELE", 9))
+    {
+      inp_corr->iNumOFSubSele+=1;
       iWinpOptFlag = 1;
     }
     if( iWinpOptFlag==0 )
@@ -342,7 +410,7 @@ int Read_CORR(char **input, int input_index, struct inp_corr *inp_corr, Molecule
     }
     input_index++;
   }
-  
+
   GetSele(inp_corr->sele.selestring, &inp_corr->sele, molecule);
   if(inp_corr->sele.nselatm == 0)
   {
@@ -350,6 +418,25 @@ int Read_CORR(char **input, int input_index, struct inp_corr *inp_corr, Molecule
     exit(5);
   }
   
+  if(inp_corr->iNumOfThreads > 0 && inp_corr->iCorrType != 2)
+    fprintf( stderr, "CORR module: Sorry, multi-threading is only available in DCor calculation, this option will be ignored\n");
+  
+  
+  if(inp_corr->iStdDevFlag == 1 && inp_corr->iCorrType != 3)
+    fprintf( stderr, "CORR module: --STDEV option is only available with --TYPE FLUCT, this option will be ignored\n");
+  
+  if(inp_corr->iNumOFSubSele > 0 && inp_corr->iCorrType != 3)
+    fprintf( stderr, "CORR module: --SUBSELE option is only available with --TYPE FLUCT, this option will be ignored\n");
+  
+  if(inp_corr->pfMatchSubSeleFluct == 1)
+  { 
+    if(inp_corr->iCorrType != 3)
+      fprintf( stderr, "CORR module: --MATCHSUBSELE option is only available with --TYPE FLUCT, this option will be ignored\n");
+      
+    if(inp_corr->iNumOFSubSele < 2)
+      fprintf( stderr, "CORR module: --MATCHSUBSELE is only available if you define at least 2 sub-selections, this option will be ignored\n");
+  }
+    
   // === General Settings ==============================================
   inp_corr->iNumOfFrames=iNumOfFrames;
   
@@ -540,6 +627,9 @@ int Read_CORR(char **input, int input_index, struct inp_corr *inp_corr, Molecule
   
   // ===================================================================
   
+  if(inp_corr->iNumOfThreads == 0 && inp_corr->iCorrType)
+    inp_corr->iNumOfThreads = 1;
+  
   if(inp_corr->iCorrType == 0)
   {
     // --TYPE DCC
@@ -577,6 +667,268 @@ int Read_CORR(char **input, int input_index, struct inp_corr *inp_corr, Molecule
       inp_corr->pdOutput[ii] = 1.0;
   }
   
+  else if(inp_corr->iCorrType == 2)
+  {
+    // --TYPE DCOR *-*
+
+    inp_corr->iFrameNum=-1;
+    // allocated threads structure
+    inp_corr->corr_threads = (pthread_t *) calloc(inp_corr->iNumOfThreads, sizeof(pthread_t));
+    
+    // number of frames per threads
+    inp_corr->iNumOfFrmPerThreads = (int) (ceil(iNumOfFrames / inp_corr->iNumOfThreads) + 1);
+
+    //inp_corr->iNumOfPairsPerThreads = (int) (((iNumOfFrames * iNumOfFrames) + iNumOfFrames) / 2.0);
+    inp_corr->iNumOfPairsPerThreads = (int) (iNumOfFrames * iNumOfFrames);
+    inp_corr->iNumOfPairsPerThreads = (int) (ceil(inp_corr->iNumOfPairsPerThreads / inp_corr->iNumOfThreads) + 1);
+
+    //inp_corr->ppfThreadResOverallAvgDist = (double **) calloc(inp_corr->iNumOfThreads, sizeof(double *));
+    //for(ii=0; ii<inp_corr->iNumOfThreads; ++ii)
+    //  inp_corr->ppfThreadResOverallAvgDist[ii] = (double *) calloc(inp_corr->iMatrixDim, sizeof(double));
+    //
+    //inp_corr->pppfThreadResFrameAvgDist = (double ***) calloc(inp_corr->iNumOfThreads, sizeof(double **));
+    //for(ii=0; ii<inp_corr->iNumOfThreads; ++ii)
+    //{
+    //  inp_corr->pppfThreadResFrameAvgDist[ii] = (double **) calloc(inp_corr->iMatrixDim, sizeof(double *));
+    //  for(jj=0; jj<inp_corr->iMatrixDim; jj++)
+    //    inp_corr->pppfThreadResFrameAvgDist[ii][jj] = (double *) calloc(inp_corr->iNumOfPairsPerThreads, sizeof(double));
+    //}
+
+    inp_corr->pfResOverallAvgDist = (double *) calloc(inp_corr->iMatrixDim, sizeof(double));
+    inp_corr->ppfResFrameAvgDist = (double **) calloc(inp_corr->iMatrixDim, sizeof(double *));
+    for(ii=0; ii<inp_corr->iMatrixDim; ii++)
+      inp_corr->ppfResFrameAvgDist[ii] = (double *) calloc(inp_corr->iNumOfFrames, sizeof(double));
+    
+    inp_corr->pppdCoord = (double ***) calloc(iNumOfFrames, sizeof(double **));
+    for(ii=0; ii<iNumOfFrames; ii++)
+    {
+      inp_corr->pppdCoord[ii] = (double **) calloc(inp_corr->iMatrixDim, sizeof(double *));
+      for(jj=0; jj<inp_corr->iMatrixDim; jj++)
+      {
+        inp_corr->pppdCoord[ii][jj] = (double *) calloc(3, sizeof(double));
+      }
+    }
+
+    inp_corr->pppfThreadDistCov = (double ***) calloc(inp_corr->iNumOfThreads, sizeof(double **));
+    for(ii=0; ii<inp_corr->iNumOfThreads; ++ii)
+    {
+      inp_corr->pppfThreadDistCov[ii] = (double **) calloc(inp_corr->iMatrixDim, sizeof(double *));
+      for(jj=0; jj<inp_corr->iMatrixDim; ++jj)
+        inp_corr->pppfThreadDistCov[ii][jj] = (double *) calloc(inp_corr->iMatrixDim, sizeof(double));
+    }
+
+    inp_corr->ppfDCorr   = (double **) calloc(inp_corr->iMatrixDim, sizeof(double *));
+    inp_corr->ppfDistCov = (double **) calloc(inp_corr->iMatrixDim, sizeof(double *));
+    for(ii=0; ii<inp_corr->iMatrixDim; ii++)
+    {
+      inp_corr->ppfDCorr[ii]   = (double *) calloc(inp_corr->iMatrixDim, sizeof(double));
+      inp_corr->ppfDistCov[ii] = (double *) calloc(inp_corr->iMatrixDim, sizeof(double));
+    }
+
+
+    
+    // ppiFrmListPerThreads holds the list of frames that each threds will process
+    // after allocation all position is set to -1
+    inp_corr->ppiFrmListPerThreads = (int **) calloc(inp_corr->iNumOfThreads, sizeof(int *));
+    for(ii=0; ii<inp_corr->iNumOfThreads; ++ii)
+    {
+      inp_corr->ppiFrmListPerThreads[ii] = (int *) calloc(inp_corr->iNumOfFrmPerThreads, sizeof(int));
+      for(jj=0; jj<inp_corr->iNumOfFrmPerThreads; ++jj)
+        inp_corr->ppiFrmListPerThreads[ii][jj] = -1;
+    }
+    
+    // copy the list of franes that each threads will process
+    // the last list will have a list of trailing -1
+    
+    jj =  0; // thread id
+    kk = -1; // obj id
+    for(ii=0; ii<iNumOfFrames; ++ii)
+    {
+      kk += 1;
+      if(kk == inp_corr->iNumOfFrmPerThreads)
+      {
+        kk = 0;
+        jj += 1;
+      }
+      inp_corr->ppiFrmListPerThreads[jj][kk] = ii;
+    }
+
+    //printf("\n");
+    //printf("THR  NUM  FRM\n");
+    //for(ii=0; ii<inp_corr->iNumOfThreads; ++ii)
+    //  for(jj=0; jj<inp_corr->iNumOfFrmPerThreads; ++jj)
+    //    printf("%3d  %3d  %3d\n", ii, jj, inp_corr->ppiFrmListPerThreads[ii][jj]);
+    //exit(5);
+    
+    // inp_corr->ppiPairsListFrm1 and inp_corr->ppiPairsListFrm2 hold the first and the last
+    // frame of each pair. All items of both arrays are set to -1
+    inp_corr->ppiPairsListFrm1 = (int **) calloc(inp_corr->iNumOfThreads, sizeof(int *));
+    inp_corr->ppiPairsListFrm2 = (int **) calloc(inp_corr->iNumOfThreads, sizeof(int *));
+    for(ii=0; ii<inp_corr->iNumOfThreads; ++ii)
+    {
+      inp_corr->ppiPairsListFrm1[ii] = (int *) calloc(inp_corr->iNumOfPairsPerThreads, sizeof(int));
+      inp_corr->ppiPairsListFrm2[ii] = (int *) calloc(inp_corr->iNumOfPairsPerThreads, sizeof(int));
+      for(jj=0; jj<inp_corr->iNumOfPairsPerThreads; ++jj)
+      {
+        inp_corr->ppiPairsListFrm1[ii][jj] = -1;
+        inp_corr->ppiPairsListFrm2[ii][jj] = -1;
+      }
+    }
+
+    // populates ppiPairsListFrm1 and ppiPairsListFrm2 with all frame pairs
+    kk =  0; // thread id
+    mm = -1; // pair id
+    for(ii=0; ii<iNumOfFrames; ++ii)
+    {
+      for(jj=0; jj<iNumOfFrames; ++jj)
+      {
+        mm += 1;
+        if(mm == inp_corr->iNumOfPairsPerThreads)
+        {
+          mm = 0;
+          kk += 1;
+        }
+        inp_corr->ppiPairsListFrm1[kk][mm] = ii;
+        inp_corr->ppiPairsListFrm2[kk][mm] = jj;
+      }
+    }
+    
+    //printf("\n");
+    //printf("THR  NUM  FN1  FN2\n");
+    //for(ii=0; ii<inp_corr->iNumOfThreads; ++ii)
+    //  for(jj=0; jj<inp_corr->iNumOfPairsPerThreads; ++jj)
+    //    printf("%3d  %3d  %3d  %3d\n", ii, jj, inp_corr->ppiPairsListFrm1[ii][jj], inp_corr->ppiPairsListFrm2[ii][jj]);
+    //exit(0);
+    
+    
+    // copy inp_corr pointer to global pInpCorr
+    pInpCorr = inp_corr;
+  }
+  
+  else if(inp_corr->iCorrType == 3)
+  {
+
+    // --TYPE FLUCT
+
+    inp_corr->iFirstRoundFlag = 1; 
+    inp_corr->iFirstFrame     = 1;
+
+    inp_corr->ppfMeanDistance = (double **) calloc(inp_corr->iMatrixDim, sizeof(double *));
+    inp_corr->ppfFluctMatrix  = (double **) calloc(inp_corr->iMatrixDim, sizeof(double *));
+    inp_corr->ppfMinDistances = (double **) calloc(inp_corr->iMatrixDim, sizeof(double *));
+    inp_corr->ppfMaxDistances = (double **) calloc(inp_corr->iMatrixDim, sizeof(double *));
+    for(ii=0; ii<inp_corr->iMatrixDim; ++ii)
+    {
+      inp_corr->ppfMeanDistance[ii] = (double  *) calloc(inp_corr->iMatrixDim, sizeof(double));
+      inp_corr->ppfFluctMatrix[ii]  = (double  *) calloc(inp_corr->iMatrixDim, sizeof(double));
+      inp_corr->ppfMinDistances[ii] = (double  *) calloc(inp_corr->iMatrixDim, sizeof(double));
+      inp_corr->ppfMaxDistances[ii] = (double  *) calloc(inp_corr->iMatrixDim, sizeof(double));
+    }
+
+    if(inp_corr->iNumOFSubSele > 0)
+    {
+
+      if(inp_corr->iMultiAtomFlag==1)
+      {
+        fprintf( stderr, "CORR module: sorry, but sub-selections with --LEVEL RES and more than 1 atom per residue is not yet implemented\n");
+        exit(5);
+      }
+            
+      // this vecotor maps of master-sele res/atm indexes to molecule indexes
+      
+      if(inp_corr->iResFlag==1)
+        iMoleculeItems = molecule->nRes;
+      else
+        iMoleculeItems = molecule->nato;
+      
+      inp_corr->piMasterSeleIndexes = (int *) calloc(iMoleculeItems, sizeof(int));
+      
+      // set all position to -1, which means 'not selected in master-sele'
+      
+      for(ii=0; ii<iMoleculeItems; ++ii)
+        inp_corr->piMasterSeleIndexes[ii] = -1;
+
+      for(ii=0; ii<inp_corr->iMatrixDim; ii++)
+      {
+        if(inp_corr->iResFlag==1)
+        {
+          if(inp_corr->iMultiAtomFlag==0)
+            iSeleIdx=molecule->rawmol.presn[inp_corr->sele.selatm[ii]-1];
+          
+          else
+            iSeleIdx=inp_corr->piProgNum[ii];
+        }
+        
+        else
+          iSeleIdx=atoi(molecule->rawmol.atmId[inp_corr->sele.selatm[ii]-1]);
+        
+        // so, now we know that the iSeleIdx-th res/atm in passed molecule is the ii-th res/atm in master-sele
+        inp_corr->piMasterSeleIndexes[iSeleIdx] = ii;
+      }
+
+      inp_corr->pSubSele       = (Selection *) calloc(inp_corr->iNumOFSubSele, sizeof(Selection));
+      inp_corr->pfSubSeleFluct = (double    *) calloc(inp_corr->iNumOFSubSele, sizeof(double));
+      kk = -1;
+      input_index = iInputBegIndex;
+      memset(cWordomInpBuffer, '\0', sizeof(cWordomInpBuffer));
+      while( strncmp (cWordomInpBuffer, "END", 3))
+      {
+        sprintf(cWordomInpBuffer, "%s", input[input_index]);
+        if ( !strncmp(cWordomInpBuffer, "--SUBSELE", 9))
+        {
+          // @@@ HERE
+
+          kk += 1;
+          sscanf(cWordomInpBuffer, "--SUBSELE %[^\n]%*c ", inp_corr->pSubSele[kk].selestring);
+          GetSele(inp_corr->pSubSele[kk].selestring, &inp_corr->pSubSele[kk], molecule);
+          if(inp_corr->pSubSele[kk].nselatm == 0)
+          {
+            fprintf( stderr, "CORR module: sub-selection #%d: %s, is empty\n", kk+1, inp_corr->pSubSele[kk].selestring);
+            exit(5);
+          }
+          
+          for(ii=0; ii<inp_corr->pSubSele[kk].nselatm; ++ii)
+          {
+            if(inp_corr->iResFlag==1)
+              iSeleIdx=molecule->rawmol.presn[inp_corr->pSubSele[kk].selatm[ii]-1];
+            else
+              iSeleIdx=atoi(molecule->rawmol.atmId[inp_corr->pSubSele[kk].selatm[ii]-1]);
+            
+            if(inp_corr->piMasterSeleIndexes[iSeleIdx] == -1)
+            {
+              
+              if(inp_corr->iResFlag == 1)
+              {
+                Res3ToRes1(molecule->rawmol.restype[inp_corr->pSubSele[kk].selatm[0]-1], cResCode1);
+                sprintf(cTmpString, "%s:%s%d", molecule->rawmol.segId[inp_corr->pSubSele[kk].selatm[0]-1], cResCode1, molecule->rawmol.resn[inp_corr->pSubSele[kk].selatm[0]-1]);
+              }
+              
+              else
+              {
+                Res3ToRes1(molecule->rawmol.restype[inp_corr->sele.selatm[ii]-1], cResCode1);
+                sprintf(cTmpString, "%s:%s%d:%s", molecule->rawmol.segId[inp_corr->sele.selatm[ii]-1], cResCode1,
+                                                  molecule->rawmol.resn[inp_corr->sele.selatm[ii]-1],
+                                                  molecule->rawmol.atmtype[inp_corr->sele.selatm[ii]-1]);
+              }
+              
+              fprintf( stderr, "CORR module: atm/res %s selected with sub-selection #%d: %s, must be also selected in master-sele\n", cTmpString, kk+1, inp_corr->pSubSele[kk].selestring);
+              exit(5);
+            }
+          }
+          
+        }
+        input_index++;
+      }
+      
+      inp_corr->iNumOfSubMatch      = (int) ((inp_corr->iNumOFSubSele * inp_corr->iNumOFSubSele) - inp_corr->iNumOFSubSele) / 2.0;
+      inp_corr->pfMatchSubSeleFluct = (double *) calloc(inp_corr->iNumOfSubMatch, sizeof(double));
+    }
+    
+    if(inp_corr->iVerboseFlag == 1)
+      printf("{Corr::Fluct} End of Read_CORR\n");
+      
+  }
+
   sprintf( outstring, " %10s ", inp_corr->cTitle);
   return 12;
 }
@@ -590,10 +942,17 @@ int Compute_CORR(struct inp_corr *inp_corr, Molecule *molecule, CoorSet *trj_crd
   
   float   fXDiffA, fYDiffA, fZDiffA;
   float   fXDiffB, fYDiffB, fZDiffB;
+  float   fPairDist, fThisDist;
   float   fVirtAtomXCoord, fVirtAtomYCoord, fVirtAtomZCoord;
   float   fTotalWeight;
   
   inp_corr->iFrameNum++;                                                // Update frame number
+  inp_corr->iPDBFlag = trj_crd->pbc_flag;
+  
+  inp_corr->pPBCInfo = trj_crd->pbc;
+  
+  if(inp_corr->iFirstFrame == 1)
+    inp_corr->iFirstFrame = 0;
   
   if(inp_corr->iMultiAtomFlag == 1)
   {
@@ -907,29 +1266,262 @@ int Compute_CORR(struct inp_corr *inp_corr, Molecule *molecule, CoorSet *trj_crd
     }
   }
   
+  else if(inp_corr->iCorrType == 2)
+  {
+    // --TYPE DCOR *-*
+    if(inp_corr->iMultiAtomFlag == 0)
+    {
+      // One atom per residue or correlation by atoms
+      for(ii=0; ii<inp_corr->sele.nselatm; ii++)
+      {
+        iAtomNum = inp_corr->sele.selatm[ii] - 1;
+        
+        inp_corr->pppdCoord[inp_corr->iFrameNum][ii][0] = trj_crd->xcoor[iAtomNum];
+        inp_corr->pppdCoord[inp_corr->iFrameNum][ii][1] = trj_crd->ycoor[iAtomNum];
+        inp_corr->pppdCoord[inp_corr->iFrameNum][ii][2] = trj_crd->zcoor[iAtomNum];
+      }
+    }
+    
+    else
+    {
+      // More than one atom per residue
+      
+      for(ii=0; ii<inp_corr->iMatrixDim; ii++)
+      {
+        inp_corr->pppdCoord[inp_corr->iFrameNum][ii][0] = inp_corr->ppfVirtAtomCoord[ii][0];
+        inp_corr->pppdCoord[inp_corr->iFrameNum][ii][1] = inp_corr->ppfVirtAtomCoord[ii][1];
+        inp_corr->pppdCoord[inp_corr->iFrameNum][ii][2] = inp_corr->ppfVirtAtomCoord[ii][2];
+      }
+    }
+  }
+
+  else if(inp_corr->iCorrType == 3)
+  {
+    // --TYPE FLUCT @@@
+    
+    for(ii=0; ii<inp_corr->sele.nselatm; ++ii)
+    {
+      for(jj=ii+1; jj<inp_corr->sele.nselatm; ++jj)
+      {
+        if(inp_corr->iMultiAtomFlag == 0)
+        {
+          // One atom per residue or correlation by atoms
+          
+          iAtomNumA = inp_corr->sele.selatm[ii] - 1;
+          iAtomNumB = inp_corr->sele.selatm[jj] - 1;
+          fThisDist = DistanceCoor(trj_crd->xcoor[iAtomNumA],
+                                   trj_crd->ycoor[iAtomNumA],
+                                   trj_crd->zcoor[iAtomNumA],
+                                   trj_crd->xcoor[iAtomNumB],
+                                   trj_crd->ycoor[iAtomNumB],
+                                   trj_crd->zcoor[iAtomNumB],
+                                   trj_crd->pbc);
+        }
+        
+        else
+        {
+          // More than one atom per residue
+          fThisDist = DistanceCoor(inp_corr->ppfVirtAtomCoord[ii][0],
+                                   inp_corr->ppfVirtAtomCoord[ii][1],
+                                   inp_corr->ppfVirtAtomCoord[ii][2],
+                                   inp_corr->ppfVirtAtomCoord[jj][0],
+                                   inp_corr->ppfVirtAtomCoord[jj][1],
+                                   inp_corr->ppfVirtAtomCoord[jj][2],
+                                   trj_crd->pbc);
+        }
+
+        if(inp_corr->iFirstRoundFlag == 1)
+        {
+          inp_corr->ppfMeanDistance[ii][jj] += fThisDist;
+          if(inp_corr->iFirstFrame == 1)
+          {
+            inp_corr->ppfMinDistances[ii][jj] = fThisDist;
+            inp_corr->ppfMaxDistances[ii][jj] = fThisDist;
+          }
+          
+          else
+          {
+            if(fThisDist < inp_corr->ppfMinDistances[ii][jj])
+              inp_corr->ppfMinDistances[ii][jj] = fThisDist;
+            if(fThisDist > inp_corr->ppfMaxDistances[ii][jj])
+              inp_corr->ppfMaxDistances[ii][jj] = fThisDist;
+          }
+        }
+
+        else
+        {
+          fThisDist = (fThisDist - inp_corr->ppfMeanDistance[ii][jj]);
+          fThisDist = fThisDist * fThisDist;
+          inp_corr->ppfFluctMatrix[ii][jj] += fThisDist;
+        }
+      }
+    }
+  }
+  
   sprintf( outstring, "            ");
   return 12;
 }
 
+void *DCorStep1(void *pviThreadNum)
+{
+
+  int         ii, jj;
+  int         tt, oo, rr, qq;
+  double fThisDist;
+  
+  tt = (int) pviThreadNum;
+
+  for(oo=0; oo<pInpCorr->iNumOfPairsPerThreads; ++oo)
+  {
+    // rr and qq are frames indexes
+    rr = pInpCorr->ppiPairsListFrm1[tt][oo];
+    qq = pInpCorr->ppiPairsListFrm2[tt][oo];
+    
+    if(rr == -1 || qq == -1)
+      break;
+    
+    if(rr != qq)
+    {
+      // ii is a residue index
+      for(ii=0; ii<pInpCorr->iMatrixDim; ++ii)
+      {
+        
+        fThisDist = DistanceCoor(pInpCorr->pppdCoord[rr][ii][0],
+                                 pInpCorr->pppdCoord[rr][ii][1],
+                                 pInpCorr->pppdCoord[rr][ii][2],
+                                 pInpCorr->pppdCoord[qq][ii][0],
+                                 pInpCorr->pppdCoord[qq][ii][1],
+                                 pInpCorr->pppdCoord[qq][ii][2],
+                                 pInpCorr->pPBCInfo);
+
+        pInpCorr->ppfResFrameAvgDist[ii][rr] += fThisDist;
+        pInpCorr->pfResOverallAvgDist[ii]    += fThisDist;
+        
+        //pInpCorr->pppfThreadResFrameAvgDist[tt][ii][oo] += fThisDist;
+        //pInpCorr->ppfThreadResOverallAvgDist[tt][ii]    += fThisDist;
+      }
+    }
+  }
+
+  return NULL;
+}
+
+
+
+void *DCorStep2(void *pviThreadNum)
+{
+
+  int         ii, jj;
+  int         tt, oo, rr, qq;
+  double fTempValA, fTempValB, fTempValC;
+  
+  tt = (int) pviThreadNum;
+
+  for(oo=0; oo<pInpCorr->iNumOfPairsPerThreads; ++oo)
+  {
+    // rr and qq are frames indexes
+    rr = pInpCorr->ppiPairsListFrm1[tt][oo];
+    qq = pInpCorr->ppiPairsListFrm2[tt][oo];
+    
+    if(rr == -1 || qq == -1)
+      break;
+    
+    // ii and jj are residue indexes
+    for(ii=0; ii<pInpCorr->iMatrixDim; ++ii)
+    {
+      for(jj=ii; jj<pInpCorr->iMatrixDim; ++jj)
+      {
+        if(rr == qq)
+        {
+          fTempValA = (pInpCorr->ppfResFrameAvgDist[ii][rr] * -2) + pInpCorr->pfResOverallAvgDist[ii];
+          
+          if(ii == jj)
+            fTempValB = fTempValA;
+          
+          else
+            fTempValB = (pInpCorr->ppfResFrameAvgDist[jj][rr] * -2) + pInpCorr->pfResOverallAvgDist[jj];
+        }
+        
+        else
+        {
+          fTempValA = DistanceCoor(pInpCorr->pppdCoord[rr][ii][0],
+                                   pInpCorr->pppdCoord[rr][ii][1],
+                                   pInpCorr->pppdCoord[rr][ii][2],
+                                   pInpCorr->pppdCoord[qq][ii][0],
+                                   pInpCorr->pppdCoord[qq][ii][1],
+                                   pInpCorr->pppdCoord[qq][ii][2],
+                                   pInpCorr->pPBCInfo);
+          fTempValA = fTempValA - pInpCorr->ppfResFrameAvgDist[ii][rr] - pInpCorr->ppfResFrameAvgDist[ii][qq] + pInpCorr->pfResOverallAvgDist[ii];
+          
+          if(ii == jj)
+            fTempValB = fTempValA;
+          
+          else
+          {
+            fTempValB = DistanceCoor(pInpCorr->pppdCoord[rr][jj][0],
+                                     pInpCorr->pppdCoord[rr][jj][1],
+                                     pInpCorr->pppdCoord[rr][jj][2],
+                                     pInpCorr->pppdCoord[qq][jj][0],
+                                     pInpCorr->pppdCoord[qq][jj][1],
+                                     pInpCorr->pppdCoord[qq][jj][2],
+                                     pInpCorr->pPBCInfo);
+            fTempValB = fTempValB - pInpCorr->ppfResFrameAvgDist[jj][rr] - pInpCorr->ppfResFrameAvgDist[jj][qq] + pInpCorr->pfResOverallAvgDist[jj];
+          }
+        }
+
+        pInpCorr->pppfThreadDistCov[tt][ii][jj] += (fTempValA * fTempValB);
+      }
+    }
+  }
+
+  return NULL;
+}
+
 int Post_CORR(struct inp_corr *inp_corr, Molecule *molecule, struct sopt *OPT, CoorSet *trj_crd)
 {
-  int      ii, jj;
-  int      iProgNumA, iProgNumB;
-  int      iRowNum, iColNum, iPos;
-  int      iMatrixSize, iVectorSize;
+  int           ii, jj, ff, rr, qq, tt, xx, yy, mm;
+  int           iProgNumA, iProgNumB;
+  int           iIndexA, iIndexB;
+  int           iRowNum, iColNum, iPos;
+  int           iTotPairs;
+  int           iMatrixSize, iVectorSize;
+  int           iRunningThreads, iRunnedThreads, iExitStatus;
+
+  float         fThisDist=0.0, fThisFluct, fThisFlex;
+  float         fTempValA=0.0, fTempValB=0.0;
+  double        fSqrNumOfFrames;
   
-  double   dCorrValue=0.0;
-  double **ppdMatrix;
+  double        dCorrValue=0.0;
+  double      **ppdMatrix;
   
-  char     cLabelA[20], cLabelB[20], cResCode1[3];
+  char          cLabelA[20], cLabelB[20], cResCode1[3];
   
-  time_t   time_Today;
+  time_t        time_Today;
   
+  
+  if(inp_corr->iFirstRoundFlag == 1)
+  {
+    // fluct calculation needs a second run over trj!
+    
+    if(inp_corr->iVerboseFlag == 1)
+      printf("{Corr::Fluct} End of first run; calculating average distances and rewind trj\n");
+    
+    inp_corr->iFirstRoundFlag = 0;
+    
+    for(ii=0; ii<inp_corr->iMatrixDim; ++ii)
+      for(jj=ii+1; jj<inp_corr->iMatrixDim; ++jj)
+        inp_corr->ppfMeanDistance[ii][jj] = inp_corr->ppfMeanDistance[ii][jj] / inp_corr->iNumOfFrames;
+
+    return 999;
+  }
+  
+  if(inp_corr->iVerboseFlag == 1)
+    printf("{Corr::Fluct} Entering in Post_CORR\n");
+
   // === Some data post-processing =====================================
   if(inp_corr->iCorrType == 0)
   {
     // --TYPE DCC
-    
     for(ii=0; ii<inp_corr->iMatrixDim; ii++)
     {
       inp_corr->pfSquareMeanDeviation[ii] = sqrt((inp_corr->pfSquareMeanDeviation[ii]/(float)inp_corr->iNumOfFrames));
@@ -983,6 +1575,217 @@ int Post_CORR(struct inp_corr *inp_corr, Molecule *molecule, struct sopt *OPT, C
       ppdMatrix[iRowNum][iColNum] = inp_corr->pdOutput[ii];
     }
   }
+  
+  else if(inp_corr->iCorrType == 2)
+  {
+    // --TYPE DCOR *-*
+    inp_corr->iFrameNum = inp_corr->iNumOfFrames;
+    
+    fSqrNumOfFrames = (double) (inp_corr->iNumOfFrames * inp_corr->iNumOfFrames);
+
+    // === 1st Step =============================================== //
+    for(tt=0; tt<inp_corr->iNumOfThreads; ++tt)
+      iExitStatus = pthread_create(&inp_corr->corr_threads[tt], NULL, DCorStep1, (void *) tt);
+
+    for(tt=0; tt<inp_corr->iNumOfThreads; ++tt)
+    {
+      if(pthread_join(inp_corr->corr_threads[tt], NULL))
+      {
+        fprintf(stderr, "Corr Module: something bad happened to thread #%d in the 1st calculation step\n", tt);
+        exit(5);
+      }
+    }
+    
+    // === merging togheter DCorStep1 results from different threads
+    //for(tt=0; tt<inp_corr->iNumOfThreads; ++tt)
+    //{
+    //  for(ii=0; ii<inp_corr->iMatrixDim; ++ii)
+    //  {
+    //    inp_corr->pfResOverallAvgDist[ii] += inp_corr->ppfThreadResOverallAvgDist[tt][ii];
+    //
+    //    for(jj=0; jj<inp_corr->iNumOfPairsPerThreads; ++jj)
+    //    {
+    //      
+    //      ff = inp_corr->ppiPairsListFrm1[tt][jj];
+    //      if(ff != -1 && inp_corr->pppfThreadResFrameAvgDist[tt][ii][jj] != 0.0)
+    //      {
+    //        inp_corr->ppfResFrameAvgDist[ii][ff] += inp_corr->pppfThreadResFrameAvgDist[tt][ii][jj];
+    //        inp_corr->pppfThreadResFrameAvgDist[tt][ii][jj] = 0.0;
+    //      }
+    //    }
+    //  }
+    //}
+
+    // calculating ai.|a.j and a..
+    for(ii=0; ii<inp_corr->iMatrixDim; ++ii)
+    {
+      inp_corr->pfResOverallAvgDist[ii] = inp_corr->pfResOverallAvgDist[ii] / fSqrNumOfFrames;
+      for(tt=0; tt<inp_corr->iNumOfFrames; ++tt)
+        inp_corr->ppfResFrameAvgDist[ii][tt] = inp_corr->ppfResFrameAvgDist[ii][tt] /  ((double) inp_corr->iNumOfFrames);
+    }
+    
+    // === 2nd Step ================================================= //
+    for(tt=0; tt<inp_corr->iNumOfThreads; ++tt)
+      iExitStatus = pthread_create(&inp_corr->corr_threads[tt], NULL, DCorStep2, (void *) tt);
+
+    for(tt=0; tt<inp_corr->iNumOfThreads; ++tt)
+    {
+      if(pthread_join(inp_corr->corr_threads[tt], NULL))
+      {
+        fprintf(stderr, "Corr Module: something bad happened to thread #%d in the 2nd calculation step\n", tt);
+        exit(5);
+      }
+    }
+    
+    // === merging all pppfThreadDistCov data togheter
+    for(tt=0; tt<inp_corr->iNumOfThreads; ++tt)
+      for(ii=0; ii<inp_corr->iMatrixDim; ++ii)
+        for(jj=ii; jj<inp_corr->iMatrixDim; ++jj)
+          inp_corr->ppfDistCov[ii][jj] += inp_corr->pppfThreadDistCov[tt][ii][jj];
+
+    // === finalizing =============================================== //
+    for(rr=0; rr<inp_corr->iMatrixDim; ++rr)
+      for(qq=rr; qq<inp_corr->iMatrixDim; ++qq)
+        inp_corr->ppfDistCov[rr][qq] = sqrt(inp_corr->ppfDistCov[rr][qq] / fSqrNumOfFrames);
+
+    for(rr=0; rr<inp_corr->iMatrixDim; ++rr)
+    {
+      inp_corr->ppfDCorr[rr][rr] = 1.0;
+      for(qq=rr+1; qq<inp_corr->iMatrixDim; ++qq)
+        inp_corr->ppfDCorr[rr][qq] = inp_corr->ppfDistCov[rr][qq] / (sqrt(inp_corr->ppfDistCov[rr][rr]*inp_corr->ppfDistCov[qq][qq]));
+    }
+  }
+  
+  else if(inp_corr->iCorrType == 3)
+  {
+    // --TYPE FLUCT @@@
+    
+    // finalizes fluctuation matrix calculation
+    for(ii=0; ii<inp_corr->iMatrixDim; ++ii)
+    {
+      for(jj=ii+1; jj<inp_corr->iMatrixDim; ++jj)
+      {
+        inp_corr->ppfFluctMatrix[ii][jj] = inp_corr->ppfFluctMatrix[ii][jj] / (float) inp_corr->iNumOfFrames;
+        
+        // calculates standard deviation
+        if(inp_corr->iStdDevFlag == 1)
+          inp_corr->ppfFluctMatrix[ii][jj] = sqrt(inp_corr->ppfFluctMatrix[ii][jj]);
+      }
+    }
+        
+    
+    // calculates the overall fluctuation over master selection
+    inp_corr->fOverallFluct = 0.0;
+    for(ii=0; ii<inp_corr->iMatrixDim; ++ii)
+    {
+      for(jj=0; jj<inp_corr->iMatrixDim; ++jj)
+      {
+        if(ii != jj)
+        {
+          if(ii < jj)
+            fThisDist = inp_corr->ppfFluctMatrix[ii][jj];
+          if(ii > jj)
+            fThisDist = inp_corr->ppfFluctMatrix[jj][ii];
+
+          inp_corr->fOverallFluct += fThisDist;
+        }
+      }
+    }
+    inp_corr->fOverallFluct = sqrt(inp_corr->fOverallFluct / (float) (inp_corr->iMatrixDim*inp_corr->iMatrixDim));
+    
+    
+    if(inp_corr->iNumOFSubSele > 0)
+    {
+      // calculates the sub-sele fluctuations
+      for(xx=0; xx<inp_corr->iNumOFSubSele; ++xx)
+      {
+        iTotPairs = 0;
+        inp_corr->pfSubSeleFluct[xx] = 0.0;
+        for(ii=0; ii<inp_corr->pSubSele[xx].nselatm; ++ii)
+        {
+          for(jj=0; jj<inp_corr->pSubSele[xx].nselatm; ++jj)
+          {
+            if(inp_corr->iResFlag==1)
+            {
+              iIndexA = molecule->rawmol.presn[inp_corr->pSubSele[xx].selatm[ii]-1];
+              iIndexB = molecule->rawmol.presn[inp_corr->pSubSele[xx].selatm[jj]-1];
+            }
+            
+            else
+            {
+              iIndexA = atoi(molecule->rawmol.atmId[inp_corr->pSubSele[xx].selatm[ii]-1]);
+              iIndexB = atoi(molecule->rawmol.atmId[inp_corr->pSubSele[xx].selatm[jj]-1]);
+            }
+            
+            iProgNumA = inp_corr->piMasterSeleIndexes[iIndexA];
+            iProgNumB = inp_corr->piMasterSeleIndexes[iIndexB];
+            
+            if(iProgNumA < iProgNumB)
+              fThisDist = inp_corr->ppfFluctMatrix[iProgNumA][iProgNumB];
+            if(iProgNumA == iProgNumB)
+              fThisDist = 0.0;
+            if(iProgNumB < iProgNumA)
+              fThisDist = inp_corr->ppfFluctMatrix[iProgNumB][iProgNumA];
+            
+            iTotPairs += 1;
+            inp_corr->pfSubSeleFluct[xx] += fThisDist;
+          }
+        }
+        
+        inp_corr->pfSubSeleFluct[xx] = sqrt(inp_corr->pfSubSeleFluct[xx] / (float) iTotPairs);
+      }
+      
+      
+      if(inp_corr->iNumOfSubMatch > 0)
+      {
+        // calculates matcthed sub-sele fluctuations
+        // i.e. the overall-fluctuations between all res/atm of one sub-sele vs the res/atm of onother sele
+        mm = -1;
+        for(xx=0; xx<inp_corr->iNumOFSubSele; ++xx)
+        {
+          for(yy=xx+1; yy<inp_corr->iNumOFSubSele; ++yy)
+          {
+            mm += 1;
+            inp_corr->pfMatchSubSeleFluct[mm] = 0.0;
+            iTotPairs = 0;
+
+            for(ii=0; ii<inp_corr->pSubSele[xx].nselatm; ++ii)
+            {
+              for(jj=0; jj<inp_corr->pSubSele[yy].nselatm; ++jj)
+              {
+                if(inp_corr->iResFlag==1)
+                {
+                  iIndexA = molecule->rawmol.presn[inp_corr->pSubSele[xx].selatm[ii]-1];
+                  iIndexB = molecule->rawmol.presn[inp_corr->pSubSele[yy].selatm[jj]-1];
+                }
+                
+                else
+                {
+                  iIndexA = atoi(molecule->rawmol.atmId[inp_corr->pSubSele[xx].selatm[ii]-1]);
+                  iIndexB = atoi(molecule->rawmol.atmId[inp_corr->pSubSele[yy].selatm[jj]-1]);
+                }
+                
+                iProgNumA = inp_corr->piMasterSeleIndexes[iIndexA];
+                iProgNumB = inp_corr->piMasterSeleIndexes[iIndexB];
+                
+                if(iProgNumA < iProgNumB)
+                  fThisDist = inp_corr->ppfFluctMatrix[iProgNumA][iProgNumB];
+                if(iProgNumA == iProgNumB)
+                  fThisDist = 0.0;
+                if(iProgNumB < iProgNumA)
+                  fThisDist = inp_corr->ppfFluctMatrix[iProgNumB][iProgNumA];
+                
+                iTotPairs += 1;
+                inp_corr->pfMatchSubSeleFluct[mm] += fThisDist;
+              }
+            }
+            inp_corr->pfMatchSubSeleFluct[mm] = sqrt(inp_corr->pfMatchSubSeleFluct[mm] / (float) iTotPairs);
+          }
+        }
+      }
+    }
+  }
+  
   // ===================================================================
   
   // === It's time for results !!! =====================================
@@ -991,60 +1794,106 @@ int Post_CORR(struct inp_corr *inp_corr, Molecule *molecule, struct sopt *OPT, C
   fprintf(inp_corr->FOutFile, "# ***                   WORDOM CORR MODULE                   ***\n");
   fprintf(inp_corr->FOutFile, "# ==============================================================\n");
   fprintf(inp_corr->FOutFile, "#\n");
-  fprintf(inp_corr->FOutFile, "# Version   : %s\n", VERSTRING);
-  fprintf(inp_corr->FOutFile, "# License   : GPL 3\n");
-  fprintf(inp_corr->FOutFile, "# Copyright : Fanelli, Felline\n");
-  fprintf(inp_corr->FOutFile, "#             University of Modena\n");
-  fprintf(inp_corr->FOutFile, "#             Modena - Italy\n");
+  fprintf(inp_corr->FOutFile, "# Version        : %s\n", VERSTRING);
+  fprintf(inp_corr->FOutFile, "# License        : GPL 3\n");
+  fprintf(inp_corr->FOutFile, "# Copyright      : Fanelli, Felline\n");
+  fprintf(inp_corr->FOutFile, "#                  University of Modena\n");
+  fprintf(inp_corr->FOutFile, "#                  Modena - Italy\n");
   fprintf(inp_corr->FOutFile, "#\n");
-  //fprintf(inp_corr->FOutFile, "# Date      : %s", asctime(localtime(&time_Today)));
-  //fprintf(inp_corr->FOutFile, "#\n");
-  //fprintf(inp_corr->FOutFile, "# Mol File  : %s\n", OPT->IMOL_FILE);
-  fprintf(inp_corr->FOutFile, "# Res Num   : %d\n", inp_corr->iNumOfRes);
-  //fprintf(inp_corr->FOutFile, "# Traj File : %s\n", OPT->ITRJ_FILE);
-  fprintf(inp_corr->FOutFile, "# Frame Num : %d\n", inp_corr->iNumOfFrames);
+  fprintf(inp_corr->FOutFile, "# Date           : %s", asctime(localtime(&time_Today)));
+  fprintf(inp_corr->FOutFile, "#\n");
+  fprintf(inp_corr->FOutFile, "# Mol File       : %s\n", OPT->IMOL_FILE);
+  fprintf(inp_corr->FOutFile, "# Res Num        : %d\n", inp_corr->iNumOfRes);
+  fprintf(inp_corr->FOutFile, "# Traj File      : %s\n", OPT->ITRJ_FILE);
+  fprintf(inp_corr->FOutFile, "# Frame Num      : %d\n", inp_corr->iNumOfFrames);
   
   if(trj_crd->pbc_flag == 0)
-    fprintf(inp_corr->FOutFile, "# PBC       : No\n");
+    fprintf(inp_corr->FOutFile, "# PBC            : No\n");
   else
-    fprintf(inp_corr->FOutFile, "# PBC       : Yes\n");
+    fprintf(inp_corr->FOutFile, "# PBC            : Yes\n");
   
   fprintf(inp_corr->FOutFile, "#\n");
-  fprintf(inp_corr->FOutFile, "# Title     : %s\n", inp_corr->cTitle);
+  fprintf(inp_corr->FOutFile, "# Title          : %s\n", inp_corr->cTitle);
   
   if(inp_corr->iCorrType == 0)
-    fprintf(inp_corr->FOutFile, "# Type      : DCC\n");
+    fprintf(inp_corr->FOutFile, "# Type           : DCC\n");
   else if(inp_corr->iCorrType == 1)
-    fprintf(inp_corr->FOutFile, "# Type      : LMI\n");
+    fprintf(inp_corr->FOutFile, "# Type           : LMI\n");
+  else if(inp_corr->iCorrType == 2)
+    fprintf(inp_corr->FOutFile, "# Type           : DCOR\n");
+  else if(inp_corr->iCorrType == 3)
+    fprintf(inp_corr->FOutFile, "# Type           : FLUCT\n");
   
-  fprintf(inp_corr->FOutFile, "# Sele      : %s\n", inp_corr->sele.selestring);
+  fprintf(inp_corr->FOutFile, "# Sele           : %s\n", inp_corr->sele.selestring);
   
   if(inp_corr->iResFlag==1)
-    fprintf(inp_corr->FOutFile, "# Sele Res  : %d\n", inp_corr->iMatrixDim);
+    fprintf(inp_corr->FOutFile, "# Sele Res       : %d\n", inp_corr->iMatrixDim);
   else
-    fprintf(inp_corr->FOutFile, "# Sele Atm  : %d\n", inp_corr->iMatrixDim);
+    fprintf(inp_corr->FOutFile, "# Sele Atm       : %d\n", inp_corr->iMatrixDim);
     
   if(inp_corr->iResFlag==1)
-    fprintf(inp_corr->FOutFile, "# Level     : RES\n");
+    fprintf(inp_corr->FOutFile, "# Level          : RES\n");
   else
-    fprintf(inp_corr->FOutFile, "# Level     : ATM\n");
+    fprintf(inp_corr->FOutFile, "# Level          : ATM\n");
   
   if(inp_corr->iMassFlag==1)
-    fprintf(inp_corr->FOutFile, "# Mass      : Yes\n");
+    fprintf(inp_corr->FOutFile, "# Mass           : Yes\n");
   else
-    fprintf(inp_corr->FOutFile, "# Mass      : No\n");
+    fprintf(inp_corr->FOutFile, "# Mass           : No\n");
   
+  if(inp_corr->iCorrType == 3)
+  {
+    if(inp_corr->iStdDevFlag == 1)
+      fprintf(inp_corr->FOutFile, "# StDev Flag     : Yes\n");
+    else
+      fprintf(inp_corr->FOutFile, "# StDev Flag     : No\n");
+  }
+
+  fprintf(inp_corr->FOutFile, "# Num of Threads : %d\n", inp_corr->iNumOfThreads);
   fprintf(inp_corr->FOutFile, "#\n");
   
   if(inp_corr->iMultiAtomFlag == 1 && trj_crd->pbc_flag == 1)
-    fprintf(inp_corr->FOutFile, "# Warning!  : PBC not taken into account in the calculation of geo/mass centers\n#\n");
+    fprintf(inp_corr->FOutFile, "# Warning!     : PBC not taken into account in the calculation of geo/mass centers\n#\n");
     
   if(inp_corr->iZeroMassWarning == 1)
-    fprintf(inp_corr->FOutFile, "# Warning!  : Atom(s) with zero mass\n#\n");
+    fprintf(inp_corr->FOutFile, "# Warning!     : Atom(s) with zero mass\n#\n");
   
-  fprintf(inp_corr->FOutFile, "# ==============================================================\n");
+  if(inp_corr->iCorrType == 3)
+    fprintf(inp_corr->FOutFile, "# Overall Fluct  : %s, %.2f\n", inp_corr->sele.selestring, inp_corr->fOverallFluct);
   
-  fprintf(inp_corr->FOutFile, "#%8s   %8s   %15s   %15s   %5s\n", "ProgNumA", "ProgNumB", "LabelA", "LabelB", "CORR");
+  if(inp_corr->iNumOFSubSele > 0)
+    for(xx=0; xx<inp_corr->iNumOFSubSele; ++xx)
+      fprintf(inp_corr->FOutFile, "# SubSele Fluct  : %s, %.2f\n", inp_corr->pSubSele[xx].selestring, inp_corr->pfSubSeleFluct[xx]);
+  
+  if(inp_corr->iNumOfSubMatch > 0)
+  {
+    fprintf(inp_corr->FOutFile, "#\n");
+    mm = -1;
+    for(xx=0; xx<inp_corr->iNumOFSubSele; ++xx)
+    {
+      for(yy=xx+1; yy<inp_corr->iNumOFSubSele; ++yy)
+      {
+        mm += 1;
+        fprintf(inp_corr->FOutFile, "# MatchSele Fluct: %s vs %s, %.2f\n", inp_corr->pSubSele[xx].selestring, inp_corr->pSubSele[yy].selestring, inp_corr->pfMatchSubSeleFluct[mm]);
+      }
+    }
+  }
+  
+  
+  if(inp_corr->iCorrType == 3)
+  {
+    fprintf(inp_corr->FOutFile, "#\n");
+    fprintf(inp_corr->FOutFile, "# Info: Fluct describes the extent of the pairwise fluctations\n");
+    fprintf(inp_corr->FOutFile, "# Info: Flex is the difference between the largest and the smallest dist\n");
+    fprintf(inp_corr->FOutFile, "# ======================================================================\n");
+    fprintf(inp_corr->FOutFile, "#%8s   %8s   %15s   %15s   %5s   %5s\n", "ProgNumA", "ProgNumB", "LabelA", "LabelB", "Fluct", "Flex");
+  }
+  
+  else
+  {
+    fprintf(inp_corr->FOutFile, "# ==============================================================\n");
+    fprintf(inp_corr->FOutFile, "#%8s   %8s   %15s   %15s   %5s\n", "ProgNumA", "ProgNumB", "LabelA", "LabelB", "CORR");
+  }
   
   for(ii=0; ii<inp_corr->iMatrixDim; ii++)
   {
@@ -1098,10 +1947,46 @@ int Post_CORR(struct inp_corr *inp_corr, Molecule *molecule, struct sopt *OPT, C
       else if(inp_corr->iCorrType == 1)
         dCorrValue = ppdMatrix[ii][jj];
       
-      fprintf(inp_corr->FOutFile, " %8d   %8d   %15s   %15s   %5.2f\n", iProgNumA, iProgNumB, cLabelA, cLabelB, dCorrValue);
+      else if(inp_corr->iCorrType == 2)
+      {
+        if(ii == jj)
+          dCorrValue = 1.0;
+        else if(ii < jj)
+          dCorrValue = inp_corr->ppfDCorr[ii][jj];
+        else if(ii > jj)
+          dCorrValue = inp_corr->ppfDCorr[jj][ii];
+      }
+      
+      else if(inp_corr->iCorrType == 3)
+      {
+        if(ii == jj)
+        {
+          fThisFluct = 0.0;
+          fThisFlex  = 0.0;
+        }
+        
+        else if(ii < jj)
+        {
+          fThisFluct = inp_corr->ppfFluctMatrix[ii][jj];
+          fThisFlex  = inp_corr->ppfMaxDistances[ii][jj] - inp_corr->ppfMinDistances[ii][jj];
+        }
+        
+        else if(ii > jj)
+        {
+          fThisFluct = inp_corr->ppfFluctMatrix[jj][ii];
+          fThisFlex  = inp_corr->ppfMaxDistances[jj][ii] - inp_corr->ppfMinDistances[jj][ii];
+        }
+
+      }
+      
+      if(inp_corr->iCorrType == 3)
+        fprintf(inp_corr->FOutFile, " %8d   %8d   %15s   %15s   %5.3f   %5.3f\n", iProgNumA, iProgNumB, cLabelA, cLabelB, fThisFluct, fThisFlex);
+      else
+        fprintf(inp_corr->FOutFile, " %8d   %8d   %15s   %15s   %5.3f\n", iProgNumA, iProgNumB, cLabelA, cLabelB, dCorrValue);
     }
   }
   
+  close(inp_corr->FOutFile);
   return 0;
   // ===================================================================
 }
