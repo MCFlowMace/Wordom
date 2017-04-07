@@ -19,12 +19,10 @@
 #include <math.h>
 #include <stdio.h> 
 #include <stdlib.h>
-	//including wordom.h generates compiler warnings
-	//we do not have to worry about this, since this only happens because nvcc generates c++ object files and the c++ compiler is not completely satisfied with some stuff in wordom.h
-#include "wordom.h"
+
+#define GCLUSTER_INCLUDES
+
 #include "fileio.h"
-#include "tools.h"
-#include "analysis.h"
 #include "cluster.h"
 
 __device__ void normalize(float a[3])
@@ -58,15 +56,13 @@ __device__ static void cross(float a[3], float b[3], float c[3])
 /*
  * setup_rotation() 
  *
- *      given two lists of x,y,z coordinates, constructs
+ * given two lists of x,y,z coordinates, constructs
  * the correlation R matrix and the E value needed to calculate the
  * least-squares rotation matrix.
  */
 __device__ void setup_rotation(const float *ref_xlist, const float *mov_xlist, int& n_list, float R[3][3], float& E0, volatile int& i, volatile int&j, volatile int& n)
 {
-  //int i, j, n;
-
-  /* initialize */
+  // initialize
   for (i=0; i<3; i++)
     for (j=0; j<3; j++) 
       R[i][j] = 0.0f;
@@ -104,7 +100,7 @@ __device__ void setup_rotation(const float *ref_xlist, const float *mov_xlist, i
 /*   
  * jacobi3
  *
- *    computes eigenval and eigen_vec of a real 3x3
+ * computes eigenval and eigen_vec of a real 3x3
  * symmetric matrix. On output, elements of a that are above 
  * the diagonal are destroyed. d[1..3] returns the 
  * eigenval of a. v[1..3][1..3] is a matrix whose 
@@ -113,12 +109,9 @@ __device__ void setup_rotation(const float *ref_xlist, const float *mov_xlist, i
  */
 __device__ int jacobi3(float a[3][3], float d[3], float v[3][3], volatile int& k, volatile int& i, volatile int& j)
 {
-  //int count, k, i, j;
-  //float tresh, theta, tau, t, sum, s, h, g, c, b[3], z[3];
-  //float t, sum, s, h, g, c, b[3], z[3];
   float b[3], z[3];
 
-  /*Initialize v to the identity matrix.*/
+  //Initialize v to the identity matrix.
   for (i=0; i<3; i++) 
   { 
     for (j=0; j<3; j++) 
@@ -126,42 +119,36 @@ __device__ int jacobi3(float a[3][3], float d[3], float v[3][3], volatile int& k
     v[i][i] = 1.0f;
   }
 
-  /* Initialize b and d to the diagonal of a */
+  // Initialize b and d to the diagonal of a
   for (i=0; i<3; i++) 
     b[i] = d[i] = a[i][i];
 
-  /* z will accumulate terms */
+  // z will accumulate terms
   for (i=0; i<3; i++) 
     z[i] = 0.0f; 
-  
-  //*n_rot = 0;
 
-  /* 50 tries */
+  // 50 tries
   int count;
   for (count=0; count<50; count++)     
-  {
-	
+  {	
 	float tresh;
-    /* sum off-diagonal elements */
+    // sum off-diagonal elements
     {
-    float sum = 0.0f;
-    for (i=0; i<2; i++) 
-    {
-      for (j=i+1; j<3; j++)
-         sum += fabsf(a[i][j]);
-    }
-
-    /* if converged to machine underflow */
-    if (sum == 0.0f) 
-      return(1);
-
-    /* on 1st three sweeps... */
-    if (count < 3) 
-      tresh = sum * 0.2f / 9.0f;    
-    else       
-      tresh = 0.0f;
-      
-  } 
+	    float sum = 0.0f;
+	    for (i=0; i<2; i++) 
+	      for (j=i+1; j<3; j++)
+	         sum += fabsf(a[i][j]);
+	
+	    // if converged to machine underflow
+	    if (sum == 0.0f) 
+	      return(1);
+	
+	    // on 1st three sweeps...
+	    if (count < 3) 
+	      tresh = sum * 0.2f / 9.0f;    
+	    else       
+	      tresh = 0.0f;   
+	}
 
     for (i=0; i<2; i++) 
     {
@@ -172,8 +159,7 @@ __device__ int jacobi3(float a[3][3], float d[3], float v[3][3], volatile int& k
         /*  after four sweeps, skip the rotation if
          *   the off-diagonal element is small 
          */
-       if ( count > 3  &&  fabsf(d[i])+g == fabsf(d[i])
-              &&  fabsf(d[j])+g == fabsf(d[j]) ) 
+       if ( count > 3  &&  fabsf(d[i])+g == fabsf(d[i]) &&  fabsf(d[j])+g == fabsf(d[j]) ) 
         {
           a[i][j] = 0.0f;
         } 
@@ -219,7 +205,6 @@ __device__ int jacobi3(float a[3][3], float d[3], float v[3][3], volatile int& k
           for (k=0; k<3; k++) 
             ROTATE(v, k, i, k, j)
 
-         // ++(*n_rot);
         }
       }
     }
@@ -245,180 +230,127 @@ __device__ int jacobi3(float a[3][3], float d[3], float v[3][3], volatile int& k
  */
 __device__ int diagonalize_symmetric(float matrix[3][3], float vec[3][3], float eigenval[3], volatile int& i, volatile int& j, volatile int& k)
 {
-  //int n_rot, i, j, k;
-  //float vec[3][3];
-  //float val; 
   
-  if (!jacobi3(matrix, eigenval, vec, i,j,k)) 
-  {
-    //printf("convergence failed\n");
-    return (0);
-  }
-
-  /* sort solutions by eigenval */
-  for (i=0; i<3; i++) 
-  {
-	  //float val;
-    k = i;
-    //val = eigenval[i];
-    matrix[0][0] = eigenval[i];
-    
-    for (j=i+1; j<3; j++)
-      //if (eigenval[j] >= val)
-      if (eigenval[j] >= matrix[0][0])
-      { 
-        k = j;
-        //val = eigenval[k];
-        matrix[0][0] = eigenval[k];
-      }
-       
-    if (k != i) 
-    {
-      eigenval[k] = eigenval[i];
-      //eigenval[i] = val;
-      eigenval[i] = matrix[0][0];
-      for (j=0; j<3; j++) 
-      {
-        //val = vec[j][i];
-        matrix[0][0] = vec[j][i];
-        vec[j][i] = vec[j][k];
-        //vec[j][k] = val;
-        vec[j][k] = matrix[0][0];
-      }
-    }
-  }
-
-  /* transpose such that first index refers to solution index */
-  for (i=0; i<3; i++)
-    for (j=0; j<3; j++)
-      vec[i][j] = vec[j][i];
-
-  return (1);
+	if (!jacobi3(matrix, eigenval, vec, i,j,k))
+		return (0);
+	
+	// sort solutions by eigenval
+	for (i=0; i<3; i++) 
+	{
+		k = i;
+		matrix[0][0] = eigenval[i];
+		
+		for (j=i+1; j<3; j++)
+			if (eigenval[j] >= matrix[0][0])
+			{ 
+			k = j;
+			matrix[0][0] = eigenval[k];
+			}
+		   
+		if (k != i) 
+		{
+			eigenval[k] = eigenval[i];
+			eigenval[i] = matrix[0][0];
+			for (j=0; j<3; j++) 
+			{
+				matrix[0][0] = vec[j][i];
+				vec[j][i] = vec[j][k];
+				vec[j][k] = matrix[0][0];
+			}
+		}
+	}
+	
+	// transpose such that first index refers to solution index
+	for (i=0; i<3; i++)
+		for (j=0; j<3; j++)
+			vec[i][j] = vec[j][i];
+	
+	return (1);
 }
 
 
 
 /*
- * calculate_rotation_matrix() 
+ * calculate_rotation() 
  *
- *   calculates the rotation matrix U and the
- * rmsd from the R matrix and E0:
+ * calculates the residual from the R matrix and E0:
+ * to reduce the number of used variables E0 has to be passed as the value of residual
  */
-//__device__ int calculate_rotation_matrix(float R[3][3], float E0, float* residual, volatile int& i, volatile int& j, volatile int& k)
-__device__ int calculate_rotation_matrix(float R[3][3], float& residual, volatile int& i, volatile int& j, volatile int& k)
+
+__device__ int calculate_rotation(float R[3][3], float& residual, volatile int& i, volatile int& j, volatile int& k)
 {
-  //int i, j, k;
-  //float v[3];
-  //float sigma;
+	// build Rt, transpose of R 
+	float Rt[3][3];
+	for (i=0; i<3; i++)
+		for (j=0; j<3; j++)
+			Rt[i][j] = R[j][i];
 
-  /* build Rt, transpose of R  */
-    float Rt[3][3];
-  for (i=0; i<3; i++)
-    for (j=0; j<3; j++)
-      Rt[i][j] = R[j][i];
-
-  /* make symmetric R = Rt X R */
-  
-
+	// make symmetric R = Rt X R
 	float right_eigenvec[3][3];
-  for (i=0; i<3; i++) 
-    for (j=0; j<3; j++)
-    {
-      right_eigenvec[i][j] = 0.0f;
-      for (k = 0; k<3; k++)
-        right_eigenvec[i][j] += Rt[k][i] * R[j][k];
-    }
+		for (i=0; i<3; i++) 
+			for (j=0; j<3; j++)
+			{
+				right_eigenvec[i][j] = 0.0f;
+				for (k = 0; k<3; k++)
+					right_eigenvec[i][j] += Rt[k][i] * R[j][k];
+		    }
     
-  for (i=0; i<3; i++) 
-    for (j=0; j<3; j++)
-		R[i][j] = right_eigenvec[i][j];
-
+	for (i=0; i<3; i++) 
+		for (j=0; j<3; j++)
+			R[i][j] = right_eigenvec[i][j];
 
 	float eigenval[3];
-  if (!diagonalize_symmetric(R, right_eigenvec, eigenval,i,j,k))
-    return(0);
+	if (!diagonalize_symmetric(R, right_eigenvec, eigenval,i,j,k))
+	    return(0);
   
 
-  /* right_eigenvec's should be an orthogonal system but could be left
-   * or right-handed. Let's force into right-handed system.
-   */
-  cross(&right_eigenvec[2][0], &right_eigenvec[0][0], &right_eigenvec[1][0]);
+	/* right_eigenvec's should be an orthogonal system but could be left
+	* or right-handed. Let's force into right-handed system.
+	*/
+	cross(&right_eigenvec[2][0], &right_eigenvec[0][0], &right_eigenvec[1][0]);
+	
+	/* From the Kabsch algorithm, the eigenvec's of RtR
+	* are identical to the right_eigenvec's of R.
+	* This means that left_eigenvec = R x right_eigenvec 
+	*/	
 
-  /* From the Kabsch algorithm, the eigenvec's of RtR
-   * are identical to the right_eigenvec's of R.
-   * This means that left_eigenvec = R x right_eigenvec 
-   */
-   
-   //float left_eigenvec[3][3];
-  for (i=0; i<3; i++) 
-    for (j=0; j<3; j++) 
-      //left_eigenvec[i][j] = dot(&right_eigenvec[i][0], &Rt[j][0]);
-      R[i][j] = dot(&right_eigenvec[i][0], &Rt[j][0]);
-      
+	for (i=0; i<3; i++) 
+		for (j=0; j<3; j++) 
+			R[i][j] = dot(&right_eigenvec[i][0], &Rt[j][0]);
+      	
+	for (i=0; i<3; i++) 
+		normalize(&R[i][0]);
 
-  for (i=0; i<3; i++) 
-    //normalize(&left_eigenvec[i][0]);
-    normalize(&R[i][0]);
+	/* 
+	* Force left_eigenvec[2] to be orthogonal to the other vectors.
+	* First check if the rotational matrices generated from the 
+	* orthogonal eigenvectors are in a right-handed or left-handed
+	* co-ordinate system - given by sigma. Sigma is needed to
+	* resolve this ambiguity in calculating the RMSD.
+	*/
 
-  /* 
-   * Force left_eigenvec[2] to be orthogonal to the other vectors.
-   * First check if the rotational matrices generated from the 
-   * orthogonal eigenvectors are in a right-handed or left-handed
-   * co-ordinate system - given by sigma. Sigma is needed to
-   * resolve this ambiguity in calculating the RMSD.
-   */
-  //cross(v, &left_eigenvec[0][0], &left_eigenvec[1][0]);
-  //cross(&right_eigenvec[0][0], &left_eigenvec[0][0], &left_eigenvec[1][0]);
-  cross(&right_eigenvec[0][0], &R[0][0], &R[1][0]);
-  
-  float sigma;
-  //if (dot(&right_eigenvec[0][0], &left_eigenvec[2][0]) < 0.0)
-  if (dot(&right_eigenvec[0][0], &R[2][0]) < 0.0)
-    sigma = -1.0f;
-
-  else 
-    sigma = 1.0f;
-
-
-    
-  residual = residual - (float) sqrtf(fabsf(eigenval[0])) - (float) sqrtf(fabsf(eigenval[1]))- sigma * (float) sqrtf(fabsf(eigenval[2]));
-
-                 
-
-  return (1);
-}
- 
-
-__device__ float RmsdCalc_nosup(const float *refcoor, const float *movcoor, int nato)
-{
-  // compute rmsd and return value
-  int          ii;
-  float        rmsd,di;
-  
-  rmsd=0;
-  di=0;
-  
-  for ( ii=0; ii<3*nato; ii++ ) {
-		di= refcoor[ii]-movcoor[ii];
-		rmsd += di*di;
-             
-	}
-  
-  rmsd /= nato;
-  rmsd = sqrt ( rmsd );
-  
-  return rmsd;
+	cross(&right_eigenvec[0][0], &R[0][0], &R[1][0]);
+	
+	float sigma;
+	if (dot(&right_eigenvec[0][0], &R[2][0]) < 0.0)
+		sigma = -1.0f;
+	
+	else 
+		sigma = 1.0f;
+	
+	residual = residual - (float) sqrtf(fabsf(eigenval[0])) - (float) sqrtf(fabsf(eigenval[1]))- sigma * (float) sqrtf(fabsf(eigenval[2]));	
+	return (1);
 }
 
-__global__ void gRmsd(int nato, const int nframes, const float* gclust_coords, const int cluster, const int* frameapp_read, int* frameapp_write, float* distance, const int mode) {
+__global__ void rmsd_kernel(int nato, const int nframes, const float* gclust_coords, const int cluster, const int* frameapp_read, int* frameapp_write, float* distance, const int mode) {
 	
-		// nato = number of atoms, nframes = number of frames used for clustering;
-	// gclust_coords = array of all coordinates of the frames; cluster = center of a possible cluster; frameapp stores the cluster center 
-	// of each frame. There is one frameapp array for reading only and one for writing only, because otherwise this could go wrong for very long arrays;
-	// distance stores the calculated rmsd because it will be needed in the post processing
-	// mode is used to switch between maxspeed=1 and closest=0
+	/* nato = number of atoms, nframes = number of frames used for clustering;
+	 * gclust_coords = array of all coordinates of the frames; cluster = center of a possible cluster; frameapp stores the cluster center
+	 * of each frame. There is one frameapp array for reading only and one for writing only, because otherwise this could go wrong for very long arrays;
+	 * distance stores the calculated rmsd because it will be needed in the post processing
+	 * mode is used to switch between maxspeed=1 and closest=0
+	 */
 	
-
 	// threadIdx.x is a built-in variable provided by CUDA at runtime, this gives each of the threads a unique index that corresponds to a frame number 
 	int index = blockIdx.x * blockDim.x + threadIdx.x;	
 	// if there are more threads than frames then stop these
@@ -464,33 +396,25 @@ __global__ void gRmsd(int nato, const int nframes, const float* gclust_coords, c
 		rmsd /= nato;
 		rmsd = sqrtf ( rmsd );
 	
-		//if (rmsd<cutoff){
 		if (rmsd<distance[index]){
 			frameapp_write[index] = cluster + 1; //+1 because in wordom the frames are counted starting with 1
 			distance[index] = rmsd;
 			return;
-		}
-  
-
-			
-		/*if (rmsd<cutoff && rmsd != -1){
-			frameapp_write[index] = cluster + 1; //+1 because in wordom the frames are counted starting with 1
-			distance[index] = rmsd;
-			return;
-		}*/
-		
+		}	
 	}
+	
 	frameapp_write[index] = frameapp_read[index];
 }
 
-__global__ void gRmsdSuper(int nato, const int nframes, const float* gclust_coords, const int cluster, const int* frameapp_read, int* frameapp_write, float* distance, const int mode) {
+__global__ void rmsd_super_kernel(int nato, const int nframes, const float* gclust_coords, const int cluster, const int* frameapp_read, int* frameapp_write, float* distance, const int mode) {
 	
 	
-	// nato = number of atoms, nframes = number of frames used for clustering;
-	// gclust_coords = array of all coordinates of the frames; cluster = center of a possible cluster; frameapp stores the cluster center 
-	// of each frame. There is one frameapp array for reading only and one for writing only, because otherwise this could go wrong for very long arrays;
-	// distance stores the calculated rmsd because it will be needed in the post processing
-	// mode is used to switch between maxspeed=1 and closest=0
+	/* nato = number of atoms, nframes = number of frames used for clustering;
+	 * gclust_coords = array of all coordinates of the frames; cluster = center of a possible cluster; frameapp stores the cluster center 
+	 * of each frame. There is one frameapp array for reading only and one for writing only, because otherwise this could go wrong for very long arrays;
+	 * distance stores the calculated rmsd because it will be needed in the post processing
+	 * mode is used to switch between maxspeed=1 and closest=0 
+	 */
 	
 
 	// threadIdx.x is a built-in variable provided by CUDA at runtime, this gives each of the threads a unique index that corresponds to a frame number 
@@ -524,59 +448,36 @@ __global__ void gRmsdSuper(int nato, const int nframes, const float* gclust_coor
 			return;
 		}
 		
-		//float rmsd=-1;
-	
-		//calculate_rotation_rmsd(&gclust_coords[cluster*3*nato],&gclust_coords[index*3*nato], nato, &rmsd);
-		
-				//calculate_rotation_rmsd(&gclust_coords[cluster*3*nato],&gclust_coords[index*3*nato], nato, &rmsd);
 		float rmsd;
 		float R[3][3];
+		volatile int i,j,n;
 		
-		//volatile int i,j,k,n;
-		volatile int i,j,n;	
 		setup_rotation(&gclust_coords[cluster*3*nato],&gclust_coords[index*3*nato], nato, R, rmsd, i, j, n);
 		
-		//setup_rotation(&gclust_coords[cluster*3*nato],&gclust_coords[index*3*nato], nato, R, &E0);		
-			
-		//float rmsd=-1;
-		//if(calculate_rotation_matrix(R, E0, &rmsd, i, j, n)) {
-		if(calculate_rotation_matrix(R, rmsd, i, j, n)) {
-		//if(calculate_rotation_matrix(R, E0, &rmsd)) {
+		if(calculate_rotation(R, rmsd, i, j, n)) {
   
 			rmsd = fabsf(rmsd); // avoids the awkward case of -0.0 
 			rmsd = sqrtf( fabsf((float) (rmsd)*2.0f/((float)nato)) );
-			
-
-			//if(cluster == 38 && index < 100) printf("cluster: %10d, frame: %10d, rmsd: %10f, cutoff: %10f, frameapp: %10d\n",cluster, index, rmsd, distance[index],frameapp_read[index]);
-			//if(cluster == 59 && index < 100) printf("cluster: %10d, frame: %10d, rmsd: %10f, cutoff: %10f, frameapp: %10d\n",cluster, index, rmsd, distance[index],frameapp_read[index]);
-			
 			
 			if (rmsd<distance[index]){
 				frameapp_write[index] = cluster + 1; //+1 because in wordom the frames are counted starting with 1
 				distance[index] = rmsd;
 				return;
 			}
-  
-		}	
-			
-		/*if (rmsd<cutoff && rmsd != -1){
-			frameapp_write[index] = cluster + 1; //+1 because in wordom the frames are counted starting with 1
-			distance[index] = rmsd;
-			return;
-		}*/
-		
+		}		
 	}
-	frameapp_write[index] = frameapp_read[index];
-			
+	
+	frameapp_write[index] = frameapp_read[index];			
 }
 
 // a kernel for the maxspeed flag
 __global__ void gDrmsMax(const int msize, const int nframes, const float* gclust_dmtx, const int cluster, const float cutoff, const int* frameapp_read, int* frameapp_write, float* distance, const float nointrasegm_corr_fact) {
 	
-	// msize = size of each distance matrix, nframes = number of frames used for clustering;
-	// gclust_dmtx = array of ALL distance matrices; cluster = center of a possible cluster; frameapp stores the cluster center 
-	// of each frame. There is one frameapp array for reading only and one for writing only, because otherwise this could go wrong for very long arrays;
-	// distance stores the calculated drms because it will be needed in the post processing
+	/* msize = size of each distance matrix, nframes = number of frames used for clustering;
+	 * gclust_dmtx = array of ALL distance matrices; cluster = center of a possible cluster; frameapp stores the cluster center
+	 * of each frame. There is one frameapp array for reading only and one for writing only, because otherwise this could go wrong for very long arrays;
+	 * distance stores the calculated drms because it will be needed in the post processing 
+	 */
 	
 	
 
@@ -628,10 +529,11 @@ __global__ void gDrmsMax(const int msize, const int nframes, const float* gclust
 // a kernel for the lfull flag
 __global__ void gDrmsClosest(const int msize, const int nframes, const float* gclust_dmtx, const int cluster, const int* frameapp_read, int* frameapp_write, float* distance, const float nointrasegm_corr_fact) {
 	
-	// msize = size of each distance matrix; nframes = number of frames used for clustering;
-	// gclust_dmtx = array of ALL distance matrices; cluster = center of a possible cluster; frameapp stores the cluster center 
-	// of each frame. There is one frameapp array for reading only and one for writing only, because otherwise this could go wrong for very long arrays;
-	// distance stores the calculated drms for comparison
+	/* msize = size of each distance matrix; nframes = number of frames used for clustering;
+	 * gclust_dmtx = array of ALL distance matrices; cluster = center of a possible cluster; frameapp stores the cluster center
+	 * of each frame. There is one frameapp array for reading only and one for writing only, because otherwise this could go wrong for very long arrays;
+	 * distance stores the calculated drms for comparison 
+	 */
 
 	// threadIdx.x is a built-in variable provided by CUDA at runtime, this gives each of the threads a unique index that corresponds to a frame number 
 	int index = blockIdx.x * blockDim.x + threadIdx.x;
@@ -680,11 +582,12 @@ __global__ void gDrmsClosest(const int msize, const int nframes, const float* gc
 // a kernel for the maxspeed flag for calculation with limited memory; this is for comparing the frames of the chunk to the previously found clusters
 __global__ void gDrmsClustersMax(const int msize, const int nframes, const float* gclust_dmtx, const int cluster, const float cutoff, const int* frameapp_read, int* frameapp_write, float* distance, const float nointrasegm_corr_fact, const int nclusters, const int clustercenter) {
 	
-	// msize = size of each distance matrix; nframes = number of frames used for clustering;
-	// gclust_dmtx = array of ALL distance matrices; cluster = number of the cluster; frameapp stores the cluster center 
-	// of each frame. There is one frameapp array for reading only and one for writing only, because otherwise this could go wrong for very long arrays; 
-	// distance stores the calculated drms because it will be needed in the post processing;
-	// nclusters passes the number of already found clusters; clustercenter passes the center of the current cluster
+	/* msize = size of each distance matrix; nframes = number of frames used for clustering;
+	 * gclust_dmtx = array of ALL distance matrices; cluster = number of the cluster; frameapp stores the cluster center 
+	 * of each frame. There is one frameapp array for reading only and one for writing only, because otherwise this could go wrong for very long arrays; 
+	 * distance stores the calculated drms because it will be needed in the post processing;
+	 * nclusters passes the number of already found clusters; clustercenter passes the center of the current cluster 
+	 */
 
 	// threadIdx.x is a built-in variable provided by CUDA at runtime, this gives each of the threads a unique index that corresponds to a frame number 
 	int index = blockIdx.x * blockDim.x + threadIdx.x; 	
@@ -721,11 +624,12 @@ __global__ void gDrmsClustersMax(const int msize, const int nframes, const float
 // a kernel for the lfull flag for calculation with limited memory; this is for comparing the frames of the chunk to the previously found clusters
 __global__ void gDrmsClustersClosest(const int msize, const int nframes, const float* gclust_dmtx, const int cluster, const int* frameapp_read, int* frameapp_write, float* distance, const float nointrasegm_corr_fact, const int nclusters, const int clustercenter) {
 	
-	// msize = size of each distance matrix; nframes = number of frames used for clustering;
-	// gclust_dmtx = array of ALL distance matrices; cluster = number of the cluster; frameapp stores the cluster center 
-	// of each frame. There is one frameapp array for reading only and one for writing only, because otherwise this could go wrong for very long arrays; 
-	// distance stores the calculated for comparison;
-	// nclusters passes the number of already found clusters; clustercenter passes the center of the current cluster
+	/* msize = size of each distance matrix; nframes = number of frames used for clustering;
+	 * gclust_dmtx = array of ALL distance matrices; cluster = number of the cluster; frameapp stores the cluster center 
+	 * of each frame. There is one frameapp array for reading only and one for writing only, because otherwise this could go wrong for very long arrays; 
+	 * distance stores the calculated for comparison;
+	 * nclusters passes the number of already found clusters; clustercenter passes the center of the current cluster 
+	 */
 
 	// threadIdx.x is a built-in variable provided by CUDA at runtime, this gives each of the threads a unique index that corresponds to a frame number 
 	int index = blockIdx.x * blockDim.x + threadIdx.x;
@@ -757,12 +661,13 @@ __global__ void gDrmsClustersClosest(const int msize, const int nframes, const f
 // a kernel for the maxspeed flag for calculation with limited memory; this is for comparing the frames of the chunk among themselves
 __global__ void gDrmsFramesMax(const int msize, const int nframes, const float* gclust_dmtx, const int cluster, const float cutoff, const int* frameapp_read, int* frameapp_write, float* distance, const float nointrasegm_corr_fact, const int framesFinished, const int nclusters, int* newClusters, int* clusterCenters ) {
 	
-	// msize = size of each distance matrix; nframes = number of frames used for clustering;
-	// gclust_dmtx = array of ALL distance matrices; cluster = center of a possible cluster; frameapp stores the cluster center 
-	// of each frame. There is one frameapp array for reading only and one for writing only, because otherwise this could go wrong for very long arrays;
-	// distance stores the calculated drms because it will be needed in the post processing;
-	// framesFinished passes the number of processed frames in a previous chunk; nclusters passes the number of already found clusters;
-	// newClusters stores the number of new found clusters in this chunk; clusterCenters stores the centers of these clusters
+	/* msize = size of each distance matrix; nframes = number of frames used for clustering;
+	 * gclust_dmtx = array of ALL distance matrices; cluster = center of a possible cluster; frameapp stores the cluster center 
+	 * of each frame. There is one frameapp array for reading only and one for writing only, because otherwise this could go wrong for very long arrays;
+	 * distance stores the calculated drms because it will be needed in the post processing;
+	 * framesFinished passes the number of processed frames in a previous chunk; nclusters passes the number of already found clusters;
+	 * newClusters stores the number of new found clusters in this chunk; clusterCenters stores the centers of these clusters 
+	 */
 	
 
 	// threadIdx.x is a built-in variable provided by CUDA at runtime, this gives each of the threads a unique index that corresponds to a frame number 
@@ -812,12 +717,13 @@ __global__ void gDrmsFramesMax(const int msize, const int nframes, const float* 
 // a kernel for the lfull flag for calculation with limited memory; this is for comparing the frames of the chunk among themselves
 __global__ void gDrmsFramesClosest(const int msize, const int nframes, const float* gclust_dmtx, const int cluster, const int* frameapp_read, int* frameapp_write, float* distance, const float nointrasegm_corr_fact, const int framesFinished, const int nclusters, int* newClusters, int* clusterCenters ) {
 	
-	// msize = size of each distance matrix; nframes = number of frames used for clustering;
-	// gclust_dmtx = array of ALL distance matrices; cluster = center of a possible cluster; frameapp stores the cluster center 
-	// of each frame. There is one frameapp array for reading only and one for writing only, because otherwise this could go wrong for very long arrays;
-	// distance stores the calculated drms for comparison;
-	// framesFinished passes the number of processed frames in a previous chunk; nclusters passes the number of already found clusters;
-	// newClusters stores the number of new found clusters in this chunk; clusterCenters stores the centers of these clusters	
+	/* msize = size of each distance matrix; nframes = number of frames used for clustering;
+	 * gclust_dmtx = array of ALL distance matrices; cluster = center of a possible cluster; frameapp stores the cluster center 
+	 * of each frame. There is one frameapp array for reading only and one for writing only, because otherwise this could go wrong for very long arrays;
+	 * distance stores the calculated drms for comparison;
+	 * framesFinished passes the number of processed frames in a previous chunk; nclusters passes the number of already found clusters;
+	 * newClusters stores the number of new found clusters in this chunk; clusterCenters stores the centers of these clusters
+	 */
 	
 	// threadIdx.x is a built-in variable provided by CUDA at runtime, this gives each of the threads a unique index that corresponds to a frame number 
 	int index = blockIdx.x * blockDim.x + threadIdx.x;
@@ -865,6 +771,7 @@ __global__ void gDrmsFramesClosest(const int msize, const int nframes, const flo
 	frameapp_write[index] = frameapp_read[index];
 }
 
+//shifts the center of mass to the origin
 __global__ void shiftToCenter(float* gclust_coords, const int nato, const int nframes) {
   
 	int index = blockIdx.x * blockDim.x + threadIdx.x;
@@ -878,7 +785,7 @@ __global__ void shiftToCenter(float* gclust_coords, const int nato, const int nf
   
 	int ii,jj;
 
-  // calculate the centre of mass 
+	// calculate the centre of mass 
 	for (ii=0; ii<3; ii++)
 		cms[ii] = 0.0;
   
@@ -891,14 +798,14 @@ __global__ void shiftToCenter(float* gclust_coords, const int nato, const int nf
 		cms[ii] /= nato;
 
 
-  // shift mov_xlist and ref_xlist to centre of mass
+	// shift mov_xlist and ref_xlist to centre of mass
 	for (ii=0; ii<nato; ii++) 
 		for (jj=0; jj<3; jj++) 
 			gclust_coords[3*nato*index+3*ii+jj] -= cms[jj];
 
 }
 
-//A macro for handling CUDA errors
+//wrapper function for handling CUDA errors
 void errorHandler  (cudaError_t error, int line){
   if(error != cudaSuccess)
   {
@@ -911,25 +818,22 @@ void errorHandler  (cudaError_t error, int line){
 // the CUDA compiler generates C++ object files, thus the main procedure has to be an extern "C" for usage in wordom
 extern "C" int gClusterRmsd (struct inp_Cluster *inp_cluster,float *distance) {
 	
-	
 	int ii;
-    float cutoff = inp_cluster->threshold;
-   	int nato = inp_cluster->nato;
+	float cutoff = inp_cluster->threshold;
+	int nato = inp_cluster->nato;
 	int totframe = inp_cluster->totframe;
-	//float **gclust_coords = inp_cluster->gclust_coords;
 	float *gclust_coords = inp_cluster->gclust_coords;
-    int *frameapp = inp_cluster->frameapp;
-    int super = inp_cluster->super;
-    int step = inp_cluster->step;
-    int frames = totframe/step+(totframe%step == 0 ? 0 : 1); //the number of frames that have to be analysed 
-
+	int *frameapp = inp_cluster->frameapp;
+	int super = inp_cluster->super;
+	int step = inp_cluster->step;
+	int frames = totframe/step+(totframe%step == 0 ? 0 : 1); //the number of frames that have to be analysed 
+	
 	size_t coords_size = 3*nato*sizeof(float); //memory size for coords of a single frame in one dimension
 	size_t memsize= frames * coords_size; //memory size for the array of coords of all frames
 	size_t cmemsize= frames * sizeof(int); //memory size for the frameapp array
 	size_t dmemsize= frames * sizeof(float); //memory size for the distance array
 	size_t totalmemsize = memsize + 2*cmemsize + dmemsize;
 	
-
 	float *devPtr_gclust_coords;
 	float *devPtr_distance;
 	int *devPtr_frameapp1;
@@ -938,6 +842,7 @@ extern "C" int gClusterRmsd (struct inp_Cluster *inp_cluster,float *distance) {
 	int deviceCount; // number of devices, i.e. gpus
 	int device;
 	int threadsPerBlock;
+	int blocks;
 	struct cudaDeviceProp properties;		
 	cudaError_t cudaResultCode = cudaGetDeviceCount(&deviceCount);
 	if (cudaResultCode != cudaSuccess)
@@ -952,18 +857,10 @@ extern "C" int gClusterRmsd (struct inp_Cluster *inp_cluster,float *distance) {
 			if (device==0){
 				fprintf(stderr,"multiProcessorCount %d\n",properties.multiProcessorCount);
 				fprintf(stderr,"maxThreadsPerMultiProcessor %d\n",properties.maxThreadsPerMultiProcessor);
-				
-				threadsPerBlock = 448; //100% occupancy
-				//threadsPerBlock = 704; //69% occupancy
-				
-				/*if(properties.major == 2)
-					threadsPerBlock = 512;
-				else
-					threadsPerBlock = 320;*/
 			}
 	}
 	
-	fprintf(stderr,"threads per block: %d\n",threadsPerBlock);
+	//fprintf(stderr,"threads per block: %d\n",threadsPerBlock);
 	
 	size_t freemem;
 	size_t total;
@@ -971,88 +868,92 @@ extern "C" int gClusterRmsd (struct inp_Cluster *inp_cluster,float *distance) {
 	//cuda API functions always return some type of error, but if no error occured, this error is just a cudaSuccess
 	//errorHandler terminates program in case there was no cudaSuccess reported
 	errorHandler(cudaMemGetInfo(&freemem, &total),__LINE__);
-	
-		
-	fprintf(stderr,"Available memory on device: %u\n Total memory necessary on device for calculation: %u\n",freemem,totalmemsize);
-		
-			
-		//allocate gpu memory
-		errorHandler(cudaMalloc((void**)&devPtr_gclust_coords, memsize),__LINE__);
-		errorHandler(cudaMalloc((void**)&devPtr_distance, dmemsize),__LINE__);
-		errorHandler(cudaMalloc((void**)&devPtr_frameapp1, cmemsize),__LINE__); 
-		errorHandler(cudaMalloc((void**)&devPtr_frameapp2, cmemsize),__LINE__); 
-						
-		//copy coords to gpu
-		errorHandler(cudaMemcpy(devPtr_gclust_coords, gclust_coords + 3*nato, frames*coords_size, cudaMemcpyHostToDevice),__LINE__);
+	if(freemem < total) {
+		fprintf(stderr,"Available graphics memory: %f8.3 MBytes\n Required memory for calculation: %f8.3 MBytes\n",freemem/1000000,totalmemsize/1000000);
+		fprintf(stderr,"Terminating calculation. Maybe use the --STEP option?\n");
+		exit(-1);
+	}
 
-		
-		//in order to find the closest cluster we set the distances to the cutoff for the start
-		//if(!inp_cluster->maxspeed){
-			for(ii=0; ii<=frames;ii++) {
-					distance[ii] = cutoff;
-				}
-			errorHandler(cudaMemcpy(devPtr_distance, distance+1, dmemsize, cudaMemcpyHostToDevice),__LINE__);
-		//}
-			
-		//Set all indices to -1
-		errorHandler(cudaMemset((void*)devPtr_frameapp1,-1,cmemsize),__LINE__);
-				
+	//allocate gpu memory
+	errorHandler(cudaMalloc((void**)&devPtr_gclust_coords, memsize),__LINE__);
+	errorHandler(cudaMalloc((void**)&devPtr_distance, dmemsize),__LINE__);
+	errorHandler(cudaMalloc((void**)&devPtr_frameapp1, cmemsize),__LINE__);
+	errorHandler(cudaMalloc((void**)&devPtr_frameapp2, cmemsize),__LINE__);
 	
-		int blocks = frames/threadsPerBlock +1; //in total we want 1 thread for each frame
-		
-		if(super) {
+	//copy coords to gpu
+	errorHandler(cudaMemcpy(devPtr_gclust_coords, gclust_coords + 3*nato, frames*coords_size, cudaMemcpyHostToDevice),__LINE__);
+
+	//distances are set to the cutoff for the start
+	for(ii=0; ii<=frames;ii++) {
+			distance[ii] = cutoff;
+		}
+	errorHandler(cudaMemcpy(devPtr_distance, distance+1, dmemsize, cudaMemcpyHostToDevice),__LINE__);
+
+	//Set all indices to -1
+	errorHandler(cudaMemset((void*)devPtr_frameapp1,-1,cmemsize),__LINE__);
+
+	threadsPerBlock = 256; //tuned for 100% occupancy with CUDA occupancy calculator
+	blocks = frames/threadsPerBlock +1; //in total we want 1 thread for each frame
+
+	if(super) {
+
+		//shit the center of mass to the origin first for all frames
+		shiftToCenter<<<blocks, threadsPerBlock>>>(devPtr_gclust_coords, nato, frames);
+		errorHandler( cudaPeekAtLastError(),__LINE__);
+	
+		//change block size for the main kernel function for 100% occupancy again
+		if(properties.major == 2)
+			threadsPerBlock = 448;
+		else
+			threadsPerBlock = 256;
 			
-			shiftToCenter<<<blocks, threadsPerBlock>>>(devPtr_gclust_coords, nato, frames);
+		blocks = frames/threadsPerBlock +1; //in total we want 1 thread for each frame
+				
+		for(ii=0;ii< frames;ii++){
+						
+			//the kernel ensures that frameapp_read has been written to frameapp_write entirely after one iteration
+			//to prevent wasting time on copying frameapp_write back to frameapp_read the kernel simply gets launched with both interchanged in every second iteration
+				
+			if((ii+1)%2) rmsd_super_kernel<<<blocks, threadsPerBlock>>>(nato, frames, devPtr_gclust_coords, ii, devPtr_frameapp1, devPtr_frameapp2, devPtr_distance, inp_cluster->maxspeed);
+			else rmsd_super_kernel<<<blocks, threadsPerBlock>>>(nato, frames, devPtr_gclust_coords, ii, devPtr_frameapp2, devPtr_frameapp1, devPtr_distance, inp_cluster->maxspeed);
+						
 			errorHandler( cudaPeekAtLastError(),__LINE__);
+			fprintf(stderr,"Stage %% %f\r",(float)ii/frames*100.0);//just a progress bar
+						
+		}
 		
-					
-			for(ii=0;ii< frames;ii++){
-							
-				//the kernel ensures that frameapp_read has been written to frameapp_write entirely after one iteration
-				//to prevent wasting time on copying frameapp_write back to frameapp_read the kernel simply gets launched with both interchanged in every second iteration
-					
-				if((ii+1)%2) gRmsdSuper<<<blocks, threadsPerBlock>>>(nato, frames, devPtr_gclust_coords, ii, devPtr_frameapp1, devPtr_frameapp2, devPtr_distance, inp_cluster->maxspeed);
-				else gRmsdSuper<<<blocks, threadsPerBlock>>>(nato, frames, devPtr_gclust_coords, ii, devPtr_frameapp2, devPtr_frameapp1, devPtr_distance, inp_cluster->maxspeed);
-							
-				errorHandler( cudaPeekAtLastError(),__LINE__);
-				fprintf(stderr,"Stage %% %f\r",(double)ii/frames*100.0);//just a progress bar
-							
-			}
-			
-			
-		} else {
-			
-			for(ii=0;ii< frames;ii++){
-							
-				//the kernel ensures that frameapp_read has been written to frameapp_write entirely after one iteration
-				//to prevent wasting time on copying frameapp_write back to frameapp_read the kernel simply gets launched with both interchanged in every second iteration
-					
-				if((ii+1)%2) gRmsd<<<blocks, threadsPerBlock>>>(nato, frames, devPtr_gclust_coords, ii, devPtr_frameapp1, devPtr_frameapp2, devPtr_distance, inp_cluster->maxspeed);
-				else gRmsd<<<blocks, threadsPerBlock>>>(nato, frames, devPtr_gclust_coords, ii, devPtr_frameapp2, devPtr_frameapp1, devPtr_distance, inp_cluster->maxspeed);
-							
-				errorHandler( cudaPeekAtLastError(),__LINE__);
-				fprintf(stderr,"Stage %% %f\r",(double)ii/frames*100.0);//just a progress bar
-							
-			}
-		}	
-			printf("\n");
-				
-			//DEBUG fprintf(stderr,"Copying results to Host ..\n");
-			
-			if((ii+1)%2) errorHandler( cudaMemcpy(frameapp+1, devPtr_frameapp2, cmemsize, cudaMemcpyDeviceToHost),__LINE__);
-			else errorHandler( cudaMemcpy(frameapp+1, devPtr_frameapp1, cmemsize, cudaMemcpyDeviceToHost),__LINE__);
-				
-			errorHandler( cudaMemcpy(distance+1, devPtr_distance, dmemsize, cudaMemcpyDeviceToHost),__LINE__);
-				
-			//free GPU memory
-			errorHandler( cudaFree(devPtr_gclust_coords),__LINE__);
-			errorHandler( cudaFree(devPtr_frameapp1),__LINE__);
-			errorHandler( cudaFree(devPtr_frameapp2),__LINE__);
-			errorHandler( cudaFree(devPtr_distance),__LINE__);		
-			return 0;
 		
-	//}
+	} else {
 		
+		for(ii=0;ii< frames;ii++){
+						
+			//the kernel ensures that frameapp_read has been written to frameapp_write entirely after one iteration
+			//to prevent wasting time on copying frameapp_write back to frameapp_read the kernel simply gets launched with both interchanged in every second iteration
+				
+			if((ii+1)%2) rmsd_kernel<<<blocks, threadsPerBlock>>>(nato, frames, devPtr_gclust_coords, ii, devPtr_frameapp1, devPtr_frameapp2, devPtr_distance, inp_cluster->maxspeed);
+			else rmsd_kernel<<<blocks, threadsPerBlock>>>(nato, frames, devPtr_gclust_coords, ii, devPtr_frameapp2, devPtr_frameapp1, devPtr_distance, inp_cluster->maxspeed);
+						
+			errorHandler( cudaPeekAtLastError(),__LINE__);
+			fprintf(stderr,"Stage %% %f\r",(float)ii/frames*100.0);//just a progress bar
+						
+		}
+	}	
+		printf("\n");
+			
+		//DEBUG fprintf(stderr,"Copying results to Host ..\n");
+		
+		//make sure to copy the correct frameapp array back
+		if((ii+1)%2) errorHandler( cudaMemcpy(frameapp+1, devPtr_frameapp2, cmemsize, cudaMemcpyDeviceToHost),__LINE__);
+		else errorHandler( cudaMemcpy(frameapp+1, devPtr_frameapp1, cmemsize, cudaMemcpyDeviceToHost),__LINE__);
+			
+		errorHandler( cudaMemcpy(distance+1, devPtr_distance, dmemsize, cudaMemcpyDeviceToHost),__LINE__);
+			
+		//free GPU memory
+		errorHandler( cudaFree(devPtr_gclust_coords),__LINE__);
+		errorHandler( cudaFree(devPtr_frameapp1),__LINE__);
+		errorHandler( cudaFree(devPtr_frameapp2),__LINE__);
+		errorHandler( cudaFree(devPtr_distance),__LINE__);		
+		return 0;		
 }
 	
 
@@ -1116,7 +1017,7 @@ extern "C" int gClusterDrms (struct inp_Cluster *inp_cluster,float *distance)
 	errorHandler(cudaMemGetInfo(&freemem, &total),__LINE__);
 	
 	//check if there is enough gpu memory for the job and split up the calculation if not
-	if(freemem < totalmemsize) {		
+	if(freemem < totalmemsize) {
 		//DEBUG fprintf(stderr,"Available memory on device: %u\n Total memory necessary on device for calculation: %u\n .. splitting up calculation\n",freemem,totalmemsize);
 		
 		int framesRemaining = frames; //the number of frames that still have to be analysed

@@ -1,0 +1,85 @@
+BINDIR=../bin
+GCC = gcc
+OBJECTS := main.o fileio.o tools.o datahandler.o analysis.o geometry.o moldiff.o cluster.o pca.o qentropy.o kga.o ssa.o enm.o psn.o corr.o surf.o samplemod.o xdrfile.o xdrfile_xtc.o qcprot.o volumes.o
+
+# -------------------------------------------------------------
+# some flags to optimize compilation - user should check these!
+# -------------------------------------------------------------
+
+# which version of fortran compiler is installed ?
+GFORTRAN = 1    # if gfortran is installed
+#G77 = 1         # if older g77 is installed (needs also g2c libraries)
+
+# lapack libraries are used to diagonalize matrices - needed by RMSD, PCA, ENM
+# sometimes installed as lapack-3: check and eventually correct in the 
+# #ifdef LAPACK bit (around line 47 and beyond)
+LAPACK = 1      # if lapack libraries are installed
+#CLAPACK = 1     # if clapack libraries are installed
+
+# if compiling on a Mac, lapack are not used, but this flag has to be set
+# note: compiling (and running!) on a Mac is still _experimental_
+#MACOSX = 1      # if compiling on a Mac (needs xtools)
+
+# --------------------------------------------------------
+# users should not need to modify anything below this line
+# --------------------------------------------------------
+
+# LARGEFILE64_SOURCE and FILE_OFFSET_BITS=64 are needed for LFS (large file
+# support) to access files > 2GB. Might not work on all platform
+# GNU_SOURCE is needed by fnmatch (in GetSele function)
+
+#CFLAGS :=  -D_GNU_SOURCE -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -fpic #-static
+#CFLAGS :=  -D_GNU_SOURCE -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -D GMX -D THREADED -static -g #-pg
+#LIBS :=   -lm -lpthread
+##CFLAGS :=  -D_GNU_SOURCE -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -D GMX -D THREADED -static -g #-pg
+#CFLAGS :=  -D_GNU_SOURCE -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -D GMX -D THREADED
+#LIBS :=   -lm -lpthread
+# to compile 32-bit binaries on other architectures (cross-compiling):
+CFLAGS :=  -D_GNU_SOURCE -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -D GMX -D THREADED -m32 -static -g #-Winline
+LIBS :=   -lm -lpthread
+
+PYINCLUDE= `python-config --includes`
+
+ifdef LAPACK
+ CFLAGS  := $(CFLAGS) -D LAPACK
+ ifdef G77
+  LIBS := -llapack  -lblas -lg2c $(LIBS)
+ endif
+ ifdef GFORTRAN
+  LIBS := -D GCC4 -llapack  -lblas -lgfortran $(LIBS)
+ endif
+endif
+
+ifdef CLAPACK
+ CFLAGS  := $(CFLAGS) -D LAPACK
+ ifdef G77
+  LIBS := -lcblas -lclapack -lg2c $(LIBS)
+ endif
+ ifdef GFORTRAN
+  LIBS := -lcblas -lclapack -lgfortran $(LIBS)
+ endif
+endif
+
+ifdef MACOSX
+ CFLAGS  := $(CFLAGS) -D MACOSX
+ LIBS =   -framework vecLIB -lm
+endif
+
+ifdef GFORTRAN          # we are assuming that gfortran means gcc>4.0
+ CFLAGS := $(CFLAGS) -ffast-math -funroll-all-loops # -ftree-vectorize -g
+endif
+
+wordom: $(OBJECTS)
+	$(GCC) $(CFLAGS) $(OPTFLAGS) $(OBJECTS)  $(LDFLAGS) $(LIBS) -o $(BINDIR)/wordom
+wordom.i386: $(OBJECTS)
+	$(GCC) $(CFLAGS) -m32 -march=i386 $(OPTFLAGS) $(OBJECTS)  $(LDFLAGS) $(LIBS) -o $(BINDIR)/wordom.i386
+wordom.x86-64: $(OBJECTS)
+	$(GCC) $(CFLAGS) -m64 -march=athlon64 $(OPTFLAGS) $(OBJECTS)  $(LDFLAGS) $(LIBS) -o $(BINDIR)/wordom.x86-64
+wordom.so: $(OBJECTS)
+	$(GCC) -lc $(CFLAGS) $(OPTFLAGS) $(OBJECTS)  $(LDFLAGS) $(LIBS) -o $(BINDIR)/wordom.so
+clean:
+	rm -f $(OBJECTS) wordom_wrap.o
+pywordom:
+	swig -python wordom.i
+	$(GCC) -fpic -D LAPACK -c wordom_wrap.c fileio.c xdrfile.c xdrfile_xtc.c tools.c qcprot.c $(PYINCLUDE)
+	$(GCC) -shared -llapack -lblas -lm wordom_wrap.o fileio.o xdrfile.o xdrfile_xtc.o tools.o qcprot.o -o _wordom.so

@@ -7,7 +7,7 @@
 project(WORDOM)
 cmake_minimum_required(VERSION 2.6.2)
 
-find_package(CUDA QUIET)
+find_package(CUDA)
 
 if (CUDA_FOUND)
 	cuda_add_executable(wordom src/main.c src/fileio.c src/tools.c src/datahandler.c src/analysis.c src/geometry.c src/moldiff.c src/cluster.c src/pca.c src/qentropy.c src/kga.c src/ssa.c src/enm.c src/psn.c src/corr.c src/surf.c src/xdrfile.c src/xdrfile_xtc.c src/qcprot.c src/volumes.c src/com.c src/ring.c src/tilt.c src/twist.c src/hole.c src/flux.c src/gCluster.cu)

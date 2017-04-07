@@ -46,6 +46,8 @@ typedef struct _coorsetdata      // coordinate sets data
    struct intlist frame_list;
    char        *datasetname;
 } CoorSetData;
+
+#ifndef CUDA_INCLUDES
 // ------------------------------------------------------------------
 // ** Mawaf Input Structure
 struct inp_A
@@ -214,4 +216,5 @@ void spotBeg ( char **input, int nlines, int *begIndex );
 //----------------------------------------------------------
 void Get_Atype ( char **, int, int * , int ) ;
 void Get_Etype ( char **, int, int * , int ) ;
-#endif
+#endif /*CUDA_INCLUDES*/
+#endif /*ANALYSIS*/

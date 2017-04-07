@@ -1947,49 +1947,46 @@ int Post_Gcluster(struct inp_Cluster *inp_cluster,FILE * oA_f)
 		//DEBUG fprintf(oA_f,"Results gcluster:\n");
 		//DEBUG fprintf( oA_f, " %6s %11s %5s %6s\n","frame","center","cluster#","distance");
 	    
+	    //calculate the distances and fill the frameapp array using CUDA
 	    if(inp_cluster->distance == 1) gClusterRmsd(inp_cluster,distance);
 		if(inp_cluster->distance == 2) gClusterDrms(inp_cluster,distance);
 		    
-			int ii,jj,index; 
-			
-			
-			//for(ii = 0; ii <= frames;ii++)
-				//fprintf(stdout,"DEBUG frame %d  -> center %d -> distance %f\n",ii,inp_cluster->frameapp[ii],distance[ii]);
+		int ii,jj,index; 	
 		
-			fprintf(stderr,"GPU calculation finished. Postprocessing ..\n");
-		
-			//generating the actual clusters from the frameapp array
-			for(ii = 1; ii <= frames; ii++) {
+		//for(ii = 0; ii <= frames;ii++)
+			//fprintf(stdout,"DEBUG frame %d  -> center %d -> distance %f\n",ii,inp_cluster->frameapp[ii],distance[ii]);
+	
+		fprintf(stderr,"GPU calculation finished. Postprocessing ..\n");
+	
+		//generating the actual clusters from the frameapp array
+		for(ii = 1; ii <= frames; ii++) {
+			
+			//after gpu calculation frameapp contains not the cluster numbers but the clustercenters
+			//so we get clustercenter from frameapp and correct it according to the stepsize
+			int clustercenter = (inp_cluster->frameapp[ii] - 1)*inp_cluster->step +1;
+			
+			//we check the value of frameapp of all frames, everytime we find a clustercenter that matches the current frame we found a new cluster
+			if(inp_cluster->frameapp[ii] == ii) {
 				
-				//after gpu calculation frameapp contains not the cluster numbers but the clustercenters
-				//so we get clustercenter from frameapp and correct it according to the stepsize
-				int clustercenter = (inp_cluster->frameapp[ii] - 1)*inp_cluster->step +1;
-				
-				//we check the value of frameapp of all frames, everytime we find a clustercenter that matches the current frame we found a new cluster
-				if(inp_cluster->frameapp[ii] == ii) {
-					index = inp_cluster->nclusters;
-					inp_cluster->nclusters += 1;
-					inp_cluster->clusterlist[index] = (_clusters*) calloc( 1, sizeof(_clusters));
-					inp_cluster->clusterlist[index][0].center = clustercenter;
-					//inp_cluster->clusterlist[index][0].distance = (float*) calloc (inp_cluster->msize , sizeof (float));
-					inp_cluster->clusterlist[index][0].nelements = 1;
-					inp_cluster->frameapp[ii] = index; //change frameapp from clustercenter to the number of the newly created cluster
-						
-					
-				} else {
-				
-					//if ii is no new cluster check the existing clusters and add it to the one that matches its frameapp value
-					for(jj = 0; jj<inp_cluster->nclusters;jj++) {
-						
-						if(inp_cluster->clusterlist[jj][0].center == clustercenter) {
-							inp_cluster->clusterlist[jj][0].nelements += 1;
-							inp_cluster->frameapp[ii] = jj;
-						}
+				index = inp_cluster->nclusters;
+				inp_cluster->nclusters += 1;
+				inp_cluster->clusterlist[index] = (_clusters*) calloc( 1, sizeof(_clusters));
+				inp_cluster->clusterlist[index][0].center = clustercenter;
+				//inp_cluster->clusterlist[index][0].distance = (float*) calloc (inp_cluster->msize , sizeof (float));
+				inp_cluster->clusterlist[index][0].nelements = 1;
+				inp_cluster->frameapp[ii] = index; //change frameapp from clustercenter to the number of the newly created cluster
+									
+			} else {		
+				//if ii is no new cluster check the existing clusters and add it to the one that matches its frameapp value
+				for(jj = 0; jj<inp_cluster->nclusters;jj++) {		
+					if(inp_cluster->clusterlist[jj][0].center == clustercenter) {
+						inp_cluster->clusterlist[jj][0].nelements += 1;
+						inp_cluster->frameapp[ii] = jj;
 					}
 				}
-			}	
-		
-		
+			}
+		}	
+			
 		//generating the output file
 		fprintf(stderr,"Generating outputfiles ..\n");
 		fprintf(inp_cluster->gOutput,"Results gcluster - numbers %u %u %u\n",inp_cluster->totframe/inp_cluster->step, inp_cluster->totframe, inp_cluster->step);
@@ -2004,14 +2001,13 @@ int Post_Gcluster(struct inp_Cluster *inp_cluster,FILE * oA_f)
 		}
 		
 		fclose(inp_cluster->gOutput);
-
 		free(distance);
 		
 		Post_Cluster(inp_cluster);
-		return 0;
-	
+		return 0;	
 }
 #endif
+
 //---------------------------------------------------------------------
 int FileClustering( char **ppcInput, int iInputLineNum )
 {

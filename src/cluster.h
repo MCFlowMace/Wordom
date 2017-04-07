@@ -90,6 +90,7 @@ struct ll_conf_neig
   struct ll_conf_neig  *next;
 };
 // ------------------------------------------------------------------
+
 struct inp_Cluster
 {
   char           title[64];
@@ -239,6 +240,7 @@ struct inp_CAssign
 };
 // ------------------------------------------------------------------
 
+#ifndef GCLUSTER_INCLUDES
 // ------------------------------------------------------------------
 int Read_iCluster(char **input, int inp_index, struct inp_Cluster * , char * , Molecule * , CoorSetData *coorsetdata, int nframe );
 //----------------------------------------------------------
@@ -269,6 +271,6 @@ int CheckClusters( float **, _cluster * );
 // ------------------------------------------------------------------
 int FileClustering( char **ppcInput, int iInputLineNum );
 // ------------------------------------------------------------------
-
+#endif
 
 #endif
