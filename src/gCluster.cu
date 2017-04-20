@@ -868,8 +868,8 @@ extern "C" int gClusterRmsd (struct inp_Cluster *inp_cluster,float *distance) {
 	//cuda API functions always return some type of error, but if no error occured, this error is just a cudaSuccess
 	//errorHandler terminates program in case there was no cudaSuccess reported
 	errorHandler(cudaMemGetInfo(&freemem, &total),__LINE__);
-	if(freemem < total) {
-		fprintf(stderr,"Available graphics memory: %f8.3 MBytes\n Required memory for calculation: %f8.3 MBytes\n",freemem/1000000,totalmemsize/1000000);
+	if(freemem < totalmemsize) {
+		fprintf(stderr,"Available graphics memory: %8.3f MBytes\nRequired memory for calculation: %8.3f MBytes\n",(float)freemem/1000000,(float)totalmemsize/1000000);
 		fprintf(stderr,"Terminating calculation. Maybe use the --STEP option?\n");
 		exit(-1);
 	}
