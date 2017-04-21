@@ -943,8 +943,8 @@ extern "C" int gClusterRmsd (struct inp_Cluster *inp_cluster,float *distance) {
 		//DEBUG fprintf(stderr,"Copying results to Host ..\n");
 		
 		//make sure to copy the correct frameapp array back
-		if((ii+1)%2) errorHandler( cudaMemcpy(frameapp+1, devPtr_frameapp2, cmemsize, cudaMemcpyDeviceToHost),__LINE__);
-		else errorHandler( cudaMemcpy(frameapp+1, devPtr_frameapp1, cmemsize, cudaMemcpyDeviceToHost),__LINE__);
+		if((ii+1)%2) errorHandler( cudaMemcpy(frameapp+1, devPtr_frameapp1, cmemsize, cudaMemcpyDeviceToHost),__LINE__);
+		else errorHandler( cudaMemcpy(frameapp+1, devPtr_frameapp2, cmemsize, cudaMemcpyDeviceToHost),__LINE__);
 			
 		errorHandler( cudaMemcpy(distance+1, devPtr_distance, dmemsize, cudaMemcpyDeviceToHost),__LINE__);
 			
@@ -1035,7 +1035,7 @@ extern "C" int gClusterDrms (struct inp_Cluster *inp_cluster,float *distance)
 			errorHandler(cudaMemGetInfo(&freemem, &total),__LINE__);
 			
 			//number of frames that fit into memory; 2MB of the total memory reported to freemem have to remain free, allocations fail otherwise (value found by trial and error)
-			nframes = (freemem -2000000 - clust_dmtx_mem - sizeof(int))/(dmtx_size+3*sizeof(int)+sizeof(float));
+			nframes = (freemem -10000000 - clust_dmtx_mem - sizeof(int))/(dmtx_size+3*sizeof(int)+sizeof(float));
 			//DEBUG fprintf(stderr,"Free memory: %u, Frames remaining: %d, Frames fitting into memory: %d, Number of clusters: %d\n",freemem,framesRemaining,nframes,nclusters);
 			
 			//nframes is either the number of frames that fit into gpu memory, or the number of remaining frames
@@ -1235,8 +1235,8 @@ extern "C" int gClusterDrms (struct inp_Cluster *inp_cluster,float *distance)
 			
 			//DEBUG fprintf(stderr,"Copying results to Host ..\n");
 		
-			if((ii+1)%2) errorHandler( cudaMemcpy(frameapp+1, devPtr_frameapp2, cmemsize, cudaMemcpyDeviceToHost),__LINE__);
-			else errorHandler( cudaMemcpy(frameapp+1, devPtr_frameapp1, cmemsize, cudaMemcpyDeviceToHost),__LINE__);
+			if((ii+1)%2) errorHandler( cudaMemcpy(frameapp+1, devPtr_frameapp1, cmemsize, cudaMemcpyDeviceToHost),__LINE__);
+			else errorHandler( cudaMemcpy(frameapp+1, devPtr_frameapp2, cmemsize, cudaMemcpyDeviceToHost),__LINE__);
 			
 			errorHandler( cudaMemcpy(distance+1, devPtr_distance, dmemsize, cudaMemcpyDeviceToHost),__LINE__);
 			

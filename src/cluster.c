@@ -1948,13 +1948,14 @@ int Post_Gcluster(struct inp_Cluster *inp_cluster,FILE * oA_f)
 		//DEBUG fprintf( oA_f, " %6s %11s %5s %6s\n","frame","center","cluster#","distance");
 	    
 	    //calculate the distances and fill the frameapp array using CUDA
+
 	    if(inp_cluster->distance == 1) gClusterRmsd(inp_cluster,distance);
 		if(inp_cluster->distance == 2) gClusterDrms(inp_cluster,distance);
 		    
 		int ii,jj,index; 	
 		
 		//for(ii = 0; ii <= frames;ii++)
-			//fprintf(stdout,"DEBUG frame %d  -> center %d -> distance %f\n",ii,inp_cluster->frameapp[ii],distance[ii]);
+		//	fprintf(stdout,"DEBUG frame %d  -> center %d -> distance %f\n",ii,inp_cluster->frameapp[ii],distance[ii]);
 	
 		fprintf(stderr,"GPU calculation finished. Postprocessing ..\n");
 	
@@ -2002,7 +2003,6 @@ int Post_Gcluster(struct inp_Cluster *inp_cluster,FILE * oA_f)
 		
 		fclose(inp_cluster->gOutput);
 		free(distance);
-		
 		Post_Cluster(inp_cluster);
 		return 0;	
 }
