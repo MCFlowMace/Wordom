@@ -1158,8 +1158,8 @@ extern "C" int gClusterDrms (struct inp_Cluster *inp_cluster,float *distance)
 			//DEBUG fprintf(stderr,"Copying to Host ..\n");
 			
 			//copy back to host, by adding framesFinished/nclusters to the pointers we make sure not to overwrite the results from previous runs
-			if((nclusters + ii + 1)%2) errorHandler( cudaMemcpy(frameapp+framesFinished + 1, devPtr_frameapp2, cmemsize, cudaMemcpyDeviceToHost),__LINE__);
-			else errorHandler( cudaMemcpy(frameapp+framesFinished + 1, devPtr_frameapp1, cmemsize, cudaMemcpyDeviceToHost),__LINE__);
+			if((nclusters + ii + 1)%2) errorHandler( cudaMemcpy(frameapp+framesFinished + 1, devPtr_frameapp1, cmemsize, cudaMemcpyDeviceToHost),__LINE__);
+			else errorHandler( cudaMemcpy(frameapp+framesFinished + 1, devPtr_frameapp2, cmemsize, cudaMemcpyDeviceToHost),__LINE__);
 			errorHandler( cudaMemcpy(distance+framesFinished + 1, devPtr_distance, dmemsize, cudaMemcpyDeviceToHost),__LINE__);
 			errorHandler( cudaMemcpy(&newClusters, devPtr_newClusters, sizeof(int), cudaMemcpyDeviceToHost),__LINE__);
 			errorHandler( cudaMemcpy(cluster+nclusters, devPtr_cluster,newClusters*sizeof(int),cudaMemcpyDeviceToHost),__LINE__);
