@@ -1550,6 +1550,7 @@ void Raw2Struct(Molecule *molecule)
   int           rescounter;
   int           seg_rescounter;
   int           begres, endres;
+  int           hasCA, hasC, hasN, hasO;
   
   /*
   printf( "=== DEBUG: list right _inside_ Raw2Struct (%s) ===\n", molecule->rawmol.name );
@@ -1750,6 +1751,10 @@ void Raw2Struct(Molecule *molecule)
     }
   }
   molecule->rawmol.segbeg[0] = 1;
+  Res3ToRes1( molecule->rawmol.restype[ii-1], &molecule->seq1[rescounter] );
+  molecule->seq3[rescounter][0] = molecule->rawmol.restype[ii-1][0];
+  molecule->seq3[rescounter][1] = molecule->rawmol.restype[ii-1][1];
+  molecule->seq3[rescounter][2] = molecule->rawmol.restype[ii-1][2];
   molecule->nApR[rescounter] = atmcounter;
   for( jj=0; jj<molecule->nApR[rescounter]; jj++ )
     molecule->rawmol.segend[ii-jj-1] = 1;
@@ -1779,6 +1784,9 @@ void Raw2Struct(Molecule *molecule)
       molecule->segment[ii].pRes[jj].nApR = 0;
       molecule->segment[ii].pRes[jj].pAto = NULL;
       molecule->segment[ii].pRes[jj].presn = rescounter+1;
+      molecule->segment[ii].pRes[jj].pSeg = (void *)&molecule->segment[ii];
+      molecule->segment[ii].pRes[jj].segIndex = ii;
+      sprintf( molecule->segment[ii].pRes[jj].segName, "%s", molecule->segment[ii].segName );
       //molecule->pRes[rescounter] = molecule->segment[ii].pRes[jj];
       //fprintf( stdout, "DEBUG %s %d\n", molecule->segment[ii].segName, molecule->segment[ii].pRes[jj].presn ); fflush(stdout);
       seg_rescounter ++;
@@ -1949,6 +1957,33 @@ void Raw2Struct(Molecule *molecule)
         molecule->rawmol.presn[thisindex] = iProgResNum;
         molecule->segment[ii].pRes[jj].pAto[kk].presn = iProgResNum;
       }
+    }
+  }
+  
+  /* assign AA flag to each residue */
+  for(ii=0; ii<molecule->nSeg; ii++ )
+  {
+    for(jj=0; jj<molecule->segment[ii].nRpS; jj++)
+    {
+      hasCA = 0;
+      hasC = 0;
+      hasN = 0;
+      hasO = 0;
+      for(kk=0; kk<molecule->segment[ii].pRes[jj].nApR; kk++)
+      {
+        if( !strncmp( molecule->segment[ii].pRes[jj].pAto[kk].atmType, "CA", 2 ))
+          hasCA = 1;
+        if( !strncmp( molecule->segment[ii].pRes[jj].pAto[kk].atmType, "C", 1 ) && strlen(molecule->segment[ii].pRes[jj].pAto[kk].atmType) == 1)
+          hasC = 1;
+        if( !strncmp( molecule->segment[ii].pRes[jj].pAto[kk].atmType, "N", 1 ) && strlen(molecule->segment[ii].pRes[jj].pAto[kk].atmType) == 1)
+          hasN = 1;
+        if( !strncmp( molecule->segment[ii].pRes[jj].pAto[kk].atmType, "O", 1 ) && strlen(molecule->segment[ii].pRes[jj].pAto[kk].atmType) == 1)
+          hasO = 1;
+      }
+      if( hasCA + hasC + hasN + hasO == 4 )
+        molecule->segment[ii].pRes[jj].isAA = 1;
+      else
+        molecule->segment[ii].pRes[jj].isAA = 0;
     }
   }
   

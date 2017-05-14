@@ -36,20 +36,23 @@ int linkwalk(int nres, int **linklist, int *nlinks, struct simplecluster *cluste
   
   checked_links = calloc( nres, sizeof(int));        // whether the link to a res has been checked/added
   checked_res = calloc( nres, sizeof(int));          // whether a res has been checked/added
-  
-  for(ii=0; ii<nres; ii++)
+
+  for(ii=0; ii<nres; ++ii)
+  {
     cluster->cluspop[ii]=0;
-    
-  for(ii=0; ii<nres; ii++)
-    for(jj=0; jj<nres; jj++)
+    cluster->clusters[ii][ii]=0;
+    for(jj=ii+1; jj<nres; ++jj)
+    {
       cluster->clusters[ii][jj]=0;
-    
+      cluster->clusters[jj][ii]=0;
+    }
+  }
   cluspop = cluster->cluspop;
   clusters = cluster->clusters;
-  
-  
+
   nclusters = 0;
-  for( ii=0; ii<nres; ii++)
+  for(ii=0; ii<nres; ++ii)
+  {
     if( checked_res[ii] == 0 && nlinks[ii]>0 )
     {
       // this residue is not included in any previous cluster! a new cluster is born
@@ -83,6 +86,7 @@ int linkwalk(int nres, int **linklist, int *nlinks, struct simplecluster *cluste
           checked_res[clusters[thiscluster][jj]] = 1;
         }
     }
+  }
   
   free(checked_links);
   free(checked_res);
@@ -94,7 +98,7 @@ int linkwalk(int nres, int **linklist, int *nlinks, struct simplecluster *cluste
 
 // ------------------------------------------------------------------
 
-float fGetNormFactor(char *resType)
+float GetAANormFactor(char *resType)
 {
   // this returns the normalization value for each residue according to
   // Kannan and Vishveshwara, JMB,(1999)292,441-464
@@ -199,66 +203,65 @@ float fGetNormFactor(char *resType)
   else if(!strcmp( thisres, "VAL"))
     norm = 62.3673;
   
-  /* === Normalization Factors added by Fanelli and Co-Workers === */
-  
-  // 11-cis-retinal
-  else if(!strcmp( thisres, "RET"))
-    norm = 170.1355;
-  
-  // GDP
-  else if(!strcmp( thisres, "GDP"))
-    norm = 220.1921;
-   
-  // GTP
-  else if(!strcmp( thisres, "GTP"))
-    norm = 274.7802;
-    
-  // GTP in Galpha (PDB : 1CIP, 1CUL and 1TND)
-  else if(!strcmp( thisres, "GTA"))
-    norm = 361.3333;
-   
-  // GDP in Galpha (PDB : 1TAG)
-  else if(!strcmp( thisres, "GDA"))
-    norm = 293.0;
-
-  // Mg ion in GTP-Bound forms
-  else if(!strcmp( thisres, "MGT"))
-    norm = 22.0147;
-  
-  // Mg ion in GDP-Bound forms
-  else if(!strcmp( thisres, "MGD"))
-    norm = 14.6585;
-  
-  // Mg ion in GTP- & GDP- Bound forms
-  else if(!strcmp( thisres, "MGX"))
-    norm = 19.2477;
-
-  // Mg ion in Galpha GTP- & GDP- Bound forms (PDB : 1CIP, 1CUL, 1TAG and 1TND)
-  else if(!strcmp( thisres, "MGA"))
-    norm = 23.83333;
-  
-  // Structural water in 1CIP, 1CUL, 1TAG, 1TND and 1GZM
-  else if(!strcmp( thisres, "H2O"))
-    norm = 27.0;
-  // generic water in solvent
-  else if(!strcmp( thisres, "HOH") || !strcmp( thisres, "WAT") || !strcmp( thisres, "SOL"))
-    norm = 27.0;
-  
-  // ZM241385 - R.C. Stevens et al, Science vol 322, 21 Nov 2008
-  else if(!strcmp( thisres, "ZMA"))
-    norm = 139.000;
-  
-  // Lys296 covalently linked to 11-cis-retinal in rhodopsins
-  else if(!strcmp( thisres, "LYR"))
-    norm = 109.9498;
-
-  // Lys296 + 11-cis-retinal in rhodopsins
-  else if(!strcmp( thisres, "KRT"))
-    norm = 262.5612;
-  
-  // MN 
-  else if(!strcmp( thisres, "MNG"))
-    norm = 23.5;
+  ///* === Normalization Factors added by Fanelli and Co-Workers === */
+  //// 11-cis-retinal
+  //else if(!strcmp( thisres, "RET"))
+  //  norm = 170.1355;
+  //
+  //// GDP
+  //else if(!strcmp( thisres, "GDP"))
+  //  norm = 220.1921;
+  // 
+  //// GTP
+  //else if(!strcmp( thisres, "GTP"))
+  //  norm = 274.7802;
+  //  
+  //// GTP in Galpha (PDB : 1CIP, 1CUL and 1TND)
+  //else if(!strcmp( thisres, "GTA"))
+  //  norm = 361.3333;
+  // 
+  //// GDP in Galpha (PDB : 1TAG)
+  //else if(!strcmp( thisres, "GDA"))
+  //  norm = 293.0;
+  //
+  //// Mg ion in GTP-Bound forms
+  //else if(!strcmp( thisres, "MGT"))
+  //  norm = 22.0147;
+  //
+  //// Mg ion in GDP-Bound forms
+  //else if(!strcmp( thisres, "MGD"))
+  //  norm = 14.6585;
+  //
+  //// Mg ion in GTP- & GDP- Bound forms
+  //else if(!strcmp( thisres, "MGX"))
+  //  norm = 19.2477;
+  //
+  //// Mg ion in Galpha GTP- & GDP- Bound forms (PDB : 1CIP, 1CUL, 1TAG and 1TND)
+  //else if(!strcmp( thisres, "MGA"))
+  //  norm = 23.83333;
+  //
+  //// Structural water in 1CIP, 1CUL, 1TAG, 1TND and 1GZM
+  //else if(!strcmp( thisres, "H2O"))
+  //  norm = 27.0;
+  //// generic water in solvent
+  //else if(!strcmp( thisres, "HOH") || !strcmp( thisres, "WAT") || !strcmp( thisres, "SOL"))
+  //  norm = 27.0;
+  //
+  //// ZM241385 - R.C. Stevens et al, Science vol 322, 21 Nov 2008
+  //else if(!strcmp( thisres, "ZMA"))
+  //  norm = 139.000;
+  //
+  //// Lys296 covalently linked to 11-cis-retinal in rhodopsins
+  //else if(!strcmp( thisres, "LYR"))
+  //  norm = 109.9498;
+  //
+  //// Lys296 + 11-cis-retinal in rhodopsins
+  //else if(!strcmp( thisres, "KRT"))
+  //  norm = 262.5612;
+  //
+  //// MN 
+  //else if(!strcmp( thisres, "MNG"))
+  //  norm = 23.5;
   
   else
   {
@@ -280,7 +283,223 @@ float GetUserNormFactor(struct inp_psn *inp_psn, char *resType)
   return -999.999;
 }
 
+float GetParamDBNormFactor(struct inp_psn *inp_psn, char *resType)
+{
+  int              ii;
+  
+  if(inp_psn->iParamDBFlag)
+    for(ii=0; ii<inp_psn->iNumOfParamDBEntries; ii++)
+      if(strcmp(resType, inp_psn->pcParamDBResVect[ii]) == 0)
+      {
+        inp_psn->iUsedParamDBFlag         = 1;
+        inp_psn->piUsedDBParamIndices[ii] = 1;
+        return inp_psn->pfParamDBValVect[ii];
+      }
+  return -999.999;
+}
+
+float GetNormFactor(struct inp_psn *inp_psn, char *resType, int isAAFlag)
+{
+  float   fNormFactor;
+  
+  if(isAAFlag)
+    return GetAANormFactor(resType);
+  
+  else
+  {
+    fNormFactor = GetUserNormFactor(inp_psn, resType);
+    if(fNormFactor > 0)
+      return fNormFactor;
+    else
+    {
+      if(inp_psn->iParamDBFlag)
+      {
+        fNormFactor = GetParamDBNormFactor(inp_psn, resType);
+        if(fNormFactor > 0)
+          return fNormFactor;
+        else
+          return 999999.99;
+      }
+      else
+        return 999999.99;
+    }
+  }
+}
+
 // === GetImin Section =================================================
+void GetImin2(struct inp_psn *inp_psn, struct sopt *OPT, Molecule *molecule)
+{
+  int           ii, jj, kk, mm;
+  int           iIterNum=0;
+  int           DEBUG=0;
+
+  double        fI0Size, fIcSize;
+  double        fLowerImin=0.0, fHigherImin=10.0, fHalfImin;
+  double        fHalfIminBigClsSize;
+  double        fEpsilon=0.01;
+  double        fLastHalfImin;
+  double        fIminTest, fIminTestSize;
+  double        fLastIminTest, fLastIminTestSize;
+  double        fPCNSize=50.0;
+  double        fPSNDeltaA, fPSNDeltaB;
+  
+  // default values //
+  fLowerImin  =  0.0;
+  fHigherImin = 10.0;
+  fHalfImin   =  5.0;
+  // ============== //
+  
+  fPCNSize    = inp_psn->fPCNSize;
+  fEpsilon    = (1.0 / (float) (pow(10.0, (float) inp_psn->iDecNum)));
+
+  fI0Size = GetBigClsSize2(inp_psn, 0.0);
+  fPCNSize = (float) (100.0 / fPCNSize);
+  fIcSize = (fI0Size / fPCNSize);
+
+  if(DEBUG == 1)
+  {
+    printf("\n");
+    printf("File      : %s\n", inp_psn->cRawFileName);
+    printf("Nodes     : %d\n", inp_psn->iNumOfNodes);
+    printf("Frame     : %d\n", inp_psn->iFrameNum+1);
+    printf("Min Imin  : %f\n", fLowerImin);
+    printf("Max Imin  : %f\n", fHigherImin);
+    printf("Dec Num   : %d\n", inp_psn->iDecNum);
+    printf("Epsilon   : %f\n", fEpsilon);
+    printf("LCS Fract : %f\n", (100.0 / fPCNSize));
+    printf("I0Size    : %f\n", fI0Size);
+    printf("IcSize    : %f\n", fIcSize);
+    printf("\n");
+  }
+
+  if(DEBUG == 1)
+    printf(" #      Imin        Size         Delta\n");
+
+  while(1)
+  {
+    iIterNum++;
+    
+    fHalfIminBigClsSize = GetBigClsSize2(inp_psn, fHalfImin);
+    
+    if(DEBUG == 1)
+      printf("%2d      %f    %f    %+f\n", iIterNum, fHalfImin, fHalfIminBigClsSize, (fHalfIminBigClsSize - fIcSize));
+    
+    if(fHalfIminBigClsSize > fIcSize)
+    {
+      fLowerImin    = fHalfImin;
+      fHigherImin   = fHigherImin;
+      fLastHalfImin = fHalfImin;
+      fHalfImin     = (((fHigherImin - fLowerImin) / 2.0) + fLowerImin);
+    }
+    
+    else if(fHalfIminBigClsSize <= fIcSize)
+    {
+      fLowerImin    = fLowerImin;
+      fHigherImin   = fHalfImin;
+      fLastHalfImin = fHalfImin;
+      fHalfImin     = (((fHigherImin - fLowerImin) / 2.0) + fLowerImin);
+    }
+
+    if(fabs(fLastHalfImin - fHalfImin) <= fEpsilon)
+      break;
+  }
+
+  if(DEBUG == 1)
+    printf("\n*** convergence reached in %d step(s) with value %g, now refinement ***\n\n", iIterNum, fLastHalfImin);
+  
+  fIminTest = (floorf((fHalfImin * (1/fEpsilon)) + 0.5) / (1/fEpsilon)) - (fEpsilon*3);
+  
+  while(TRUE)
+  {
+    iIterNum++;
+    fIminTestSize = GetBigClsSize2(inp_psn, fIminTest);
+    
+    if(DEBUG == 1)
+      printf("%2d      %f    %f    %+f\n", iIterNum, fIminTest, fIminTestSize, (fIminTestSize - fIcSize));
+    
+    if(fIminTestSize <= fIcSize)
+      break;
+    
+    else
+    {
+      fLastIminTest     = fIminTest;
+      fLastIminTestSize = fIminTestSize;
+      fIminTest         = fIminTest + fEpsilon;
+    }
+  }
+  
+  if(DEBUG == 1)
+  {
+    printf("\n");
+    printf("=== Pre Ic Value ===\n");
+  }
+  
+  fLastIminTestSize = GetBigClsSize2(inp_psn, fLastIminTest);
+  fPSNDeltaA = (fLastIminTestSize - fIcSize);
+  if(fPSNDeltaA < 0.0)
+    printf("Warning: something goes wrong in Pre Ic Imin Calculation!! Call Angelo\n");
+
+  fIminTestSize = GetBigClsSize2(inp_psn, fIminTest);
+  fPSNDeltaB = (fIminTestSize - fIcSize);
+  if(fPSNDeltaB > 0.0)
+    printf("Warning: something goes wrong in Post Ic Imin Calculation!! Call Angelo\n");
+
+  inp_psn->fPreIcValue       += fLastIminTest;
+  inp_psn->fPostIcValue      += fIminTest;
+  inp_psn->fPreIcValueDelta  += fabs(fPSNDeltaA);
+  inp_psn->fPostIcValueDelta += fabs(fPSNDeltaB);
+  
+  if(DEBUG == 1)
+  {
+    printf("Ic Value : %f\n", fLastIminTest);
+    printf("PSN LCS  : %.2f%% (Delta: %+.2f)\n", fLastIminTestSize, fPSNDeltaA);
+    printf("\n");
+    printf("=== Post Ic Value ===\n");
+    printf("Ic Value : %f\n", fIminTest);
+    printf("PSN LCS  : %.2f%% (Delta: %+.2f)\n", fIminTestSize, fPSNDeltaB);
+    printf("\n");
+    printf("Best Ic Value         Imin              Size              Delta   Best\n");
+    printf("----------------------------------------------------------------------\n");
+  }
+
+  if(fabs(fPSNDeltaA) < fabs(fPSNDeltaB))
+  {
+    if(DEBUG == 1)
+    {
+      printf("Pre  Ic Value:      %12.8f       %12.8f       %+3.2f   *\n", fLastIminTest, fLastIminTestSize, fPSNDeltaA);
+      printf("Post Ic Value:      %12.8f       %12.8f       %+3.2f    \n", fIminTest, fIminTestSize, fPSNDeltaB);
+    }
+  }
+  
+  else if(fabs(fPSNDeltaA) > fabs(fPSNDeltaB))
+  {
+    if(DEBUG == 1)
+    {
+      printf("Pre  Ic Value:      %12.8f       %12.8f       %+3.2f    \n", fLastIminTest, fLastIminTestSize, fPSNDeltaA);
+      printf("Post Ic Value:      %12.8f       %12.8f       %+3.2f   *\n", fIminTest, fIminTestSize, fPSNDeltaB);
+    }
+  }
+  
+  else
+  {
+    if(DEBUG == 1)
+    {
+      printf("Pre  Ic Value:      %12.8f       %12.8f       %+3.2f   *\n", fLastIminTest, fLastIminTestSize, fPSNDeltaA);
+      printf("Post Ic Value:      %12.8f       %12.8f       %+3.2f   *\n", fIminTest, fIminTestSize, fPSNDeltaB);
+    }
+  }
+
+  if(DEBUG == 1)
+  {
+    printf("\n");
+    printf("Cumulative Pre  Ic Value: %.8f (cumulative delta %.8f)\n", inp_psn->fPreIcValue,  inp_psn->fPreIcValueDelta);
+    printf("Cumulative Post Ic Value: %.8f (cumulative delta %.8f)\n", inp_psn->fPostIcValue, inp_psn->fPostIcValueDelta);
+    printf("\n\n");
+  }
+  
+  return;
+}
+
 void GetImin(struct inp_psn *inp_psn, struct sopt *OPT, Molecule *molecule)
 {
   int           ii, jj, kk, mm;
@@ -294,6 +513,7 @@ void GetImin(struct inp_psn *inp_psn, struct sopt *OPT, Molecule *molecule)
   int           DEBUG=0;
   
   char          cResName[6];
+  char          cTempLab[80];
   
   double        fI0Size, fIcSize;
   double        fLowerImin=0.0, fHigherImin=10.0, fHalfImin;
@@ -306,7 +526,7 @@ void GetImin(struct inp_psn *inp_psn, struct sopt *OPT, Molecule *molecule)
   double        fPSNDeltaA, fPSNDeltaB;
 
   FILE         *FRawFile;
-
+  
   // default values //
   fLowerImin  =  0.0;
   fHigherImin = 10.0;
@@ -332,17 +552,16 @@ void GetImin(struct inp_psn *inp_psn, struct sopt *OPT, Molecule *molecule)
   
   // === Some Allocations === //
   piNodeClusters = (int  *) calloc(iNumOfNodes, sizeof(int  ));
-  //piClustSize    = (int  *) calloc(1000,        sizeof(int  ));
   piClustSize    = (int  *) calloc(iNumOfNodes, sizeof(int  ));
   ppiIntMatrix   = (int **) calloc(iNumOfNodes, sizeof(int *));
   for(ii=0; ii<iNumOfNodes; ++ii)
     ppiIntMatrix[ii] = (int *) calloc(iNumOfNodes, sizeof(int));
   // ======================== //
-
-  fI0Size = GetBigClsSize(FRawFile, piNodeClusters, piClustSize, 0.0, iNumOfNodes, ppiIntMatrix);
+  
+  fI0Size = GetBigClsSize(FRawFile, piNodeClusters, piClustSize, 0.0, inp_psn->iNumOfNodes, inp_psn->iNumOfSelRes, ppiIntMatrix);
   fPCNSize = (float) (100.0 / fPCNSize);
   fIcSize = (fI0Size / fPCNSize);
-  
+
   if(DEBUG == 1)
   {
     printf("File      : %s\n", inp_psn->cRawFileName);
@@ -365,7 +584,7 @@ void GetImin(struct inp_psn *inp_psn, struct sopt *OPT, Molecule *molecule)
   {
     iIterNum++;
     
-    fHalfIminBigClsSize = GetBigClsSize(FRawFile, piNodeClusters, piClustSize, fHalfImin, iNumOfNodes, ppiIntMatrix);
+    fHalfIminBigClsSize = GetBigClsSize(FRawFile, piNodeClusters, piClustSize, fHalfImin, inp_psn->iNumOfNodes, inp_psn->iNumOfSelRes, ppiIntMatrix);
     
     if(DEBUG == 1)
       printf("%2d      %f    %f    %+f\n", iIterNum, fHalfImin, fHalfIminBigClsSize, (fHalfIminBigClsSize - fIcSize));
@@ -385,14 +604,7 @@ void GetImin(struct inp_psn *inp_psn, struct sopt *OPT, Molecule *molecule)
       fLastHalfImin = fHalfImin;
       fHalfImin     = (((fHigherImin - fLowerImin) / 2.0) + fLowerImin);
     }
-    
-    /*
-    else
-    {
-      printf("*-* ==================================================== *-*\n");
-      break;
-    }*/
-    
+
     if(fabs(fLastHalfImin - fHalfImin) <= fEpsilon)
       break;
   }
@@ -405,7 +617,7 @@ void GetImin(struct inp_psn *inp_psn, struct sopt *OPT, Molecule *molecule)
   while(TRUE)
   {
     iIterNum++;
-    fIminTestSize = GetBigClsSize(FRawFile, piNodeClusters, piClustSize, fIminTest, iNumOfNodes, ppiIntMatrix);
+    fIminTestSize = GetBigClsSize(FRawFile, piNodeClusters, piClustSize, fIminTest, inp_psn->iNumOfNodes, inp_psn->iNumOfSelRes, ppiIntMatrix);
     
     if(DEBUG == 1)
       printf("%2d      %f    %f    %+f\n", iIterNum, fIminTest, fIminTestSize, (fIminTestSize - fIcSize));
@@ -427,12 +639,12 @@ void GetImin(struct inp_psn *inp_psn, struct sopt *OPT, Molecule *molecule)
     printf("=== Pre Ic Value ===\n");
   }
   
-  fLastIminTestSize = GetBigClsSize(FRawFile, piNodeClusters, piClustSize, fLastIminTest, iNumOfNodes, ppiIntMatrix);
+  fLastIminTestSize = GetBigClsSize(FRawFile, piNodeClusters, piClustSize, fLastIminTest, inp_psn->iNumOfNodes, inp_psn->iNumOfSelRes, ppiIntMatrix);
   fPSNDeltaA = (fLastIminTestSize - fIcSize);
   if(fPSNDeltaA < 0.0)
     printf("Warning: something goes wrong in Pre Ic Imin Calculation!! Call Angelo\n");
 
-  fIminTestSize = GetBigClsSize(FRawFile, piNodeClusters, piClustSize, fIminTest, iNumOfNodes, ppiIntMatrix);
+  fIminTestSize = GetBigClsSize(FRawFile, piNodeClusters, piClustSize, fIminTest, inp_psn->iNumOfNodes, inp_psn->iNumOfSelRes, ppiIntMatrix);
   fPSNDeltaB = (fIminTestSize - fIcSize);
   if(fPSNDeltaB > 0.0)
     printf("Warning: something goes wrong in Post Ic Imin Calculation!! Call Angelo\n");
@@ -455,9 +667,12 @@ void GetImin(struct inp_psn *inp_psn, struct sopt *OPT, Molecule *molecule)
   inp_psn->fPreIcValueDelta  = fPSNDeltaA;
   inp_psn->fPostIcValueDelta = fPSNDeltaB;
   
-  inp_psn->fIntMinStart = inp_psn->fPreIcValue;
-  inp_psn->fIntMinStop  = inp_psn->fPostIcValue;
-  inp_psn->fIntMinStep  = fEpsilon;
+  inp_psn->fIntMinStart      = inp_psn->fPreIcValue;
+  inp_psn->fIntMinStop       = inp_psn->fPostIcValue;
+  inp_psn->fIntMinStep       = fEpsilon;
+
+  inp_psn->pfIminValues[0]   = inp_psn->fPreIcValue;
+  inp_psn->pfIminValues[1]   = inp_psn->fPostIcValue;
   
   if(fabs(fPSNDeltaA) < fabs(fPSNDeltaB))
   {
@@ -511,7 +726,7 @@ void GetImin(struct inp_psn *inp_psn, struct sopt *OPT, Molecule *molecule)
   fprintf( inp_psn->outfile, "#                 Michele Seeber (2009)\n");
   fprintf( inp_psn->outfile, "# License       : GPL v 3\n");
   fprintf( inp_psn->outfile, "#\n");
-  fprintf( inp_psn->outfile, "# PSN Ver       : 0.8c\n");
+  fprintf( inp_psn->outfile, "# PSN Ver       : 1.0\n");
   fprintf( inp_psn->outfile, "#\n");
   fprintf( inp_psn->outfile, "# Date          : %s", asctime(localtime(&inp_psn->time_tToday)));
   fprintf( inp_psn->outfile, "#\n");
@@ -541,16 +756,37 @@ void GetImin(struct inp_psn *inp_psn, struct sopt *OPT, Molecule *molecule)
   else if(inp_psn->iBestIcValue == 2)
     fprintf( inp_psn->outfile, "# Best Ic Val   : BOTH\n");
   
-  fprintf( inp_psn->outfile, "# StableCutOff  : %f\n", inp_psn->fStableCutoff);
+  fprintf(inp_psn->outfile, "# IntMin Values : %d\n", inp_psn->iNumOfIntMinSteps);
+  for(ii=0; ii<inp_psn->iNumOfIntMinSteps; ++ii)
+    fprintf(inp_psn->outfile, "# IntMin Value  : %-3d   %.5f\n", ii+1, inp_psn->pfIminValues[ii]);
   
   if(inp_psn->iHubEqFlag == 0)
     fprintf( inp_psn->outfile, "# HubEquation   : NO\n");
   else
     fprintf( inp_psn->outfile, "# HubEquation   : YES\n");
   
+  if(inp_psn->iMergeClustFlag == 0)
+    fprintf(inp_psn->outfile, "# MergeClust    : NO\n");
+  else
+    fprintf(inp_psn->outfile, "# MergeClust    : YES\n");
+  fprintf(inp_psn->outfile, "# MergeMinPop   : %d\n", inp_psn->iMergeMinPop);
+  
   fprintf( inp_psn->outfile, "# HubContCutOff : %i\n", inp_psn->iHubContCutoff);
   fprintf( inp_psn->outfile, "# Termini       : %i\n", inp_psn->iTerminiFlag);
   fprintf( inp_psn->outfile, "# Proximity     : %i\n", inp_psn->iProxCutOff);
+  
+  if(inp_psn->iIntType == 0)
+    fprintf(inp_psn->outfile, "# Int Type      : SC\n");
+  else if(inp_psn->iIntType == 1)
+    fprintf(inp_psn->outfile, "# Int Type      : SC+CA\n");
+  else if(inp_psn->iIntType == 2)
+    fprintf(inp_psn->outfile, "# Int Type      : ALL\n");
+  
+  if(inp_psn->iWritePDBFlag == 0)
+    fprintf(inp_psn->outfile, "# WritePDB      : NO\n");
+  else
+    fprintf(inp_psn->outfile, "# WritePDB      : YES\n");
+  
   fprintf( inp_psn->outfile, "#\n");
   fprintf( inp_psn->outfile, "# Num Of NoLink : %d\n", inp_psn->iNumOfNoLinkPairs);
   for(ii=0; ii<inp_psn->iNumOfNoLinkPairs; ii++)
@@ -568,123 +804,89 @@ void GetImin(struct inp_psn *inp_psn, struct sopt *OPT, Molecule *molecule)
   fprintf(inp_psn->outfile, "# Num Of Param  : %d\n", inp_psn->iNumOfParam);
   for(ii=0; ii<inp_psn->iNumOfParam; ii++)
     fprintf(inp_psn->outfile, "# Param         : %d %5s %f\n", ii+1, inp_psn->pcParamResVect[ii], inp_psn->pfParamValVect[ii]);
-  
+
+  if(inp_psn->iParamDBFlag)
+  {
+    fprintf(inp_psn->outfile, "# ParamDB File  : %s (%d entries)\n", inp_psn->cParamDBFileName, inp_psn->iNumOfParamDBEntries);
+    ReportUsedParamDBEntries(inp_psn, inp_psn->outfile, 0);
+  }
+  else
+    fprintf(inp_psn->outfile, "# ParamDB File  : None\n");
+
   fprintf(inp_psn->outfile, "# NoProxSeg Num : %d\n", inp_psn->iNumOfNoProxSeg);
   for(ii=0; ii<inp_psn->iNumOfNoProxSeg; ii++)
-    fprintf(inp_psn->outfile, "# NoProxSeg     : #%d %s\n", ii+1, inp_psn->pcNoProxSeg[ii]);
+    fprintf(inp_psn->outfile, "# NoProxSeg     : %d %s\n", ii+1, inp_psn->pcNoProxSeg[ii]);
   
   fprintf( inp_psn->outfile, "# ======================================================================\n");
   fprintf( inp_psn->outfile, "\n");
   
   fprintf( inp_psn->outfile, "*** Seg Info ***\n");
-  jj=1;
+  fprintf( inp_psn->outfile, "%-3s   %-5s   %-6s\n", "Id", "Seg", "TotRes");
   for(ii=0; ii<molecule->nSeg; ii++)
-  {
-    fprintf( inp_psn->outfile, "%2d   %5s   %6d   %10d\n", ii+1, molecule->segment[ii].segName, molecule->segment[ii].nRpS, jj);
-    jj=jj+molecule->segment[ii].nRpS;
-  }
+    fprintf( inp_psn->outfile, "%-3d   %-5s   %-6d\n", ii+1, molecule->segment[ii].segName, molecule->segment[ii].nRpS);
+
   fprintf( inp_psn->outfile, "========================\n");
   
   fprintf( inp_psn->outfile, "*** Seq ***\n");
-  
-  kk=0;
-  for(ii=0; ii<molecule->nSeg; ii++)
+  fprintf(inp_psn->outfile, "%-10s   %-15s   %s\n", "Id", "Res", "NormFact");
+  for(ii=0; ii<molecule->nRes; ++ii)
   {
-    for(jj=0; jj<molecule->segment[ii].nRpS; jj++)
-    {
-      kk++;
-      if     (strncmp(molecule->segment[ii].pRes[jj].resType, "ALA", 3)==0) strcpy(cResName, "A\0");
-      else if(strncmp(molecule->segment[ii].pRes[jj].resType, "ARG", 3)==0) strcpy(cResName, "R\0");
-      else if(strncmp(molecule->segment[ii].pRes[jj].resType, "ASN", 3)==0) strcpy(cResName, "N\0");
-      else if(strncmp(molecule->segment[ii].pRes[jj].resType, "ASP", 3)==0) strcpy(cResName, "D\0");
-      else if(strncmp(molecule->segment[ii].pRes[jj].resType, "CYS", 3)==0) strcpy(cResName, "C\0");
-      else if(strncmp(molecule->segment[ii].pRes[jj].resType, "CYN", 3)==0) strcpy(cResName, "C\0");
-      else if(strncmp(molecule->segment[ii].pRes[jj].resType, "GLU", 3)==0) strcpy(cResName, "E\0");
-      else if(strncmp(molecule->segment[ii].pRes[jj].resType, "GLN", 3)==0) strcpy(cResName, "Q\0");
-      else if(strncmp(molecule->segment[ii].pRes[jj].resType, "GLY", 3)==0) strcpy(cResName, "G\0");
-      else if(strncmp(molecule->segment[ii].pRes[jj].resType, "HIS", 3)==0) strcpy(cResName, "H\0");
-      else if(strncmp(molecule->segment[ii].pRes[jj].resType, "HSC", 3)==0) strcpy(cResName, "H\0");
-      else if(strncmp(molecule->segment[ii].pRes[jj].resType, "HSD", 3)==0) strcpy(cResName, "H\0");
-      else if(strncmp(molecule->segment[ii].pRes[jj].resType, "HSP", 3)==0) strcpy(cResName, "H\0");
-      else if(strncmp(molecule->segment[ii].pRes[jj].resType, "HID", 3)==0) strcpy(cResName, "H\0");
-      else if(strncmp(molecule->segment[ii].pRes[jj].resType, "ILE", 3)==0) strcpy(cResName, "I\0");
-      else if(strncmp(molecule->segment[ii].pRes[jj].resType, "LEU", 3)==0) strcpy(cResName, "L\0");
-      else if(strncmp(molecule->segment[ii].pRes[jj].resType, "LYS", 3)==0) strcpy(cResName, "K\0");
-      else if(strncmp(molecule->segment[ii].pRes[jj].resType, "LYP", 3)==0) strcpy(cResName, "K\0");
-      else if(strncmp(molecule->segment[ii].pRes[jj].resType, "MET", 3)==0) strcpy(cResName, "M\0");
-      else if(strncmp(molecule->segment[ii].pRes[jj].resType, "PHE", 3)==0) strcpy(cResName, "F\0");
-      else if(strncmp(molecule->segment[ii].pRes[jj].resType, "PRO", 3)==0) strcpy(cResName, "P\0");
-      else if(strncmp(molecule->segment[ii].pRes[jj].resType, "SER", 3)==0) strcpy(cResName, "S\0");
-      else if(strncmp(molecule->segment[ii].pRes[jj].resType, "THR", 3)==0) strcpy(cResName, "T\0");
-      else if(strncmp(molecule->segment[ii].pRes[jj].resType, "TRP", 3)==0) strcpy(cResName, "W\0");
-      else if(strncmp(molecule->segment[ii].pRes[jj].resType, "TYR", 3)==0) strcpy(cResName, "Y\0");
-      else if(strncmp(molecule->segment[ii].pRes[jj].resType, "VAL", 3)==0) strcpy(cResName, "V\0");
-      else if(strncmp(molecule->segment[ii].pRes[jj].resType, "RET", 3)==0) strcpy(cResName, "X\0");
-      else if(strncmp(molecule->segment[ii].pRes[jj].resType, "GDP", 3)==0) strcpy(cResName, "d\0");
-      else if(strncmp(molecule->segment[ii].pRes[jj].resType, "GTP", 3)==0) strcpy(cResName, "t\0");
-      else if(strncmp(molecule->segment[ii].pRes[jj].resType, "Mg+", 3)==0) strcpy(cResName, "m\0");
-      else if(strncmp(molecule->segment[ii].pRes[jj].resType, "ZMA", 3)==0) strcpy(cResName, "Z\0");
-      else                                                                  strcpy(cResName, "U\0");
-      
-      fprintf(inp_psn->outfile, "%10d   %s:%s%d\n", kk, molecule->segment[ii].segName, cResName, molecule->segment[ii].pRes[jj].resn);
-    }
+    sprintf(cTempLab, "%s:%c%-d", molecule->pRes[ii]->segName, molecule->seq1[ii], molecule->pRes[ii]->resn);
+    fprintf(inp_psn->outfile, "%-10d   %-15s   %.5f\n", ii+1, cTempLab, inp_psn->res_norm[ii]);
   }
   fprintf( inp_psn->outfile, "========================\n");
-
-  // === re-initialize all vectors === //
-  inp_psn->iFrameNum= -1;
-  for(ii=0; ii<molecule->nRes; ++ii)
-  {
-    inp_psn->piNumResInteractions[ii] = 0;
-    inp_psn->piNodeDegree[ii]         = 0;
-    
-    for(jj=0; jj<molecule->nRes; ++jj)
-    {
-      inp_psn->ppiIntAtomPairs[ii][jj]    = 0;
-      inp_psn->ppfIntStrength[ii][jj]     = 0.0;
-      inp_psn->ppfHubsIntStrength[ii][jj] = 0.0;
-      inp_psn->ppfAvgResInt[ii][jj]       = 0.0;
-    }
-    
-    for(jj=0; jj<inp_psn->iMaxResInteractions; ++jj)
-      inp_psn->ppiInteractions[ii][jj] = 0;
-  }
-  
-  for(ii=0; ii<inp_psn->iNumOfIntMinStep; ++ii)
-  {
-    for(jj=0; jj<molecule->nRes; ++jj)
-    {
-      inp_psn->ppiTmpStableHubs[ii][jj] = 0;
-      inp_psn->ppiStableHubs[ii][jj]    = 0;
-      
-      for(kk=0; kk<molecule->nRes; ++kk)
-      {
-        inp_psn->pppiStableResInt[ii][jj][kk]         = 0;
-        inp_psn->pppfStableResIntStrength[ii][jj][kk] = 0.0;
-        
-        for(mm=0; mm<3; ++mm)
-          inp_psn->ppppiHubCorr[ii][jj][kk][mm] = 0;
-      }
-    }
-    
-    for(jj=0; jj<inp_psn->iMaxClustNum; ++jj)
-      for(kk=0; kk<molecule->nRes; ++kk)
-        inp_psn->pppiClusters[ii][jj][kk] = 0;
-    
-    for(jj=0; jj<2; ++jj)
-      inp_psn->ppiLargestClusterSize[ii][jj] = 0;
-  }
-  
-  for(ii=0; ii<molecule->nRes; ++ii)
-    for(jj=0; jj<molecule->nRes; ++jj)
-      inp_psn->ppiResResIntFreq[ii][jj] = 0;
-  
-  // ================================= //
 
   return;
 }
 
-double GetBigClsSize(FILE *FRawFile, int *piNodeClusters, int *piClustSize, float fImin, int iNumOfNodes, int **ppiIntMatrix)
+double GetBigClsSize2(struct inp_psn *inp_psn, float fImin)
+{
+  int           ii, jj;
+  int           iBigSize=0;
+  int           iLastCluster=0;
+  float         fBigClsSizePcn;
+
+  GetIminClearAll(inp_psn->iNumOfNodes, inp_psn->piNodeClusters, inp_psn->piClustSize, iLastCluster);
+  iLastCluster = 0;
+  iBigSize     = 0;
+  
+  for(ii=0; ii<inp_psn->iNumOfNodes; ++ii)
+  {
+    inp_psn->ppiIntMatrix[ii][ii] = 0;
+    for(jj=ii+1; jj<inp_psn->iNumOfNodes; ++jj)
+    {
+      inp_psn->ppiIntMatrix[ii][jj] = 0;
+      inp_psn->ppiIntMatrix[jj][ii] = 0;
+    }
+  }
+
+  for(ii=0; ii<inp_psn->tot_nresidues; ++ii)
+  {
+    for(jj=ii+1; jj<inp_psn->tot_nresidues; ++jj)
+    {
+      if(inp_psn->ppfIntStrength[ii][jj] != 0.0 && inp_psn->ppfIntStrength[ii][jj] >= fImin)
+      {
+        iLastCluster = UpdateClusters(ii, jj, inp_psn->piNodeClusters, inp_psn->iNumOfNodes, iLastCluster);
+        inp_psn->ppiIntMatrix[ii][jj]++;
+        inp_psn->ppiIntMatrix[jj][ii]++;
+      }
+    }
+  }
+  
+  for(ii=0; ii<inp_psn->iNumOfNodes; ++ii)
+    inp_psn->piClustSize[inp_psn->piNodeClusters[ii]]++;
+  
+  for(ii=1; ii<iLastCluster+1; ++ii)
+  {
+    if(iBigSize < inp_psn->piClustSize[ii])
+      iBigSize = inp_psn->piClustSize[ii];
+  }
+
+  fBigClsSizePcn = ((iBigSize * 100) / (float) inp_psn->iNumOfSelRes);
+  return(fBigClsSizePcn);
+}
+
+double GetBigClsSize(FILE *FRawFile, int *piNodeClusters, int *piClustSize, float fImin, int iNumOfNodes, int iNumOfSeleRes, int **ppiIntMatrix)
 {
   int           ii, jj;
   int           iNumOfFrames=0;
@@ -694,24 +896,32 @@ double GetBigClsSize(FILE *FRawFile, int *piNodeClusters, int *piClustSize, floa
   int           iAtmNum=0;
   int           iAlloNumOfChars=999999;
   
-  float         fTmpRIS, fTmpHIS;
+  float         fTmpRIS, fTmpHIS1, fTmpHIS2;
   double        fAvgBigSize=0.0;
   
   char          cLine[iAlloNumOfChars];
   char          cAtmList[iAlloNumOfChars];
-  char          cMagic[8];
+  char          cMagic[8], cJunk[80];
   
   GetIminClearAll(iNumOfNodes, piNodeClusters, piClustSize, iLastCluster);
   iLastCluster=0;
   
   for(ii=0; ii<iNumOfNodes; ++ii)
-    for(jj=0; jj<iNumOfNodes; ++jj)
+  {
+    ppiIntMatrix[ii][ii] = 0;
+    for(jj=ii+1; jj<iNumOfNodes; ++jj)
+    {
       ppiIntMatrix[ii][jj] = 0;
+      ppiIntMatrix[jj][ii] = 0;
+    }
+  }
   
   rewind(FRawFile);
   
+  
   while(fgets(cLine, iAlloNumOfChars, FRawFile) != NULL)
   {
+    
     if(strncmp(cLine, ">INT", 4) == 0)
     {
       // skip header
@@ -720,7 +930,7 @@ double GetBigClsSize(FILE *FRawFile, int *piNodeClusters, int *piClustSize, floa
         fprintf(stderr, "PSN Error: found corrupted file while calculating best Imin value\n");
         exit(1);
       }
-      
+
       iNumOfFrames++;
       GetIminClearAll(iNumOfNodes, piNodeClusters, piClustSize, iLastCluster);
       iLastCluster=0;
@@ -728,23 +938,27 @@ double GetBigClsSize(FILE *FRawFile, int *piNodeClusters, int *piClustSize, floa
       
       while(1)
       {
+        if(feof(FRawFile))
+          break;
+        
         if(fgets(cLine, iAlloNumOfChars, FRawFile)==NULL && ( !feof(FRawFile) || ferror(FRawFile) ))
         {
           fprintf(stderr, "PSN Error: found a corrupted file while calculating best Imin value\n");
           exit(1);
         }
-        sscanf(cLine, "%s %d %d %f %f %d %s", cMagic, &iTmpRes1, &iTmpRes2, &fTmpRIS, &fTmpHIS, &iAtmNum, cAtmList);
-
+        
+        sscanf(cLine, "%s %d %d %f", cMagic, &iTmpRes1, &iTmpRes2, &fTmpRIS);
         if(strcmp(cMagic, "&") != 0)
           break;
-          
-        iTmpRes1--;
-        iTmpRes2--;
+
+        iTmpRes1;
+        iTmpRes2;
 
         if(fTmpRIS >= fImin)
         {
           iLastCluster = UpdateClusters(iTmpRes1, iTmpRes2, piNodeClusters, iNumOfNodes, iLastCluster);
           ppiIntMatrix[iTmpRes1][iTmpRes2]++;
+          ppiIntMatrix[iTmpRes2][iTmpRes1]++;
         }
       }
       
@@ -762,7 +976,7 @@ double GetBigClsSize(FILE *FRawFile, int *piNodeClusters, int *piClustSize, floa
   }
 
   fAvgBigSize = (fAvgBigSize / (float) iNumOfFrames);
-  fAvgBigSize = ((fAvgBigSize * 100) / (float) iNumOfNodes);
+  fAvgBigSize = ((fAvgBigSize * 100) / (float) iNumOfSeleRes);
 
   return fAvgBigSize;
 }
@@ -813,15 +1027,93 @@ int UpdateClusters(int iTmpRes1, int iTmpRes2, int *piNodeClusters, int iNumOfNo
 void GetIminClearAll(int iNumOfNodes, int *piNodeClusters, int *piClustSize, int iLastCluster)
 {
   int           ii;
-
   for(ii=0; ii<iNumOfNodes; ++ii)
+  {
     piNodeClusters[ii] = 0;
-  
-  //for(ii=0; ii<1000; ++ii)
-  for(ii=0; ii<iNumOfNodes; ++ii)
-    piClustSize[ii] = 0;
+    piClustSize[ii]    = 0;
+  }
 }
 // =====================================================================
+
+void LoadParamDB(struct inp_psn *inp_psn)
+{
+  int    ii;
+  int    iParamIdx;
+  int    iDebugFlag=0;
+  int    iAlloNumOfChars=9999;
+  float  fMolParam;
+  char   cLine[iAlloNumOfChars], cMolCode[9], cMolName[iAlloNumOfChars], cMolFormula[iAlloNumOfChars];
+  FILE  *ParmDBFile;
+  
+  inp_psn->iNumOfParamDBEntries = 0;
+  
+  if(iDebugFlag)
+    printf("{LoadParamDB} loading paramdb %s\n", inp_psn->cParamDBFileName);
+  
+  ParmDBFile = O_File(inp_psn->cParamDBFileName, "r");
+  while(fgets(cLine, iAlloNumOfChars, ParmDBFile) != NULL)
+  {
+    if(cLine[0] != '#')
+    {
+      sscanf(cLine, "%[^@]@%[^@]@%[^@]@%f", cMolCode, cMolName, cMolFormula, &fMolParam);
+      if(fMolParam>0)
+        inp_psn->iNumOfParamDBEntries++;
+      else
+        if(iDebugFlag)
+          printf("{LoadParamDB} skipping lig %s 'cause has 0 normfact\n", cMolCode);
+    }
+  }
+  rewind(ParmDBFile);
+  
+  if(iDebugFlag)
+    printf("{LoadParamDB} found %d non zero normfact ligands\n", inp_psn->iNumOfParamDBEntries);
+
+  inp_psn->pfParamDBValVect     = (float *) calloc(inp_psn->iNumOfParamDBEntries, sizeof(float ));
+  inp_psn->piUsedDBParamIndices = (int   *) calloc(inp_psn->iNumOfParamDBEntries, sizeof(int   ));
+  inp_psn->pcParamDBResVect     = (char **) calloc(inp_psn->iNumOfParamDBEntries, sizeof(char *));
+  for(ii=0; ii<inp_psn->iNumOfParamDBEntries; ++ii)
+    inp_psn->pcParamDBResVect[ii] = (char *) calloc(9, sizeof(char));
+
+  iParamIdx = -1;
+  while(fgets(cLine, iAlloNumOfChars, ParmDBFile) != NULL)
+  {
+    if(cLine[0] != '#')
+    {
+      // Lig@Name@Formula@NFAvg
+      sscanf(cLine, "%[^@]@%[^@]@%[^@]@%f", cMolCode, cMolName, cMolFormula, &fMolParam);
+      if(fMolParam>0)
+      {
+        iParamIdx++;
+        if(iDebugFlag)
+        {
+          printf("LINE: %s",     cLine);
+          printf("PIDX: %d\n",   iParamIdx);
+          printf("CODE: %s\n",   cMolCode);
+          printf("NAME: %s\n",   cMolName);
+          printf("FORM: %s\n",   cMolFormula);
+          printf("PARA: %f\n\n", fMolParam);
+        }
+        
+        strcpy(inp_psn->pcParamDBResVect[iParamIdx], cMolCode);
+        inp_psn->pfParamDBValVect[iParamIdx] = fMolParam;
+      }
+      
+      else
+      {
+        if(iDebugFlag)
+        {
+          printf("LINE: %s",     cLine);
+          printf("CODE: %s\n",   cMolCode);
+          printf("NAME: %s\n",   cMolName);
+          printf("FORM: %s\n",   cMolFormula);
+          printf("PARA: %f **SKIPPED***\n\n", fMolParam);
+        }
+      }
+    }
+  }
+  fclose(ParmDBFile);
+
+}
 
 int Read_iPSG ( char **input, int inp_index, struct inp_psn *inp_psn, char *printout, Molecule *molecule, int iNumOfFrames, struct sopt *OPT)
 {
@@ -834,7 +1126,7 @@ int Read_iPSG ( char **input, int inp_index, struct inp_psn *inp_psn, char *prin
   
   char             bbatoms[1024], buffer[10240], cIntMinRange[50];
   char             cCOOTerAtoms[50], cNHTerAtoms[50], cResName[6];
-  char             cTmpString1[50], cTmpString2[50];
+  char             cTmpString1[50], cTmpString2[50], cTempLab[80];
   char            *cToken, cMergeResType[5], cTempChArray[50];
   
   float            fTempFloat;
@@ -849,12 +1141,12 @@ int Read_iPSG ( char **input, int inp_index, struct inp_psn *inp_psn, char *prin
   
   // === Default Options ===
   sprintf(inp_psn->title, "PSNANALYSIS");
+  inp_psn->iMaxNumOfLink        = 0;
   inp_psn->fDistCutoff          = 4.5;
   inp_psn->fIntMinStart         = 0.0;
   inp_psn->fIntMinStop          = 0.0;
   inp_psn->fIntMinStep          = 1.0;
   inp_psn->iHubContCutoff       = 3;
-  inp_psn->fStableCutoff        = 0.5;
   inp_psn->iWarningFlag         = 0;
   inp_psn->iVerboseFlag         = 0;
   inp_psn->iTerminiFlag         = 1;
@@ -868,12 +1160,22 @@ int Read_iPSG ( char **input, int inp_index, struct inp_psn *inp_psn, char *prin
   inp_psn->iNumOfFrames         = iNumOfFrames;
   inp_psn->iIntType             = 0;
   inp_psn->iHubEqFlag           = 1;
-  
+  inp_psn->iMergeClustFlag      = 0;
+  inp_psn->iMergeMinPop         = 1;
+  inp_psn->iWritePDBFlag        = 1;
+  inp_psn->iParamDBFlag         = 0;
+  inp_psn->iUsedParamDBFlag     = 0;
+
   // === getimin section ===
+  inp_psn->iGetIminAlgo         =  1;
   inp_psn->iGetIminFlag         =  0;
   inp_psn->iDecNum              =  2;
   inp_psn->fPCNSize             = 50.0;
   inp_psn->iSecondRound         =  0;
+  inp_psn->fPreIcValue          =  0.0;
+  inp_psn->fPostIcValue         =  0.0;
+  inp_psn->fPreIcValueDelta     =  0.0;
+  inp_psn->fPostIcValueDelta    =  0.0;
   // =======================
   
   while( strncmp (buffer, "END", 3))
@@ -900,7 +1202,7 @@ int Read_iPSG ( char **input, int inp_index, struct inp_psn *inp_psn, char *prin
     }
     else if ( !strncmp(buffer, "--STABLECUTOFF", 14))
     {
-      sscanf( buffer, "--STABLECUTOFF %f", &inp_psn->fStableCutoff);
+      fprintf( stderr, "PSN module: --STABLECUTOFF is a deprecated option, it will be ignored\n");
       gotit = 1;
     }
     else if ( !strncmp(buffer, "--HUBCONTCUTOFF", 15))
@@ -969,6 +1271,62 @@ int Read_iPSG ( char **input, int inp_index, struct inp_psn *inp_psn, char *prin
       }
       gotit = 1;
     }
+    else if ( !strncmp(buffer, "--MERGECLUST", 12))
+    {
+      sscanf(buffer, "--MERGECLUST %s", cTempChArray);
+      
+      if(strcmp(cTempChArray, "YES") == 0)
+        inp_psn->iMergeClustFlag = 1;
+
+      else if(strcmp(cTempChArray, "NO") == 0)
+        inp_psn->iMergeClustFlag = 0;
+      
+      else if(strcmp(cTempChArray, "1") == 0)
+        inp_psn->iMergeClustFlag = 1;
+
+      else if(strcmp(cTempChArray, "0") == 0)
+        inp_psn->iMergeClustFlag = 0;
+
+      else
+      {
+        fprintf( stderr, "PSN module: invalid --MERGECLUST value ''%s'', valid values are: YES, 1, NO or 0\n", cTempChArray);
+        exit(5);
+      }
+      gotit = 1;
+    }
+    else if ( !strncmp(buffer, "--MERGEMINPOP", 13))
+    {
+      sscanf( buffer, "--MERGEMINPOP %d", &inp_psn->iMergeMinPop);
+      if(inp_psn->iMergeMinPop < 1)
+      {
+        fprintf( stderr, "PSN module: --MERGEMINPOP value must be an integer number >= 1, ''%d'' passed", inp_psn->iMergeMinPop);
+        exit(5);
+      }
+      gotit = 1;
+    }
+    else if ( !strncmp(buffer, "--WRITEPDB", 10))
+    {
+      sscanf(buffer, "--WRITEPDB %s", cTempChArray);
+      
+      if(strcmp(cTempChArray, "YES") == 0)
+        inp_psn->iWritePDBFlag = 1;
+
+      else if(strcmp(cTempChArray, "NO") == 0)
+        inp_psn->iWritePDBFlag = 0;
+      
+      else if(strcmp(cTempChArray, "1") == 0)
+        inp_psn->iWritePDBFlag = 1;
+
+      else if(strcmp(cTempChArray, "0") == 0)
+        inp_psn->iWritePDBFlag = 0;
+
+      else
+      {
+        fprintf( stderr, "PSN module: invalid --WRITEPDB value ''%s'', valid values are: YES, 1, NO or 0\n", cTempChArray);
+        exit(5);
+      }
+      gotit = 1;
+    }
     else if ( !strncmp(buffer, "--NOLINK", 8))
     {
       inp_psn->iNumOfNoLinkPairs++;
@@ -979,9 +1337,15 @@ int Read_iPSG ( char **input, int inp_index, struct inp_psn *inp_psn, char *prin
       inp_psn->iNumOfForceLinkPairs++;
       gotit = 1;
     }
-    else if ( !strncmp(buffer, "--PARAM", 7))
+    else if ( !strncmp(buffer, "--PARAM ", 8))
     {
       inp_psn->iNumOfParam++;
+      gotit = 1;
+    }
+    else if ( !strncmp(buffer, "--PARAMDB", 9))
+    {
+      sscanf(buffer, "--PARAMDB %s", inp_psn->cParamDBFileName);
+      inp_psn->iParamDBFlag = 1;
       gotit = 1;
     }
     else if ( !strncmp(buffer, "--NOPROXSEG", 11))
@@ -1030,38 +1394,85 @@ int Read_iPSG ( char **input, int inp_index, struct inp_psn *inp_psn, char *prin
         if(strcmp(cTmpString1, "AUTO") == 0)
         {
           // automagic imin identification (aka GetImin)
-          inp_psn->iGetIminFlag = 1;
-          inp_psn->iSecondRound = 0;
-          inp_psn->fPCNSize     = fTempFloat;
-          inp_psn->iDecNum      = iTempInt;
-          inp_psn->fIntMinStart = 0.0;
-          inp_psn->fIntMinStop  = 1.0;
-          inp_psn->fIntMinStep  = 1.0;
+          inp_psn->iGetIminFlag      = 1;
+          inp_psn->iSecondRound      = 0;
+          inp_psn->fPCNSize          = fTempFloat;
+          inp_psn->iDecNum           = iTempInt;
+          inp_psn->fIntMinStart      = 0.0;
+          inp_psn->fIntMinStop       = 1.0;
+          inp_psn->fIntMinStep       = 1.0;
+          inp_psn->iNumOfIntMinSteps = 2;
+          
+          inp_psn->pfIminValues      = (float *) calloc(inp_psn->iNumOfIntMinSteps, sizeof(float));
+          inp_psn->pfIminValues[0]   = 0.0;
+          inp_psn->pfIminValues[1]   = 1.0;
+
         }
         
         else
+        {
           sscanf(cIntMinRange, "%f:%f:%f", &inp_psn->fIntMinStart, &inp_psn->fIntMinStop, &inp_psn->fIntMinStep);
+          
+          // cast uses floor: adding 1.5 to actually be sure to be adding 1
+          //inp_psn->iNumOfIntMinSteps=(int)(((inp_psn->fIntMinStop - inp_psn->fIntMinStart)/inp_psn->fIntMinStep)+1.5);
+          
+          inp_psn->iNumOfIntMinSteps = 1;
+          fTempFloat = inp_psn->fIntMinStart;
+          while(TRUE)
+          {
+            fTempFloat += inp_psn->fIntMinStep;
+            if(fTempFloat <= inp_psn->fIntMinStop)
+              inp_psn->iNumOfIntMinSteps ++;
+            else
+              break;
+          }
+          
+          inp_psn->pfIminValues = (float *) calloc(inp_psn->iNumOfIntMinSteps, sizeof(float));
+          inp_psn->pfIminValues[0] = inp_psn->fIntMinStart;
+          ii = 0;
+          fTempFloat = inp_psn->fIntMinStart;
+          while(TRUE)
+          {
+            fTempFloat += inp_psn->fIntMinStep;
+            if(fTempFloat <= inp_psn->fIntMinStop)
+            {
+              ii++;
+              inp_psn->pfIminValues[ii] = fTempFloat;
+            }
+            else
+              break;
+          }
+        }
       }
       
       else
       {
-
         if(strcmp(cIntMinRange, "AUTO") == 0)
         {
-          inp_psn->iGetIminFlag = 1;
-          inp_psn->iSecondRound = 0;
-          inp_psn->fPCNSize     = 50.0;
-          inp_psn->iDecNum      = 2;
-          inp_psn->fIntMinStart = 0.0;
-          inp_psn->fIntMinStop  = 1.0;
-          inp_psn->fIntMinStep  = 1.0;
+          inp_psn->iGetIminFlag      = 1;
+          inp_psn->iSecondRound      = 0;
+          inp_psn->fPCNSize          = 50.0;
+          inp_psn->iDecNum           = 2;
+          inp_psn->fIntMinStart      = 0.0;
+          inp_psn->fIntMinStop       = 1.0;
+          inp_psn->fIntMinStep       = 1.0;
+          inp_psn->iNumOfIntMinSteps = 2;
+          
+          inp_psn->pfIminValues      = (float *) calloc(inp_psn->iNumOfIntMinSteps, sizeof(float));
+          inp_psn->pfIminValues[0]   = 0.0;
+          inp_psn->pfIminValues[1]   = 1.0;
         }
         
         else
         {
-          inp_psn->fIntMinStart = atof(cIntMinRange);
-          inp_psn->fIntMinStop=inp_psn->fIntMinStart;
-          inp_psn->fIntMinStep=1.0;
+          inp_psn->fIntMinStart      = atof(cIntMinRange);
+          inp_psn->fIntMinStop       = inp_psn->fIntMinStart;
+          inp_psn->fIntMinStep       = 1.0;
+          inp_psn->iNumOfIntMinSteps = 1;
+          
+          inp_psn->pfIminValues      = (float *) calloc(inp_psn->iNumOfIntMinSteps, sizeof(float));
+          inp_psn->pfIminValues[0]   = inp_psn->fIntMinStart;
+          
         }
       }
       
@@ -1084,14 +1495,10 @@ int Read_iPSG ( char **input, int inp_index, struct inp_psn *inp_psn, char *prin
   }
   
   // === GetImin Check ===
-  if(inp_psn->iGetIminFlag == 1 && inp_psn->iVerboseFlag == 0)
+  if(inp_psn->iGetIminFlag == 1 && inp_psn->iGetIminAlgo == 0 && inp_psn->iVerboseFlag == 0)
     inp_psn->iVerboseFlag = 1;
   // =====================
-  
-  inp_psn->tot_nresidues = 0;
-  for( ii=0; ii<molecule->nSeg ; ii++ )
-   for( jj=0; jj<molecule->segment[ii].nRpS ; jj++ )
-    inp_psn->tot_nresidues++;
+
   inp_psn->tot_nresidues = molecule->nRes;
   inp_psn->iNumOfNodes   = molecule->nRes;
   
@@ -1099,7 +1506,7 @@ int Read_iPSG ( char **input, int inp_index, struct inp_psn *inp_psn, char *prin
   if(inp_psn->iNumOfNoLinkPairs != 0)
   {
     inp_psn->ppiNoLinkPairs = calloc(inp_psn->iNumOfNoLinkPairs, sizeof(int *));
-    for(ii=0; ii<inp_psn->iNumOfNoLinkPairs; ii++)
+    for(ii=0; ii<inp_psn->iNumOfNoLinkPairs; ++ii)
       inp_psn->ppiNoLinkPairs[ii] = calloc(2, sizeof(int));
     
     inp_index = iInputFileStartingLine;
@@ -1137,7 +1544,7 @@ int Read_iPSG ( char **input, int inp_index, struct inp_psn *inp_psn, char *prin
   if(inp_psn->iNumOfNoProxSeg != 0)
   {
     inp_psn->pcNoProxSeg = calloc(inp_psn->iNumOfNoProxSeg, sizeof(char *));
-    for(ii=0; ii<inp_psn->iNumOfNoProxSeg; ii++)
+    for(ii=0; ii<inp_psn->iNumOfNoProxSeg; ++ii)
       inp_psn->pcNoProxSeg[ii] = calloc(1, sizeof(char));
     
     inp_index = iInputFileStartingLine;
@@ -1179,7 +1586,7 @@ int Read_iPSG ( char **input, int inp_index, struct inp_psn *inp_psn, char *prin
   if(inp_psn->iNumOfForceLinkPairs != 0)
   {
     inp_psn->ppiForceLinkPairs = calloc(inp_psn->iNumOfForceLinkPairs, sizeof(int *));
-    for(ii=0; ii<inp_psn->iNumOfForceLinkPairs; ii++)
+    for(ii=0; ii<inp_psn->iNumOfForceLinkPairs; ++ii)
       inp_psn->ppiForceLinkPairs[ii] = calloc(2, sizeof(float));
     
     inp_index = iInputFileStartingLine;
@@ -1228,7 +1635,7 @@ int Read_iPSG ( char **input, int inp_index, struct inp_psn *inp_psn, char *prin
     while( strncmp (buffer, "END", 3))
     {
       sprintf( buffer, "%s", input[inp_index]);
-      if ( !strncmp(buffer, "--PARAM", 7))
+      if ( !strncmp(buffer, "--PARAM ", 8))
       {
         ii++;
         sscanf(buffer, "--PARAM %s %f", cTmpString1, &fTempFloat);
@@ -1241,6 +1648,7 @@ int Read_iPSG ( char **input, int inp_index, struct inp_psn *inp_psn, char *prin
         
         strcpy(inp_psn->pcParamResVect[ii], cTmpString1);
         inp_psn->pfParamValVect[ii] = fTempFloat;
+        //printf("WTF %d %s %f\n", ii, inp_psn->pcParamResVect[ii], inp_psn->pfParamValVect[ii]);
       }
       inp_index++;
     }
@@ -1248,7 +1656,6 @@ int Read_iPSG ( char **input, int inp_index, struct inp_psn *inp_psn, char *prin
   // ===================================================================
   
   // take note of atoms to consider for interaction calculations
-  
   if(inp_psn->iIntType == 0)
   {
     // SC atoms only
@@ -1281,34 +1688,24 @@ int Read_iPSG ( char **input, int inp_index, struct inp_psn *inp_psn, char *prin
       sprintf(cNHTerAtoms,  "N");
     }
   }
-  
-  // sprintf( bbatoms, "@(CA|C|N|O|H|OT1|OT2|OXT|H*)");
-  
+
   inp_psn->reslength  = calloc( molecule->nRes, sizeof(int));
   inp_psn->reslength2 = calloc( molecule->nRes, sizeof(int));
   
   inp_psn->atmList = calloc( molecule->nRes, sizeof(int *));
-  for( ii=0; ii<molecule->nRes; ii++ )
+  for( ii=0; ii<molecule->nRes; ++ii )
   {
     inp_psn->atmList[ii] = calloc(500, sizeof(int)); // 500 as maximum number of atoms in a residue
     inp_psn->atmList[ii][0] = -1;                    // set all res as "non selected"
   }
   
-  inp_psn->res_norm = calloc( molecule->nRes, sizeof(float));
   atm_idx = 0;
   rescounter = 0;
   natmhere = 0;
-  for( ii=0; ii<molecule->nRes ; ii++ )
-  {
-    fTempFloat = GetUserNormFactor(inp_psn, molecule->rawmol.restype[atm_idx]);
-    if(fTempFloat < 0)
-      fTempFloat = fGetNormFactor(molecule->rawmol.restype[atm_idx]);
-    inp_psn->res_norm[ii] = fTempFloat;
 
-    if(inp_psn->res_norm[ii]>999)
-      inp_psn->iWarningFlag=1;
-    
-    for( kk=0; kk<molecule->nApR[ii] ; kk++ )  // run along atoms     
+  for( ii=0; ii<molecule->nRes ; ++ii )
+  {
+    for( kk=0; kk<molecule->nApR[ii] ; ++kk )  // run along atoms
     {
       if(fnmatch(bbatoms, molecule->rawmol.atmtype[atm_idx+kk], FNM_EXTMATCH))
       {
@@ -1318,24 +1715,32 @@ int Read_iPSG ( char **input, int inp_index, struct inp_psn *inp_psn, char *prin
       
       if(inp_psn->iTerminiFlag==1)
       {
-        if( molecule->rawmol.segend[atm_idx+molecule->nApR[ii]-1] == 1 ) 
-          if(!fnmatch(cCOOTerAtoms, molecule->rawmol.atmtype[atm_idx+kk], FNM_EXTMATCH))
+        if(ii == 0 || ii == (molecule->nRes-1))
+        {
+          if( molecule->rawmol.segend[atm_idx+molecule->nApR[ii]-1] == 1 ) 
           {
-            inp_psn->atmList[rescounter][natmhere] = molecule->rawmol.atomn[atm_idx+kk];
-            natmhere++;
+            if(!fnmatch(cCOOTerAtoms, molecule->rawmol.atmtype[atm_idx+kk], FNM_EXTMATCH))
+            {
+              inp_psn->atmList[rescounter][natmhere] = molecule->rawmol.atomn[atm_idx+kk];
+              natmhere++;
+            }
           }
-
-        if( molecule->rawmol.segbeg[atm_idx] == 1 )
-          if(!fnmatch(cNHTerAtoms, molecule->rawmol.atmtype[atm_idx+kk], FNM_EXTMATCH))
+          
+          if( molecule->rawmol.segbeg[atm_idx] == 1 )
           {
-            inp_psn->atmList[rescounter][natmhere] = molecule->rawmol.atomn[atm_idx+kk];
-            natmhere++;
+            if(!fnmatch(cNHTerAtoms, molecule->rawmol.atmtype[atm_idx+kk], FNM_EXTMATCH))
+            {
+              inp_psn->atmList[rescounter][natmhere] = molecule->rawmol.atomn[atm_idx+kk];
+              natmhere++;
+            }
           }
+        }
       }
-    }       
-    
+    }
+
     inp_psn->reslength[rescounter] = natmhere;
     inp_psn->reslength2[rescounter] = molecule->nApR[ii];
+    
     rescounter++;
     natmhere = 0;
     atm_idx += molecule->nApR[ii];
@@ -1348,13 +1753,13 @@ int Read_iPSG ( char **input, int inp_index, struct inp_psn *inp_psn, char *prin
     fprintf( stderr, "Selected Atoms = 0!\n");
     exit(1);
   }
-  for( ii=0; ii<inp_psn->tot_nresidues; ii++)
+  for( ii=0; ii<inp_psn->tot_nresidues; ++ii)
   {
     if( inp_psn->reslength[ii] == 0 )
       continue;
     
     found = 0;
-    for( jj=0; jj<inp_psn->sele.nselatm; jj++ )
+    for( jj=0; jj<inp_psn->sele.nselatm; ++jj)
     {
       if( inp_psn->atmList[ii][0] == inp_psn->sele.selatm[jj] )
       {
@@ -1365,22 +1770,39 @@ int Read_iPSG ( char **input, int inp_index, struct inp_psn *inp_psn, char *prin
     if (!found)
       inp_psn->atmList[ii][0] = -1;
   }
-  
-  if(inp_psn->iVerboseFlag==1)
+
+  cTmpString1[0]='\0';
+  cTmpString2[0]='\0';
+  inp_psn->iNumOfSelRes = 0;
+  for(ii=0; ii<inp_psn->sele.nselatm; ++ii)
   {
-    sprintf(inp_psn->cRawFileName, "%s%s", "raw", inp_psn->title);
-    inp_psn->outfile = O_File(inp_psn->cRawFileName, "w");
+    sprintf(cTmpString1, "%s%d", molecule->rawmol.segId[inp_psn->sele.selatm[ii]-1], molecule->rawmol.resn[inp_psn->sele.selatm[ii]-1]);
+    if(strcmp(cTmpString1, cTmpString2)!=0)
+    {
+      inp_psn->iNumOfSelRes++;
+      strcpy(cTmpString2, cTmpString1);
+    }
+  }
+
+  // Get Norm Factors
+  if(inp_psn->iParamDBFlag)
+    LoadParamDB(inp_psn);
+  
+  inp_psn->res_norm = calloc( molecule->nRes, sizeof(float));
+  for(ii=0; ii<molecule->nRes ; ++ii)
+  {
+    inp_psn->res_norm[ii] = GetNormFactor(inp_psn, molecule->seq3[ii], molecule->pRes[ii]->isAA);
+    if(inp_psn->res_norm[ii]>999)
+      inp_psn->iWarningFlag=1;
   }
   
+  if(inp_psn->iParamDBFlag == 1&& inp_psn->iUsedParamDBFlag == 1)
+    ReportUsedParamDBEntries(inp_psn, stdout, 1);
+
   inp_psn->cluster.cluspop = calloc( molecule->nRes, sizeof(int));
   inp_psn->cluster.clusters = calloc( molecule->nRes, sizeof(int *));
   for( ii=0; ii<molecule->nRes; ii++)
     inp_psn->cluster.clusters[ii] = calloc( molecule->nRes, sizeof(int));
-
-  inp_psn->iMaxNumOfLink=0;
-  
-  // cast uses floor: adding 1.5 to actually be sure to be adding 1
-  inp_psn->iNumOfIntMinStep=(int)(((inp_psn->fIntMinStop - inp_psn->fIntMinStart)/inp_psn->fIntMinStep)+1.5);
 
   /*
     ppiIntAtomPairs allocation
@@ -1455,8 +1877,8 @@ int Read_iPSG ( char **input, int inp_index, struct inp_psn *inp_psn, char *prin
     This is a iNumOfRes x iNumOfRes matrix
     used to store averaged res-res interaction strength
   */
-  inp_psn->ppiTmpStableHubs=(int **) calloc(inp_psn->iNumOfIntMinStep, sizeof(int *));
-  for(ii=0; ii<inp_psn->iNumOfIntMinStep; ii++)
+  inp_psn->ppiTmpStableHubs=(int **) calloc(inp_psn->iNumOfIntMinSteps, sizeof(int *));
+  for(ii=0; ii<inp_psn->iNumOfIntMinSteps; ii++)
   {
     inp_psn->ppiTmpStableHubs[ii]=(int *) calloc(molecule->nRes, sizeof(int));
   }
@@ -1466,8 +1888,8 @@ int Read_iPSG ( char **input, int inp_index, struct inp_psn *inp_psn, char *prin
     This is a iNumOfRes x iNumOfRes matrix
     used to store averaged res-res interaction strength
   */
-  inp_psn->ppiStableHubs=(int **) calloc(inp_psn->iNumOfIntMinStep, sizeof(int *));
-  for(ii=0; ii<inp_psn->iNumOfIntMinStep; ii++)
+  inp_psn->ppiStableHubs=(int **) calloc(inp_psn->iNumOfIntMinSteps, sizeof(int *));
+  for(ii=0; ii<inp_psn->iNumOfIntMinSteps; ii++)
   {
     inp_psn->ppiStableHubs[ii]=(int *) calloc(molecule->nRes, sizeof(int));
   }
@@ -1501,8 +1923,8 @@ int Read_iPSG ( char **input, int inp_index, struct inp_psn *inp_psn, char *prin
      pppiStableResInt allocation
      used to store the stable Residue Interactions
   */
-  inp_psn->pppiStableResInt=(int ***) calloc(inp_psn->iNumOfIntMinStep, sizeof(int **));
-  for(ii=0; ii<inp_psn->iNumOfIntMinStep; ii++)
+  inp_psn->pppiStableResInt=(int ***) calloc(inp_psn->iNumOfIntMinSteps, sizeof(int **));
+  for(ii=0; ii<inp_psn->iNumOfIntMinSteps; ii++)
   {
     inp_psn->pppiStableResInt[ii]=(int **) calloc(molecule->nRes, sizeof(int *));
     for(jj=0; jj<molecule->nRes; jj++)
@@ -1515,8 +1937,8 @@ int Read_iPSG ( char **input, int inp_index, struct inp_psn *inp_psn, char *prin
      pppfStableResIntStrength allocation
      used to store stable Residue Interaction Strength
   */
-  inp_psn->pppfStableResIntStrength=(float ***) calloc(inp_psn->iNumOfIntMinStep, sizeof(float **));
-  for(ii=0; ii<inp_psn->iNumOfIntMinStep; ii++)
+  inp_psn->pppfStableResIntStrength=(float ***) calloc(inp_psn->iNumOfIntMinSteps, sizeof(float **));
+  for(ii=0; ii<inp_psn->iNumOfIntMinSteps; ii++)
   {
     inp_psn->pppfStableResIntStrength[ii]=(float **) calloc(molecule->nRes, sizeof(float *));
     for(jj=0; jj<molecule->nRes; jj++)
@@ -1525,13 +1947,52 @@ int Read_iPSG ( char **input, int inp_index, struct inp_psn *inp_psn, char *prin
     }
   }
 
+  if(inp_psn->iMergeClustFlag == 1)
+  {
+    /*
+       pppiStableResIntMergeClust allocation
+       used to store the stable Residue Interactions with MergeClust option
+    */
+    inp_psn->pppiStableResIntMergeClust=(int ***) calloc(inp_psn->iNumOfIntMinSteps, sizeof(int **));
+    for(ii=0; ii<inp_psn->iNumOfIntMinSteps; ii++)
+    {
+      inp_psn->pppiStableResIntMergeClust[ii]=(int **) calloc(molecule->nRes, sizeof(int *));
+      for(jj=0; jj<molecule->nRes; jj++)
+      {
+        inp_psn->pppiStableResIntMergeClust[ii][jj]=(int *) calloc(molecule->nRes, sizeof(int));
+      }
+    }
+
+    /*
+       pppfStableResIntStrengthMergeClust allocation
+       used to store stable Residue Interaction Strength with MergeClust option
+    */
+    inp_psn->pppfStableResIntStrengthMergeClust=(float ***) calloc(inp_psn->iNumOfIntMinSteps, sizeof(float **));
+    for(ii=0; ii<inp_psn->iNumOfIntMinSteps; ii++)
+    {
+      inp_psn->pppfStableResIntStrengthMergeClust[ii]=(float **) calloc(molecule->nRes, sizeof(float *));
+      for(jj=0; jj<molecule->nRes; jj++)
+      {
+        inp_psn->pppfStableResIntStrengthMergeClust[ii][jj]=(float *) calloc(molecule->nRes, sizeof(float));
+      }
+    }
+    
+    inp_psn->ppiStableHubsMergeClust    =(int **) calloc(inp_psn->iNumOfIntMinSteps, sizeof(int *));
+    inp_psn->ppiTempStableHubsMergeClust=(int **) calloc(inp_psn->iNumOfIntMinSteps, sizeof(int *));
+    for(ii=0; ii<inp_psn->iNumOfIntMinSteps; ii++)
+    {
+      inp_psn->ppiStableHubsMergeClust[ii]    =(int *) calloc(molecule->nRes, sizeof(int));
+      inp_psn->ppiTempStableHubsMergeClust[ii]=(int *) calloc(molecule->nRes, sizeof(int));
+    }
+  }
+
   /*
     ppppiHubCorr allocation
     used to store Hub Correlations
   */
   
-  inp_psn->ppppiHubCorr=(int ****) calloc(inp_psn->iNumOfIntMinStep, sizeof(int ***));
-  for(ii=0; ii<inp_psn->iNumOfIntMinStep; ii++)
+  inp_psn->ppppiHubCorr=(int ****) calloc(inp_psn->iNumOfIntMinSteps, sizeof(int ***));
+  for(ii=0; ii<inp_psn->iNumOfIntMinSteps; ii++)
   {
     inp_psn->ppppiHubCorr[ii]=(int ***) calloc(molecule->nRes, sizeof(int **));
     for(jj=0; jj<molecule->nRes; jj++)
@@ -1549,8 +2010,8 @@ int Read_iPSG ( char **input, int inp_index, struct inp_psn *inp_psn, char *prin
      used to store the Stable Cluster Compositions
   */
   inp_psn->iMaxClustNum=(int)(((float)molecule->nRes/2.0)+1);
-  inp_psn->pppiClusters=(int ***) calloc(inp_psn->iNumOfIntMinStep, sizeof(int **));
-  for(ii=0; ii<inp_psn->iNumOfIntMinStep; ii++)
+  inp_psn->pppiClusters=(int ***) calloc(inp_psn->iNumOfIntMinSteps, sizeof(int **));
+  for(ii=0; ii<inp_psn->iNumOfIntMinSteps; ii++)
   {
     inp_psn->pppiClusters[ii]=(int **) calloc(inp_psn->iMaxClustNum, sizeof(int *));
     for(jj=0; jj<inp_psn->iMaxClustNum; jj++)
@@ -1563,12 +2024,7 @@ int Read_iPSG ( char **input, int inp_index, struct inp_psn *inp_psn, char *prin
      piLargestClusterSize Allocation
      This vector stores the averaged size of largest cluster at each Imin step
   */
-  
-  inp_psn->ppiLargestClusterSize=(int **) calloc(inp_psn->iNumOfIntMinStep, sizeof(int*));
-  for(ii=0; ii<inp_psn->iNumOfIntMinStep; ii++)
-  {
-    inp_psn->ppiLargestClusterSize[ii]=(int *) calloc(2, sizeof(int));
-  }
+  inp_psn->piLargestClusterSize=(int *) calloc(inp_psn->iNumOfIntMinSteps, sizeof(int));
   
   /*
      piNodeDegree Allocation
@@ -1577,6 +2033,33 @@ int Read_iPSG ( char **input, int inp_index, struct inp_psn *inp_psn, char *prin
   
   inp_psn->piNodeDegree = (int *) calloc(molecule->nRes, sizeof(int));
   
+  if(inp_psn->iMergeClustFlag==1)
+  {
+    /*
+     * This vector stores the clust num of each node
+    */
+    inp_psn->piNodeClust=(int *) calloc(molecule->nRes, sizeof(int));
+    inp_psn->piClustsPop=(int *) calloc(molecule->nRes, sizeof(int));
+    
+    /*
+     * Store the list of node interacions
+    */
+    inp_psn->iNumOfPoxInt = (int) ((molecule->nRes * molecule->nRes - molecule->nRes) / 2);
+    inp_psn->ppiFrameLinks=(int **) calloc(inp_psn->iNumOfPoxInt, sizeof(int *));
+    for(ii=0; ii<inp_psn->iNumOfPoxInt; ii++)
+      inp_psn->ppiFrameLinks[ii]=(int *) calloc(2, sizeof(int));
+  }
+    
+
+  /*
+   * from res id to res lab
+  */
+  inp_psn->ppcResId2Lab = (char **) calloc(molecule->nRes, sizeof (char *));
+  for(ii=0; ii<molecule->nRes; ii++)
+  {
+    inp_psn->ppcResId2Lab[ii] = (char *) calloc(80, sizeof(char));
+    sprintf(inp_psn->ppcResId2Lab[ii], "%s:%c%-d", molecule->pRes[ii]->segName, molecule->seq1[ii], molecule->pRes[ii]->resn);
+  }
   // ===================================================================
   
   
@@ -1624,10 +2107,7 @@ int Read_iPSG ( char **input, int inp_index, struct inp_psn *inp_psn, char *prin
         cToken = strtok(NULL, " ");
         sscanf(cToken, "%s", cMergeResType);
         
-        fTempFloat = GetUserNormFactor(inp_psn, cMergeResType);
-        if(fTempFloat < 0)
-          fTempFloat = fGetNormFactor(cMergeResType);
-        inp_psn->res_norm[iMergeDestRes] = fTempFloat;
+        inp_psn->res_norm[iMergeDestRes] = GetNormFactor(inp_psn, cMergeResType, 0);
 
         cToken = strtok(NULL, " ");
         
@@ -1658,19 +2138,8 @@ int Read_iPSG ( char **input, int inp_index, struct inp_psn *inp_psn, char *prin
   }
   // ===================================================================
   
-  cTmpString1[0]='\0';
-  cTmpString2[0]='\0';
-  inp_psn->iNumOfSelRes = 0;
-  for(ii=0; ii<inp_psn->sele.nselatm; ii++)
-  {
-    sprintf(cTmpString1, "%s%d", molecule->rawmol.segId[inp_psn->sele.selatm[ii]-1], molecule->rawmol.resn[inp_psn->sele.selatm[ii]-1]);
-    if(strcmp(cTmpString1, cTmpString2)!=0)
-    {
-      inp_psn->iNumOfSelRes++;
-      strcpy(cTmpString2, cTmpString1);
-    }
-  }
 
+  
   // $-$
   cTmpString1[0] = '\0';
   cTmpString2[0] = '\0';
@@ -1691,11 +2160,22 @@ int Read_iPSG ( char **input, int inp_index, struct inp_psn *inp_psn, char *prin
       strcpy(cTmpString2, cTmpString1);
     }
   }
-  
-  time(&inp_psn->time_tToday);
+
+  if(inp_psn->iGetIminFlag == 1)
+  {
+    inp_psn->piNodeClusters = (int  *) calloc(inp_psn->iNumOfNodes, sizeof(int  ));
+    inp_psn->piClustSize    = (int  *) calloc(inp_psn->iNumOfNodes, sizeof(int  ));
+    inp_psn->ppiIntMatrix   = (int **) calloc(inp_psn->iNumOfNodes, sizeof(int *));
+    for(ii=0; ii<inp_psn->iNumOfNodes; ++ii)
+      inp_psn->ppiIntMatrix[ii] = (int *) calloc(inp_psn->iNumOfNodes, sizeof(int));
+  }
 
   if(inp_psn->iVerboseFlag==1)
   {
+    time(&inp_psn->time_tToday);
+    sprintf(inp_psn->cRawFileName, "%s%s", "raw", inp_psn->title);
+    inp_psn->outfile = O_File(inp_psn->cRawFileName, "w");
+    
     fprintf( inp_psn->outfile, "# ======================================================================\n");
     fprintf( inp_psn->outfile, "#                       --- Protein Structure Network Analysis ---\n");
     fprintf( inp_psn->outfile, "#\n");
@@ -1704,7 +2184,7 @@ int Read_iPSG ( char **input, int inp_index, struct inp_psn *inp_psn, char *prin
     fprintf( inp_psn->outfile, "#                 Michele Seeber (2009)\n");
     fprintf( inp_psn->outfile, "# License       : GPL v 3\n");
     fprintf( inp_psn->outfile, "#\n");
-    fprintf( inp_psn->outfile, "# PSN Ver       : 0.8c\n");
+    fprintf( inp_psn->outfile, "# PSN Ver       : 1.0\n");
     fprintf( inp_psn->outfile, "#\n");
     fprintf( inp_psn->outfile, "# Date          : %s", asctime(localtime(&inp_psn->time_tToday)));
     fprintf( inp_psn->outfile, "#\n");
@@ -1726,11 +2206,21 @@ int Read_iPSG ( char **input, int inp_index, struct inp_psn *inp_psn, char *prin
     fprintf( inp_psn->outfile, "# IntMinStart   : %f\n", inp_psn->fIntMinStart);
     fprintf( inp_psn->outfile, "# IntMinStop    : %f\n", inp_psn->fIntMinStop);
     fprintf( inp_psn->outfile, "# IntMinStep    : %f\n", inp_psn->fIntMinStep);
-    fprintf( inp_psn->outfile, "# StableCutOff  : %f\n", inp_psn->fStableCutoff);
+    fprintf( inp_psn->outfile, "# IntMin Values : %d\n", inp_psn->iNumOfIntMinSteps);
+    for(ii=0; ii<inp_psn->iNumOfIntMinSteps; ++ii)
+      fprintf( inp_psn->outfile, "# IntMin Value  : %-3d   %.5f\n", ii+1, inp_psn->pfIminValues[ii]);
+
     if(inp_psn->iHubEqFlag == 0)
       fprintf( inp_psn->outfile, "# HubEquation   : NO\n");
     else
       fprintf( inp_psn->outfile, "# HubEquation   : YES\n");
+    
+    if(inp_psn->iMergeClustFlag == 0)
+      fprintf( inp_psn->outfile, "# MergeClust    : NO\n");
+    else
+      fprintf( inp_psn->outfile, "# MergeClust    : YES\n");
+    fprintf( inp_psn->outfile, "# MergeMinPop   : %d\n", inp_psn->iMergeMinPop);
+    
     fprintf( inp_psn->outfile, "# HubContCutOff : %i\n", inp_psn->iHubContCutoff);
     fprintf( inp_psn->outfile, "# Termini       : %i\n", inp_psn->iTerminiFlag);
     fprintf( inp_psn->outfile, "# Proximity     : %i\n", inp_psn->iProxCutOff);
@@ -1741,6 +2231,11 @@ int Read_iPSG ( char **input, int inp_index, struct inp_psn *inp_psn, char *prin
       fprintf( inp_psn->outfile, "# Int Type      : SC+CA\n");
     else if(inp_psn->iIntType == 2)
       fprintf( inp_psn->outfile, "# Int Type      : ALL\n");
+    
+    if(inp_psn->iWritePDBFlag == 0)
+      fprintf( inp_psn->outfile, "# WritePDB      : NO\n");
+    else
+      fprintf( inp_psn->outfile, "# WritePDB      : YES\n");
     
     fprintf( inp_psn->outfile, "#\n");
     fprintf( inp_psn->outfile, "# Num Of NoLink : %d\n", inp_psn->iNumOfNoLinkPairs);
@@ -1760,78 +2255,248 @@ int Read_iPSG ( char **input, int inp_index, struct inp_psn *inp_psn, char *prin
     for(ii=0; ii<inp_psn->iNumOfParam; ii++)
       fprintf(inp_psn->outfile, "# Param         : %d %5s %f\n", ii+1, inp_psn->pcParamResVect[ii], inp_psn->pfParamValVect[ii]);
 
+    if(inp_psn->iParamDBFlag)
+    {
+      fprintf(inp_psn->outfile, "# ParamDB File  : %s (%d entries)\n", inp_psn->cParamDBFileName, inp_psn->iNumOfParamDBEntries);
+      ReportUsedParamDBEntries(inp_psn, inp_psn->outfile, 0);
+    }
+    else
+      fprintf(inp_psn->outfile, "# ParamDB File  : None\n");
+
     fprintf(inp_psn->outfile, "# NoProxSeg Num : %d\n", inp_psn->iNumOfNoProxSeg);
     for(ii=0; ii<inp_psn->iNumOfNoProxSeg; ii++)
-      fprintf(inp_psn->outfile, "# NoProxSeg     : #%d %s\n", ii+1, inp_psn->pcNoProxSeg[ii]);
+      fprintf(inp_psn->outfile, "# NoProxSeg     : %d %s\n", ii+1, inp_psn->pcNoProxSeg[ii]);
     
     fprintf( inp_psn->outfile, "# ======================================================================\n");
     fprintf( inp_psn->outfile, "\n");
     
     fprintf( inp_psn->outfile, "*** Seg Info ***\n");
-    jj=1;
+    fprintf( inp_psn->outfile, "%-3s   %-5s   %-6s\n", "Id", "Seg", "TotRes");
     for(ii=0; ii<molecule->nSeg; ii++)
-    {
-      fprintf( inp_psn->outfile, "%2d   %5s   %6d   %10d\n", ii+1, molecule->segment[ii].segName, molecule->segment[ii].nRpS, jj);
-      jj=jj+molecule->segment[ii].nRpS;
-    }
+      fprintf( inp_psn->outfile, "%-3d   %-5s   %-6d\n", ii+1, molecule->segment[ii].segName, molecule->segment[ii].nRpS);
+    
     fprintf( inp_psn->outfile, "========================\n");
     
     fprintf( inp_psn->outfile, "*** Seq ***\n");
-    
-    kk=0;
-    for(ii=0; ii<molecule->nSeg; ii++)
+    fprintf(inp_psn->outfile, "%-10s   %-15s   %s\n", "Id", "Res", "NormFact");
+    for(ii=0; ii<molecule->nRes; ++ii)
     {
-      for(jj=0; jj<molecule->segment[ii].nRpS; jj++)
-      {
-        kk++;
-        if     (strncmp(molecule->segment[ii].pRes[jj].resType, "ALA", 3)==0) strcpy(cResName, "A\0");
-        else if(strncmp(molecule->segment[ii].pRes[jj].resType, "ARG", 3)==0) strcpy(cResName, "R\0");
-        else if(strncmp(molecule->segment[ii].pRes[jj].resType, "ASN", 3)==0) strcpy(cResName, "N\0");
-        else if(strncmp(molecule->segment[ii].pRes[jj].resType, "ASP", 3)==0) strcpy(cResName, "D\0");
-        else if(strncmp(molecule->segment[ii].pRes[jj].resType, "CYS", 3)==0) strcpy(cResName, "C\0");
-        else if(strncmp(molecule->segment[ii].pRes[jj].resType, "CYN", 3)==0) strcpy(cResName, "C\0");
-        else if(strncmp(molecule->segment[ii].pRes[jj].resType, "GLU", 3)==0) strcpy(cResName, "E\0");
-        else if(strncmp(molecule->segment[ii].pRes[jj].resType, "GLN", 3)==0) strcpy(cResName, "Q\0");
-        else if(strncmp(molecule->segment[ii].pRes[jj].resType, "GLY", 3)==0) strcpy(cResName, "G\0");
-        else if(strncmp(molecule->segment[ii].pRes[jj].resType, "HIS", 3)==0) strcpy(cResName, "H\0");
-        else if(strncmp(molecule->segment[ii].pRes[jj].resType, "HSC", 3)==0) strcpy(cResName, "H\0");
-        else if(strncmp(molecule->segment[ii].pRes[jj].resType, "HSD", 3)==0) strcpy(cResName, "H\0");
-        else if(strncmp(molecule->segment[ii].pRes[jj].resType, "HSP", 3)==0) strcpy(cResName, "H\0");
-        else if(strncmp(molecule->segment[ii].pRes[jj].resType, "HID", 3)==0) strcpy(cResName, "H\0");
-        else if(strncmp(molecule->segment[ii].pRes[jj].resType, "ILE", 3)==0) strcpy(cResName, "I\0");
-        else if(strncmp(molecule->segment[ii].pRes[jj].resType, "LEU", 3)==0) strcpy(cResName, "L\0");
-        else if(strncmp(molecule->segment[ii].pRes[jj].resType, "LYS", 3)==0) strcpy(cResName, "K\0");
-        else if(strncmp(molecule->segment[ii].pRes[jj].resType, "LYP", 3)==0) strcpy(cResName, "K\0");
-        else if(strncmp(molecule->segment[ii].pRes[jj].resType, "MET", 3)==0) strcpy(cResName, "M\0");
-        else if(strncmp(molecule->segment[ii].pRes[jj].resType, "PHE", 3)==0) strcpy(cResName, "F\0");
-        else if(strncmp(molecule->segment[ii].pRes[jj].resType, "PRO", 3)==0) strcpy(cResName, "P\0");
-        else if(strncmp(molecule->segment[ii].pRes[jj].resType, "SER", 3)==0) strcpy(cResName, "S\0");
-        else if(strncmp(molecule->segment[ii].pRes[jj].resType, "THR", 3)==0) strcpy(cResName, "T\0");
-        else if(strncmp(molecule->segment[ii].pRes[jj].resType, "TRP", 3)==0) strcpy(cResName, "W\0");
-        else if(strncmp(molecule->segment[ii].pRes[jj].resType, "TYR", 3)==0) strcpy(cResName, "Y\0");
-        else if(strncmp(molecule->segment[ii].pRes[jj].resType, "VAL", 3)==0) strcpy(cResName, "V\0");
-        else if(strncmp(molecule->segment[ii].pRes[jj].resType, "RET", 3)==0) strcpy(cResName, "X\0");
-        else if(strncmp(molecule->segment[ii].pRes[jj].resType, "GDP", 3)==0) strcpy(cResName, "d\0");
-        else if(strncmp(molecule->segment[ii].pRes[jj].resType, "GTP", 3)==0) strcpy(cResName, "t\0");
-        else if(strncmp(molecule->segment[ii].pRes[jj].resType, "Mg+", 3)==0) strcpy(cResName, "m\0");
-        else if(strncmp(molecule->segment[ii].pRes[jj].resType, "ZMA", 3)==0) strcpy(cResName, "Z\0");
-        else                                                                  strcpy(cResName, "U\0");
-        
-        fprintf(inp_psn->outfile, "%10d   %5s:%s%-9d   %.5f\n", kk, molecule->segment[ii].segName, cResName, molecule->segment[ii].pRes[jj].resn, inp_psn->res_norm[kk-1]);
-      }
+      sprintf(cTempLab, "%s:%c%-d", molecule->pRes[ii]->segName, molecule->seq1[ii], molecule->pRes[ii]->resn);
+      fprintf(inp_psn->outfile, "%-10d   %-15s   %.5f\n", ii+1, cTempLab, inp_psn->res_norm[ii]);
     }
     fprintf( inp_psn->outfile, "========================\n");
   }
-
+  
   return 0;
 }
+
+int SetNodeClust(struct inp_psn *inp_psn)
+{
+  int   ii, jj;
+  int   iRes1, iRes2;
+  int   iCls1, iCls2;
+  int   iLastCls;
+  
+  // clean-up piNodeClust
+  for(ii=0; ii<inp_psn->tot_nresidues; ++ii)
+  {
+    inp_psn->piNodeClust[ii] = -1;
+    inp_psn->piClustsPop[ii] =  0;
+  }
+  
+  iLastCls = -1;
+  for(ii=0; ii<inp_psn->iNumOfPoxInt; ii++)
+  {
+    iRes1 = inp_psn->ppiFrameLinks[ii][0];
+    iRes2 = inp_psn->ppiFrameLinks[ii][1];
+    iCls1 = inp_psn->piNodeClust[iRes1];
+    iCls2 = inp_psn->piNodeClust[iRes2];
+
+    if(iCls1 == -1 && iCls2 == -1)
+    {
+      iLastCls += 1;
+      inp_psn->piNodeClust[iRes1] = iLastCls;
+      inp_psn->piNodeClust[iRes2] = iLastCls;
+    }
+    
+    else if(iCls1 != -1 && iCls2 == -1)
+      inp_psn->piNodeClust[iRes2] = iCls1;
+    
+    else if(iCls1 == -1 && iCls2 != -1)
+      inp_psn->piNodeClust[iRes1] = iCls2;
+    
+    else if(iCls1 != -1 && iCls2 != -1 && iCls1 != iCls2)
+    {
+      for(jj=0; jj<inp_psn->tot_nresidues; ++jj)
+        if(inp_psn->piNodeClust[jj] == iCls2)
+          inp_psn->piNodeClust[jj] = iCls1;
+    }
+  }
+
+  // assign each orphan node to a new cluster
+  for(ii=0; ii<inp_psn->tot_nresidues; ++ii)
+  {
+    if(inp_psn->piNodeClust[ii] == -1)
+    {
+      iLastCls += 1;
+      inp_psn->piNodeClust[ii] = iLastCls;
+    }
+  }
+  
+  // update the population of each cluster
+  for(ii=0; ii<inp_psn->tot_nresidues; ++ii)
+    inp_psn->piClustsPop[inp_psn->piNodeClust[ii]] += 1;
+  
+  // get the number of non empty clusters
+  iLastCls = 0;
+  for(ii=0; ii<inp_psn->tot_nresidues; ++ii)
+    if(inp_psn->piClustsPop[ii]>0)
+      iLastCls += 1;
+  return(iLastCls);
+}
+
+void MergeClusters(struct inp_psn *inp_psn, int iIntMinIterationNum, float fImin)
+{
+  int     cc, ii, jj;
+  int     iLastInt;
+  int     iCls1, iCls2;
+  int     iPop1, iPop2;
+  int     iMergeRes1, iMergeRes2;
+  int     iNumOfClust;
+  float   fMaxInt;
+
+  // clean-up the list of node interactions
+  for(ii=0; ii<inp_psn->iNumOfPoxInt; ++ii)
+  {
+    if(inp_psn->ppiFrameLinks[ii][0] != -1)
+    {
+      inp_psn->ppiFrameLinks[ii][0] = -1;
+      inp_psn->ppiFrameLinks[ii][1] = -1;
+    }
+    else
+      break;
+  }
+
+  for(ii=0; ii<inp_psn->tot_nresidues; ++ii)
+    inp_psn->ppiTempStableHubsMergeClust[iIntMinIterationNum][ii] = 0;
+
+  // set the list of node interactions
+  iLastInt = -1;
+  for(ii=0; ii<inp_psn->tot_nresidues; ++ii)
+  {
+    for(jj=ii+1; jj<inp_psn->tot_nresidues; ++jj)
+    {
+      if(inp_psn->ppfIntStrength[ii][jj] >= fImin)
+      {
+        iLastInt += 1;
+        inp_psn->ppiFrameLinks[iLastInt][0] = ii;
+        inp_psn->ppiFrameLinks[iLastInt][1] = jj;
+      }
+      
+      if(inp_psn->ppfHubsIntStrength[ii][jj] >= fImin)
+        inp_psn->ppiTempStableHubsMergeClust[iIntMinIterationNum][ii] += 1;
+      if(inp_psn->ppfHubsIntStrength[jj][ii] >= fImin)
+        inp_psn->ppiTempStableHubsMergeClust[iIntMinIterationNum][jj] += 1;
+    }
+  }
+
+  ////DEBUG
+  //printf("CN,R1,C1,P1,R2,C2,P2,IS\n");
+  while(1)
+  {
+    // clusterize nodes using the current list of links
+    iNumOfClust = SetNodeClust(inp_psn);
+    
+    // find the strongest sub-Ic link between 2 clusters
+    fMaxInt = 0.0;
+    for(ii=0; ii<inp_psn->tot_nresidues; ++ii)
+    {
+      iCls1 = inp_psn->piNodeClust[ii];
+      iPop1 = inp_psn->piClustsPop[iCls1];
+      if(iPop1 >= inp_psn->iMergeMinPop)
+      {
+        for(jj=ii+1; jj<inp_psn->tot_nresidues; ++jj)
+        {
+          iCls2 = inp_psn->piNodeClust[jj];
+          iPop2 = inp_psn->piClustsPop[iCls2];
+          if(iCls1 != iCls2 && iPop2 >= inp_psn->iMergeMinPop)
+          {
+            if(inp_psn->ppfIntStrength[ii][jj] > 0)
+            {
+              ////DEBUG
+              //printf("[i] %3d   %3d   %3d   %3d   %3d   %3d   %8.3f\n", ii+1, iCls1, iPop1, jj, iCls2, iPop2, inp_psn->ppfIntStrength[ii][jj]);
+              if(inp_psn->ppfIntStrength[ii][jj] > fMaxInt)
+              {
+                fMaxInt = inp_psn->ppfIntStrength[ii][jj];
+                iMergeRes1 = ii;
+                iMergeRes2 = jj;
+              }
+            }
+          }
+        }
+      }
+    }
+    
+    if(fMaxInt == 0)
+      break;
+
+    ////DEBUG
+    //ii    = iMergeRes1;
+    //jj    = iMergeRes2;
+    //iCls1 = inp_psn->piNodeClust[ii];
+    //iPop1 = inp_psn->piClustsPop[iCls1];
+    //iCls2 = inp_psn->piNodeClust[jj];
+    //iPop2 = inp_psn->piClustsPop[iCls2];
+    //printf("%d,%d,%d,%d,%d,%d,%d,%f\n", iNumOfClust, ii+1, iCls1, iPop1, jj, iCls2, iPop2, inp_psn->ppfIntStrength[ii][jj]);
+
+    // update the list of node interactions with the new sub-Ic interacion
+    iLastInt += 1;
+    inp_psn->ppiFrameLinks[iLastInt][0] = iMergeRes1;
+    inp_psn->ppiFrameLinks[iLastInt][1] = iMergeRes2;
+    
+    // write down the merge-link info
+    fprintf(inp_psn->outfile, "ML   %3d   %3d   %.3f\n", iMergeRes1+1, iMergeRes2+1, inp_psn->ppfIntStrength[iMergeRes1][iMergeRes2]);
+
+    inp_psn->pppfStableResIntStrengthMergeClust[iIntMinIterationNum][iMergeRes1][iMergeRes2] += inp_psn->ppfIntStrength[iMergeRes1][iMergeRes2];
+    inp_psn->pppiStableResIntMergeClust[iIntMinIterationNum][iMergeRes1][iMergeRes2]++;
+    
+    inp_psn->ppiTempStableHubsMergeClust[iIntMinIterationNum][iMergeRes1] += 1;
+    inp_psn->ppiTempStableHubsMergeClust[iIntMinIterationNum][iMergeRes2] += 1;
+
+  }
+  
+  // write down the new clusters info
+  
+  iNumOfClust = 0;
+  for(cc=0; cc<inp_psn->tot_nresidues; ++cc)
+  {
+    if(inp_psn->piClustsPop[cc] > 1)
+    {
+      iNumOfClust += 1;
+      fprintf(inp_psn->outfile, "MC %d: ", iNumOfClust);
+      for(ii=0; ii<inp_psn->tot_nresidues; ++ii)
+        if(inp_psn->piNodeClust[ii] == cc)
+          fprintf(inp_psn->outfile, "%d ", ii+1);
+      fprintf(inp_psn->outfile, "\n");
+    }
+  }
+  
+
+  ////DEBUG
+  //for(ii=0; ii<inp_psn->tot_nresidues; ++ii)
+  //  printf("%d   %d\n", ii+1, inp_psn->piClustsPop[ii]);
+  //exit(0);
+}
+
 // ------------------------------------------------------------------
 int Compute_PSG ( struct inp_psn *inp_psn, struct sopt *OPT, CoorSet *trj_crd, char *outprint, Molecule *molecule )
 {
   int                   ii, jj, kk, ll, ww, yy;
+  int                   iMergeAllClustFlag;
   int                   iTempRes1, iTempRes2;
   int                   resnumber1, resnumber2, nclusters, interacting;
-  int                   toofar, iClustSize, iSkipThisPairFlag;
+  int                   iClustSize, iSkipThisPairFlag;
+  int                   iGetIminRunFlag;
   long double           dist;   
   float                 fIntMinIterator;
   float                 fIntStrength;
@@ -1840,150 +2505,55 @@ int Compute_PSG ( struct inp_psn *inp_psn, struct sopt *OPT, CoorSet *trj_crd, c
   char                  res1_atmname[10], res2_atmname[10], cDistRep[100];
   char                  cTmpChar1[100], cTmpChar2[100];
   
+  if(inp_psn->iGetIminFlag == 1 && inp_psn->iSecondRound == 0)
+    iGetIminRunFlag = 1;
+  else
+    iGetIminRunFlag = 0;
+
   inp_psn->iFrameNum++;  // update the number of actual frame
 
+  //if(inp_psn->iVerboseFlag==1 && iGetIminRunFlag == 0)
   if(inp_psn->iVerboseFlag==1)
-    fprintf( inp_psn->outfile, "nFr: %d\n", inp_psn->iFrameNum+1);
-  
-  for(ii=0; ii<inp_psn->tot_nresidues; ii++)
-  {
-    for(jj=0; jj<inp_psn->tot_nresidues; jj++)
-    {
-      inp_psn->ppfIntStrength[ii][jj]          = 0.0;
-      inp_psn->ppfHubsIntStrength[ii][jj]      = 0.0;
-      inp_psn->ppiIntAtomPairs[ii][jj]         =   0;
-      inp_psn->pppcIntAtomNamePairs[ii][jj][0] = '\0';
-    }
-  }
-  
-  /*
-  for(ii=0; ii<inp_psn->tot_nresidues; ii++)
-  {
-    for(jj=0; jj<inp_psn->tot_nresidues; jj++)
-    {
-      inp_psn->ppfHubsIntStrength[ii][jj]=0.0;
-    }
-  }
-  */
+    if(iGetIminRunFlag == 0 || inp_psn->iGetIminAlgo == 0)
+      fprintf( inp_psn->outfile, "nFr: %d\n", inp_psn->iFrameNum+1);
 
-  // compute I.S. for each residue pair and place it in inp_psn->ppfIntStrength
-  //for(ii=0; ii<inp_psn->tot_nresidues; ii++)
-  //{
-  //  if(inp_psn->atmList[ii][0] == -1 )
-  //    continue;
-  //  
-  //  for( jj=ii+inp_psn->iProxCutOff; jj<inp_psn->tot_nresidues; jj++)
-  //  {
-  //    if(inp_psn->atmList[jj][0] == -1 )
-  //      continue;
-  //      
-  //    interacting = 0;
-  //    toofar = 0;
-  //    
-  //    if(trj_crd->pbc_flag == 0 || trj_crd->pbc_flag == -1)
-  //    {
-  //      // No PBC 
-  //      for( kk=0; kk<inp_psn->reslength[ii]; kk++)
-  //      {
-  //        for( ll=0; ll<inp_psn->reslength[jj]; ll++)
-  //        {
-  //          
-  //          dist = sqrt( (trj_crd->xcoor[inp_psn->atmList[ii][kk] - 1] - trj_crd->xcoor[inp_psn->atmList[jj][ll] - 1])*(trj_crd->xcoor[inp_psn->atmList[ii][kk] - 1] - trj_crd->xcoor[inp_psn->atmList[jj][ll] - 1]) +
-  //                       (trj_crd->ycoor[inp_psn->atmList[ii][kk] - 1] - trj_crd->ycoor[inp_psn->atmList[jj][ll] - 1])*(trj_crd->ycoor[inp_psn->atmList[ii][kk] - 1] - trj_crd->ycoor[inp_psn->atmList[jj][ll] - 1]) +
-  //                       (trj_crd->zcoor[inp_psn->atmList[ii][kk] - 1] - trj_crd->zcoor[inp_psn->atmList[jj][ll] - 1])*(trj_crd->zcoor[inp_psn->atmList[ii][kk] - 1] - trj_crd->zcoor[inp_psn->atmList[jj][ll] - 1]) );
-  //          
-  //          if( dist <= inp_psn->fDistCutoff )
-  //          {
-  //            interacting++;
-  //            
-  //            res1_atmname[0] = '\0';
-  //            res2_atmname[0] = '\0';
-  //            cDistRep    [0] = '\0';
-  //            
-  //            strcat(res1_atmname, molecule->rawmol.atmtype[inp_psn->atmList[ii][kk] - 1]);
-  //            strcat(res2_atmname, molecule->rawmol.atmtype[inp_psn->atmList[jj][ll] - 1]);
-  //            sprintf(cDistRep, "%.3Lf", dist);
-  //            
-  //            strcat(inp_psn->pppcIntAtomNamePairs[ii][jj], res1_atmname);
-  //            strcat(inp_psn->pppcIntAtomNamePairs[ii][jj], ":");
-  //            strcat(inp_psn->pppcIntAtomNamePairs[ii][jj], res2_atmname);
-  //            strcat(inp_psn->pppcIntAtomNamePairs[ii][jj], ":");
-  //            strcat(inp_psn->pppcIntAtomNamePairs[ii][jj], cDistRep);
-  //            strcat(inp_psn->pppcIntAtomNamePairs[ii][jj], ",");
-  //            
-  //            strcat(inp_psn->pppcIntAtomNamePairs[jj][ii], res1_atmname);
-  //            strcat(inp_psn->pppcIntAtomNamePairs[jj][ii], ":");
-  //            strcat(inp_psn->pppcIntAtomNamePairs[jj][ii], res2_atmname);
-  //            strcat(inp_psn->pppcIntAtomNamePairs[jj][ii], ":");
-  //            strcat(inp_psn->pppcIntAtomNamePairs[jj][ii], cDistRep);
-  //            strcat(inp_psn->pppcIntAtomNamePairs[jj][ii], ",");
-  //          }
-  //        }
-  //      }
-  //    }
-  //    
-  //    else
-  //    {
-  //      // PBC !
-  //      for( kk=0; kk<inp_psn->reslength[ii]; kk++)
-  //      {
-  //        for( ll=0; ll<inp_psn->reslength[jj]; ll++)
-  //        {
-  //          dist = DistanceCoor(trj_crd->xcoor[inp_psn->atmList[ii][kk] - 1], trj_crd->ycoor[inp_psn->atmList[ii][kk] - 1], trj_crd->zcoor[inp_psn->atmList[ii][kk] - 1],
-  //                              trj_crd->xcoor[inp_psn->atmList[jj][ll] - 1], trj_crd->ycoor[inp_psn->atmList[jj][ll] - 1], trj_crd->zcoor[inp_psn->atmList[jj][ll] - 1],
-  //                              trj_crd->pbc);
-  //          
-  //          if( dist<=inp_psn->fDistCutoff )
-  //            interacting++;
-  //        }
-  //      }
-  //    }
-  //    
-  //    // Update ppiIntAtomPairs
-  //    inp_psn->ppiIntAtomPairs[ii][jj] = interacting;
-  //    inp_psn->ppiIntAtomPairs[jj][ii] = interacting;
-  //    //strcat(inp_psn->pppcIntAtomNamePairs[ii][jj], "?:?,");
-  //
-  //
-  //    // Update ppfIntStrength
-  //    fIntStrength = (interacting/sqrt(inp_psn->res_norm[ii]*inp_psn->res_norm[jj]))*100;
-  //    inp_psn->ppfIntStrength[ii][jj] = fIntStrength;
-  //    inp_psn->ppfIntStrength[jj][ii] = fIntStrength;
-  //    
-  //    // Update ppiResResIntFreq
-  //    if(fIntStrength != 0.0)
-  //    {
-  //      inp_psn->ppiResResIntFreq[ii][jj]++;
-  //      inp_psn->ppiResResIntFreq[jj][ii]++;
-  //    }
-  //    
-  //    // Update IntStrength for Hubs identification
-  //    if(inp_psn->iHubEqFlag == 1)
-  //    {
-  //      // use modified equation for hubs
-  //      inp_psn->ppfHubsIntStrength[ii][jj] = (interacting/inp_psn->res_norm[ii])*100;
-  //      inp_psn->ppfHubsIntStrength[jj][ii] = (interacting/inp_psn->res_norm[jj])*100;
-  //    }
-  //    
-  //    else
-  //    {
-  //      // use normal equation
-  //      inp_psn->ppfHubsIntStrength[ii][jj] = fIntStrength;
-  //      inp_psn->ppfHubsIntStrength[jj][ii] = fIntStrength;
-  //    }
-  // }
-  //}
+  if(iGetIminRunFlag == 0)
+  {
+    for(ii=0; ii<inp_psn->tot_nresidues; ++ii)
+    {
+      inp_psn->ppfIntStrength[ii][ii]          = 0.0;
+      inp_psn->ppfHubsIntStrength[ii][ii]      = 0.0;
+      inp_psn->ppiIntAtomPairs[ii][ii]         =   0;
+      inp_psn->pppcIntAtomNamePairs[ii][ii][0] = '\0';
+      
+      for(jj=ii+1; jj<inp_psn->tot_nresidues; jj++)
+      {
+        inp_psn->ppfIntStrength[ii][jj]          = 0.0;
+        inp_psn->ppfHubsIntStrength[ii][jj]      = 0.0;
+        inp_psn->ppiIntAtomPairs[ii][jj]         =   0;
+        inp_psn->pppcIntAtomNamePairs[ii][jj][0] = '\0';
+        
+        inp_psn->ppfIntStrength[jj][ii]          = 0.0;
+        inp_psn->ppfHubsIntStrength[jj][ii]      = 0.0;
+        inp_psn->ppiIntAtomPairs[jj][ii]         =   0;
+        inp_psn->pppcIntAtomNamePairs[jj][ii][0] = '\0';
+      }
+    }
+  }
   
-  // === new IS calculation routine ====================================
-  // compute I.S. for each residue pair and place it in inp_psn->ppfIntStrength
-  //for(ii=0; ii<inp_psn->tot_nresidues; ii++)
-  //{
-  //  cTmpChar1[0] = '\0';
-  //  Res3ToRes1(molecule->rawmol.restype[inp_psn->sele.selres[ii]-1], cTmpChar1);
-  //  printf("res %s:%s%d\n", molecule->rawmol.segId[inp_psn->sele.selres[ii]-1], cTmpChar1, inp_psn->sele.selres[ii]);
-  //}
-  //exit(99);
-  
+  else
+  {
+    for(ii=0; ii<inp_psn->tot_nresidues; ++ii)
+    {
+      inp_psn->ppfIntStrength[ii][ii]     = 0.0;
+      for(jj=ii+1; jj<inp_psn->tot_nresidues; ++jj)
+      {
+        inp_psn->ppfIntStrength[ii][jj] = 0.0;
+        inp_psn->ppfIntStrength[jj][ii] = 0.0;
+      }
+    }
+  }
+
   for(ii=0; ii<inp_psn->tot_nresidues; ii++)
   {
     if(inp_psn->atmList[ii][0] == -1 )
@@ -1994,7 +2564,7 @@ int Compute_PSG ( struct inp_psn *inp_psn, struct sopt *OPT, CoorSet *trj_crd, c
 
       if(inp_psn->atmList[jj][0] == -1 )
         continue;
-      
+
       // $-$
       iSkipThisPairFlag = 0;
       if(strcmp(inp_psn->pcSeleResSegId[ii], inp_psn->pcSeleResSegId[jj]) == 0)
@@ -2021,24 +2591,20 @@ int Compute_PSG ( struct inp_psn *inp_psn, struct sopt *OPT, CoorSet *trj_crd, c
         continue;
 
       interacting = 0;
-      toofar = 0;
-      
-      if(trj_crd->pbc_flag == 0 || trj_crd->pbc_flag == -1)
+      for( kk=0; kk<inp_psn->reslength[ii]; kk++)
       {
-        // No PBC 
-        for( kk=0; kk<inp_psn->reslength[ii]; kk++)
+        for( ll=0; ll<inp_psn->reslength[jj]; ll++)
         {
-          for( ll=0; ll<inp_psn->reslength[jj]; ll++)
+          dist = DistanceCoor(trj_crd->xcoor[inp_psn->atmList[ii][kk] - 1], trj_crd->ycoor[inp_psn->atmList[ii][kk] - 1], trj_crd->zcoor[inp_psn->atmList[ii][kk] - 1],
+                              trj_crd->xcoor[inp_psn->atmList[jj][ll] - 1], trj_crd->ycoor[inp_psn->atmList[jj][ll] - 1], trj_crd->zcoor[inp_psn->atmList[jj][ll] - 1],
+                              trj_crd->pbc);
+
+          if( dist <= inp_psn->fDistCutoff )
           {
+            interacting++;
             
-            dist = sqrt( (trj_crd->xcoor[inp_psn->atmList[ii][kk] - 1] - trj_crd->xcoor[inp_psn->atmList[jj][ll] - 1])*(trj_crd->xcoor[inp_psn->atmList[ii][kk] - 1] - trj_crd->xcoor[inp_psn->atmList[jj][ll] - 1]) +
-                         (trj_crd->ycoor[inp_psn->atmList[ii][kk] - 1] - trj_crd->ycoor[inp_psn->atmList[jj][ll] - 1])*(trj_crd->ycoor[inp_psn->atmList[ii][kk] - 1] - trj_crd->ycoor[inp_psn->atmList[jj][ll] - 1]) +
-                         (trj_crd->zcoor[inp_psn->atmList[ii][kk] - 1] - trj_crd->zcoor[inp_psn->atmList[jj][ll] - 1])*(trj_crd->zcoor[inp_psn->atmList[ii][kk] - 1] - trj_crd->zcoor[inp_psn->atmList[jj][ll] - 1]) );
-            
-            if( dist <= inp_psn->fDistCutoff )
+            if(iGetIminRunFlag == 0)
             {
-              interacting++;
-              
               res1_atmname[0] = '\0';
               res2_atmname[0] = '\0';
               cDistRep    [0] = '\0';
@@ -2064,55 +2630,40 @@ int Compute_PSG ( struct inp_psn *inp_psn, struct sopt *OPT, CoorSet *trj_crd, c
           }
         }
       }
-      
-      else
-      {
-        // PBC !
-        for( kk=0; kk<inp_psn->reslength[ii]; kk++)
-        {
-          for( ll=0; ll<inp_psn->reslength[jj]; ll++)
-          {
-            dist = DistanceCoor(trj_crd->xcoor[inp_psn->atmList[ii][kk] - 1], trj_crd->ycoor[inp_psn->atmList[ii][kk] - 1], trj_crd->zcoor[inp_psn->atmList[ii][kk] - 1],
-                                trj_crd->xcoor[inp_psn->atmList[jj][ll] - 1], trj_crd->ycoor[inp_psn->atmList[jj][ll] - 1], trj_crd->zcoor[inp_psn->atmList[jj][ll] - 1],
-                                trj_crd->pbc);
-            
-            if( dist<=inp_psn->fDistCutoff )
-              interacting++;
-          }
-        }
-      }
-      
-      // Update ppiIntAtomPairs
-      inp_psn->ppiIntAtomPairs[ii][jj] = interacting;
-      inp_psn->ppiIntAtomPairs[jj][ii] = interacting;
-      //strcat(inp_psn->pppcIntAtomNamePairs[ii][jj], "?:?,");
-
 
       // Update ppfIntStrength
       fIntStrength = (interacting/sqrt(inp_psn->res_norm[ii]*inp_psn->res_norm[jj]))*100;
       inp_psn->ppfIntStrength[ii][jj] = fIntStrength;
       inp_psn->ppfIntStrength[jj][ii] = fIntStrength;
-      
-      // Update ppiResResIntFreq
-      if(fIntStrength != 0.0)
+
+
+      if(iGetIminRunFlag == 0)
       {
-        inp_psn->ppiResResIntFreq[ii][jj]++;
-        inp_psn->ppiResResIntFreq[jj][ii]++;
-      }
-      
-      // Update IntStrength for Hubs identification
-      if(inp_psn->iHubEqFlag == 1)
-      {
-        // use modified equation for hubs
-        inp_psn->ppfHubsIntStrength[ii][jj] = (interacting/inp_psn->res_norm[ii])*100;
-        inp_psn->ppfHubsIntStrength[jj][ii] = (interacting/inp_psn->res_norm[jj])*100;
-      }
-      
-      else
-      {
-        // use normal equation
-        inp_psn->ppfHubsIntStrength[ii][jj] = fIntStrength;
-        inp_psn->ppfHubsIntStrength[jj][ii] = fIntStrength;
+        // Update ppiIntAtomPairs
+        inp_psn->ppiIntAtomPairs[ii][jj] = interacting;
+        inp_psn->ppiIntAtomPairs[jj][ii] = interacting;
+        
+        // Update ppiResResIntFreq
+        if(fIntStrength != 0.0)
+        {
+          inp_psn->ppiResResIntFreq[ii][jj]++;
+          inp_psn->ppiResResIntFreq[jj][ii]++;
+        }
+        
+        // Update IntStrength for Hubs identification
+        if(inp_psn->iHubEqFlag == 1)
+        {
+          // use modified equation for hubs
+          inp_psn->ppfHubsIntStrength[ii][jj] = (interacting/inp_psn->res_norm[ii])*100;
+          inp_psn->ppfHubsIntStrength[jj][ii] = (interacting/inp_psn->res_norm[jj])*100;
+        }
+        
+        else
+        {
+          // use normal equation
+          inp_psn->ppfHubsIntStrength[ii][jj] = fIntStrength;
+          inp_psn->ppfHubsIntStrength[jj][ii] = fIntStrength;
+        }
       }
     }
   }
@@ -2130,8 +2681,11 @@ int Compute_PSG ( struct inp_psn *inp_psn, struct sopt *OPT, CoorSet *trj_crd, c
       inp_psn->ppfIntStrength[iTempRes1][iTempRes2]     = 0.0;
       inp_psn->ppfIntStrength[iTempRes2][iTempRes1]     = 0.0;
       
-      inp_psn->ppfHubsIntStrength[iTempRes1][iTempRes2] = 0.0;
-      inp_psn->ppfHubsIntStrength[iTempRes2][iTempRes1] = 0.0;
+      if(iGetIminRunFlag == 0)
+      {
+        inp_psn->ppfHubsIntStrength[iTempRes1][iTempRes2] = 0.0;
+        inp_psn->ppfHubsIntStrength[iTempRes2][iTempRes1] = 0.0;
+      }
     }
   }
   // ===================================================================
@@ -2148,69 +2702,107 @@ int Compute_PSG ( struct inp_psn *inp_psn, struct sopt *OPT, CoorSet *trj_crd, c
       inp_psn->ppfIntStrength[iTempRes1][iTempRes2]     = 999.999;
       inp_psn->ppfIntStrength[iTempRes2][iTempRes1]     = 999.999;
       
-      inp_psn->ppfHubsIntStrength[iTempRes1][iTempRes2] = 999.999;
-      inp_psn->ppfHubsIntStrength[iTempRes2][iTempRes1] = 999.999;
+      if(iGetIminRunFlag == 0)
+      {
+        inp_psn->ppfHubsIntStrength[iTempRes1][iTempRes2] = 999.999;
+        inp_psn->ppfHubsIntStrength[iTempRes2][iTempRes1] = 999.999;
+      }
     }
   }
   // ===================================================================
   
   if(inp_psn->iVerboseFlag==1)
-  {
-    fprintf(inp_psn->outfile, ">INT\n");
-    fprintf(inp_psn->outfile, "  Res1 Res2    RIS    HIS    ATM   Pairs\n");
-  }
+    if(iGetIminRunFlag == 0 || inp_psn->iGetIminAlgo == 0)
+    {
+      fprintf(inp_psn->outfile, ">INT\n");
+      fprintf( inp_psn->outfile, "&   %-4s   %-4s   %-6s   %-6s   %-6s   %-3s   %-s\n", "Res1", "Res2", "RIS", "HIS1", "HIS2", "ATM", "Pairs");
+    }
+  
   for(ii=0; ii<inp_psn->tot_nresidues; ii++)
   {
-    for(jj=0; jj<inp_psn->tot_nresidues; jj++)
+    for(jj=ii+1; jj<inp_psn->tot_nresidues; jj++)
     {
-      /* === post-proc === */
-      inp_psn->ppfAvgResInt[ii][jj]=inp_psn->ppfAvgResInt[ii][jj]+inp_psn->ppfIntStrength[ii][jj];
-      /* === post-proc === */
+      
+      if(iGetIminRunFlag == 0)
+      {
+        /* === post-proc === */
+        inp_psn->ppfAvgResInt[ii][jj]=inp_psn->ppfAvgResInt[ii][jj]+inp_psn->ppfIntStrength[ii][jj];
+        /* === post-proc === */
+      }
       
       if(inp_psn->iVerboseFlag==1)
       {
-        if(inp_psn->ppfIntStrength[ii][jj]!=0.0 || inp_psn->ppfHubsIntStrength[ii][jj]!=0.0)
+        if(inp_psn->ppfIntStrength[ii][jj]!=0.0 || inp_psn->ppfHubsIntStrength[ii][jj]!=0.0 || inp_psn->ppfHubsIntStrength[jj][ii]!=0.0)
         {
-          inp_psn->pppcIntAtomNamePairs[ii][jj][strlen(inp_psn->pppcIntAtomNamePairs[ii][jj]) - 1] = '\0';
+          if(iGetIminRunFlag == 0)
+          {
+            inp_psn->pppcIntAtomNamePairs[ii][jj][strlen(inp_psn->pppcIntAtomNamePairs[ii][jj]) - 1] = '\0';
+            fprintf( inp_psn->outfile, "&   %-4d   %-4d   %-6.3f   %-6.3f   %-6.3f   %-3d   %-s\n", ii+1, jj+1, inp_psn->ppfIntStrength[ii][jj], inp_psn->ppfHubsIntStrength[ii][jj], inp_psn->ppfHubsIntStrength[jj][ii], inp_psn->ppiIntAtomPairs[ii][jj], inp_psn->pppcIntAtomNamePairs[ii][jj]);
+          }
           
-          fprintf( inp_psn->outfile, "& %4d %4d %6.3f %6.3f    %3d   %s\n", molecule->pRes[ii]->presn, molecule->pRes[jj]->presn, inp_psn->ppfIntStrength[ii][jj], inp_psn->ppfHubsIntStrength[ii][jj], inp_psn->ppiIntAtomPairs[ii][jj], inp_psn->pppcIntAtomNamePairs[ii][jj]);
+          else if(inp_psn->iGetIminAlgo == 0)
+          {
+            if(inp_psn->iGetIminAlgo == 0)
+              fprintf( inp_psn->outfile, "& %d %d %f\n", ii, jj, inp_psn->ppfIntStrength[ii][jj]);
+          }
         }
       }
     }
   }
-  
+
+  if(iGetIminRunFlag == 1)
+  {
+    if(inp_psn->iGetIminAlgo == 1)
+      GetImin2(inp_psn, OPT, molecule);
+    return 0;
+  }
+
   if(inp_psn->iVerboseFlag==1)
     fprintf(inp_psn->outfile, ">CLS\n");
   
-  fIntMinIterator=inp_psn->fIntMinStart;  
-  iIntMinIterationNum=0;
-  for(iIntMinIterationNum=0; iIntMinIterationNum<inp_psn->iNumOfIntMinStep; iIntMinIterationNum++)
+  for(iIntMinIterationNum=0; iIntMinIterationNum<inp_psn->iNumOfIntMinSteps; ++iIntMinIterationNum)
   {
-
+    fIntMinIterator=inp_psn->pfIminValues[iIntMinIterationNum];
     for(ii=0; ii<inp_psn->tot_nresidues; ii++)
+    {
       inp_psn->piNumResInteractions[ii]=0;
-    
-    for(ii=0; ii<inp_psn->tot_nresidues; ii++)
+      inp_psn->ppiTmpStableHubs[iIntMinIterationNum][ii] = 0;
+      
       for(jj=0; jj<inp_psn->iMaxResInteractions; jj++)
         inp_psn->ppiInteractions[ii][jj]=0;
-      
-    for(resnumber1=1; resnumber1<=molecule->nRes; resnumber1++)
+    }
+    
+    for(resnumber1=0; resnumber1<molecule->nRes; ++resnumber1)
     {
       iContactsCounter=0;
-      for(resnumber2=1; resnumber2<=molecule->nRes; resnumber2++)
+      for(resnumber2=0; resnumber2<molecule->nRes; ++resnumber2)
       {
-        if(inp_psn->ppfIntStrength[resnumber1-1][resnumber2-1]>fIntMinIterator)
+
+        if(inp_psn->ppfHubsIntStrength[resnumber1][resnumber2]>=fIntMinIterator)
+          inp_psn->ppiTmpStableHubs[iIntMinIterationNum][resnumber1]++;
+        
+        if(inp_psn->ppfIntStrength[resnumber1][resnumber2]>=fIntMinIterator)
         {
-          inp_psn->ppiInteractions[resnumber1-1][inp_psn->piNumResInteractions[resnumber1-1]]=resnumber2-1;
-          inp_psn->piNumResInteractions[resnumber1-1]++;
+          inp_psn->ppiInteractions[resnumber1][inp_psn->piNumResInteractions[resnumber1]]=resnumber2;
+          inp_psn->piNumResInteractions[resnumber1]++;
           iContactsCounter++;
           
           /* === post-proc === */
-          inp_psn->pppfStableResIntStrength[iIntMinIterationNum][resnumber1-1][resnumber2-1] = inp_psn->pppfStableResIntStrength[iIntMinIterationNum][resnumber1-1][resnumber2-1] + inp_psn->ppfIntStrength[resnumber1-1][resnumber2-1];
-          inp_psn->pppiStableResInt[iIntMinIterationNum][resnumber1-1][resnumber2-1]++;
-          if(inp_psn->ppfHubsIntStrength[resnumber1-1][resnumber2-1]>fIntMinIterator)
+          inp_psn->pppfStableResIntStrength[iIntMinIterationNum][resnumber1][resnumber2] = inp_psn->pppfStableResIntStrength[iIntMinIterationNum][resnumber1][resnumber2] + inp_psn->ppfIntStrength[resnumber1][resnumber2];
+          inp_psn->pppiStableResInt[iIntMinIterationNum][resnumber1][resnumber2]++;
+          
+          if(inp_psn->iMergeClustFlag == 1)
           {
-            inp_psn->ppiTmpStableHubs[iIntMinIterationNum][resnumber1-1]++;
+            iMergeAllClustFlag = 1;
+            if(inp_psn->iGetIminFlag == 1)
+              if(inp_psn->iSecondRound == 0)
+                iMergeAllClustFlag = 0;
+            
+            if(iMergeAllClustFlag == 1)
+            {
+              inp_psn->pppfStableResIntStrengthMergeClust[iIntMinIterationNum][resnumber1][resnumber2] = inp_psn->pppfStableResIntStrengthMergeClust[iIntMinIterationNum][resnumber1][resnumber2] + inp_psn->ppfIntStrength[resnumber1][resnumber2];
+              inp_psn->pppiStableResIntMergeClust[iIntMinIterationNum][resnumber1][resnumber2]++;
+            }
           }
           /* === post-proc === */
         }
@@ -2218,7 +2810,6 @@ int Compute_PSG ( struct inp_psn *inp_psn, struct sopt *OPT, CoorSet *trj_crd, c
       
       if(inp_psn->iMaxNumOfLink<iContactsCounter)
         inp_psn->iMaxNumOfLink=iContactsCounter;
-          
       iContactsCounter=0;
       
     }
@@ -2251,87 +2842,334 @@ int Compute_PSG ( struct inp_psn *inp_psn, struct sopt *OPT, CoorSet *trj_crd, c
     }
     
     /* === post-proc === */
-    inp_psn->ppiLargestClusterSize[iIntMinIterationNum][0]=inp_psn->ppiLargestClusterSize[iIntMinIterationNum][0]+iClustSize;
+    inp_psn->piLargestClusterSize[iIntMinIterationNum] += iClustSize;
     /* === post-proc === */
     
     // *-* this line must be the last of this for cycle *-* //
     fIntMinIterator += inp_psn->fIntMinStep;
   }
 
+  // === Merge Clust Option ============================================
+  // @@@MERGE@@@
+  if(inp_psn->iVerboseFlag==1)
+  {
+    fprintf(inp_psn->outfile, ">MRG\n");
+
+    if(inp_psn->iMergeClustFlag == 1)
+    {
+      iMergeAllClustFlag = 1;
+      if(inp_psn->iGetIminFlag == 1)
+        if(inp_psn->iSecondRound == 0)
+          iMergeAllClustFlag = 0;
+      
+      if(iMergeAllClustFlag == 1)
+      {
+        for(iIntMinIterationNum=0; iIntMinIterationNum<inp_psn->iNumOfIntMinSteps; ++iIntMinIterationNum)
+        {
+          fIntMinIterator=inp_psn->pfIminValues[iIntMinIterationNum];
+          fprintf(inp_psn->outfile, "MImin: %.3f\n", fIntMinIterator);
+          MergeClusters(inp_psn, iIntMinIterationNum, fIntMinIterator);
+          fIntMinIterator += inp_psn->fIntMinStep;
+        }
+      }
+    }
+    fprintf(inp_psn->outfile, "MC END\n");
+  }
+  // ===================================================================
+
   // === post-proc === 
-  for(ii=0; ii<inp_psn->iNumOfIntMinStep; ii++)
+  for(ii=0; ii<inp_psn->iNumOfIntMinSteps; ++ii)
   {
     res1=res2=0;
     for(jj=0; jj<molecule->nRes; jj++)
     {
       if(inp_psn->ppiTmpStableHubs[ii][jj]>inp_psn->iHubContCutoff)
-      {
-        inp_psn->ppiStableHubs[ii][jj]++;
         res1=1;
-      }
+
       else
-      {
         res1=0;
-      }
     
       for(kk=0; kk<molecule->nRes; kk++)
       {
         if(inp_psn->ppiTmpStableHubs[ii][kk]>inp_psn->iHubContCutoff)
-        {
           res2=1;
-        }
+
         else
-        {
           res2=0;
-        }
         
         if(res1==res2)
         {
           inp_psn->ppppiHubCorr[ii][jj][kk][0]++;
           if(res1==1)
-          {
             inp_psn->ppppiHubCorr[ii][jj][kk][1]++;
-          }
+
           else
-          {
             inp_psn->ppppiHubCorr[ii][jj][kk][2]++;
-          }
         }
       }
     }
   }
   
-  for(ii=0; ii<inp_psn->iNumOfIntMinStep; ii++)
+  for(ii=0; ii<inp_psn->iNumOfIntMinSteps; ii++)
   {
     for(jj=0; jj<molecule->nRes; jj++)
     {
-      inp_psn->ppiTmpStableHubs[ii][jj]=0;
+      if(inp_psn->ppiTmpStableHubs[ii][jj] > inp_psn->iHubContCutoff)
+        inp_psn->ppiStableHubs[ii][jj] += 1;
+      
+      if(inp_psn->iMergeClustFlag == 1)
+      {
+        if(inp_psn->ppiTempStableHubsMergeClust[ii][jj] > inp_psn->iHubContCutoff)
+          inp_psn->ppiStableHubsMergeClust[ii][jj] += 1;
+      }
     }
   }
-  
+
   // === post-proc === 
   inp_psn->iPBCFlag = trj_crd->pbc_flag;
   
   return 0;
 }
 // ------------------------------------------------------------------
+
+void ReportUsedParamDBEntries(struct inp_psn *inp_psn, FILE *FileHandler, int iReportMode)
+{
+  int    ii=0;
+  int    iParamIdx=-1;
+  int    iAlloNumOfChars=9999;
+  float  fMolParam;
+  char   cLine[iAlloNumOfChars], cMolCode[9], cMolName[iAlloNumOfChars], cMolFormula[iAlloNumOfChars];
+  FILE  *ParmDBFile;
+  
+  if(iReportMode == 1)
+  {
+    fprintf(FileHandler, "the following normalization factor(s) was/were extraceted from database file '%s'\n", inp_psn->cParamDBFileName);
+    fprintf(FileHandler, "%-3s   %-9s   %-9s   %s\n", "Num", "MolCode", "NormFact", "Definition");
+  }
+  
+  ParmDBFile = O_File(inp_psn->cParamDBFileName, "r");
+  while(fgets(cLine, iAlloNumOfChars, ParmDBFile) != NULL)
+  {
+    if(cLine[0] != '#')
+    {
+      sscanf(cLine, "%[^@]@%[^@]@%[^@]@%f", cMolCode, cMolName, cMolFormula, &fMolParam);
+      if(fMolParam>0)
+      {
+        iParamIdx++;
+        if(inp_psn->piUsedDBParamIndices[iParamIdx] == 1)
+        {
+          ii++;
+          if(iReportMode == 0)
+            fprintf(FileHandler, "# Param         : %-5d %-9s %-9.5f %-s (%-s)\n", ii, cMolCode, fMolParam, cMolName, cMolFormula);
+          else if(iReportMode == 1)
+            fprintf(FileHandler, "%-3d   %-9s   %-9.5f   %s (%s)\n", ii, cMolCode, fMolParam, cMolName, cMolFormula);
+        }
+      }
+    }
+  }
+  fclose(ParmDBFile);
+}
+
 int Post_PSG(struct inp_psn *inp_psn, int iNumOfFrames, Molecule *molecule, struct sopt *OPT)
 {
+  int                   ii, jj, kk, mm, ww, xx, yy, zz, ff;
+  int                   atmCounter1, atmCounter2, resindex, iNodeDeg;
+  int                   iHubFlag, iClustNum, nclusters, iResIntStabFlag=0;
+  int                   iNumOfFreqCutOffList;
+  int                 **ppiStableLinksLargestClusterSizes;
   
-  int                   ii, jj, kk, mm, ww, xx, yy, zz;
-  int                   atmCounter1, atmCounter2, resindex;
-  int                   iHubFlag, iClustNum, iClustSize, nclusters, iResIntStabFlag=0;
-  char                  cFileName[80], cPDBFileName[80], cResName[6];
-  float                 fStable, fFreq, fImin, fStableAvgIntStrength;
+  char                  cFileName[80], cPDBFileName[80], cResName[6], cTempLab1[80], cTempLab2[80], cTempLab[80];
+  
+  float                 fStable, fMinFreq, fFreq, fImin, fStableAvgIntStrength;
+  float                 fSizeNum, fSizePcn;
   float                 fHubCorr, fHubTimes, fNotHubTimes;
-  FILE                  *DistilledOutput;  
+  float                 fFreqCutOffList[] = {10.0, 20.0, 25.0, 30.0, 100.0/3.0, 50.0, 60.0, 200.0/3.0, 70.0, 75.0, 80.0};
+  
+  FILE                  *DistilledOutput;
+  
+  iNumOfFreqCutOffList = sizeof(fFreqCutOffList) / sizeof(fFreqCutOffList[0]);
+  
+  if(iNumOfFrames == 1)
+  {
+    iNumOfFreqCutOffList = 1;
+    fFreqCutOffList[0] = 100.0;
+  }
 
   if(inp_psn->iGetIminFlag == 1)
   {
     if(inp_psn->iSecondRound == 0)
     {
-      inp_psn->iSecondRound = 1;
-      GetImin(inp_psn, OPT, molecule);
+      inp_psn->iFrameNum    = -1;
+      inp_psn->iSecondRound =  1;
+      
+      if(inp_psn->iGetIminAlgo == 0)
+        GetImin(inp_psn, OPT, molecule);
+      
+      else if(inp_psn->iGetIminAlgo == 1)
+      {
+
+        inp_psn->fIntMinStep        = (1.0 / (float) (pow(10.0, (float) inp_psn->iDecNum)));
+
+        inp_psn->fPreIcValue        = inp_psn->fPreIcValue       / (float) iNumOfFrames;
+        inp_psn->fPostIcValue       = inp_psn->fPostIcValue      / (float) iNumOfFrames;
+
+        inp_psn->fPreIcValue        = (floorf((inp_psn->fPreIcValue  * (1/inp_psn->fIntMinStep)) + 0.5) / (1/inp_psn->fIntMinStep));
+        inp_psn->fPostIcValue       = (floorf((inp_psn->fPostIcValue * (1/inp_psn->fIntMinStep)) + 0.5) / (1/inp_psn->fIntMinStep));
+
+        inp_psn->pfIminValues[0]    = inp_psn->fPreIcValue;
+        inp_psn->pfIminValues[1]    = inp_psn->fPostIcValue;
+
+        inp_psn->fIntMinStart       = inp_psn->fPreIcValue;
+        inp_psn->fIntMinStop        = inp_psn->fPostIcValue;
+
+        inp_psn->fPreIcValueDelta   = inp_psn->fPreIcValueDelta  / (float) iNumOfFrames;
+        inp_psn->fPostIcValueDelta  = inp_psn->fPostIcValueDelta / (float) iNumOfFrames;        
+
+        if(inp_psn->fPreIcValueDelta < inp_psn->fPostIcValueDelta)
+          inp_psn->iBestIcValue = 0;
+        else if(inp_psn->fPreIcValueDelta > inp_psn->fPostIcValueDelta)
+          inp_psn->iBestIcValue = 1;
+        else
+          inp_psn->iBestIcValue = 2;
+        
+        if(inp_psn->iVerboseFlag == 1)
+        {
+          // close and reopen rawFile with new Imin info
+          fclose(inp_psn->outfile);
+          
+          inp_psn->outfile = O_File(inp_psn->cRawFileName, "w");
+          
+          fprintf( inp_psn->outfile, "# ======================================================================\n");
+          fprintf( inp_psn->outfile, "#                       --- Protein Structure Network Analysis ---\n");
+          fprintf( inp_psn->outfile, "#\n");
+          fprintf( inp_psn->outfile, "# Copyright     : Francesca Fanelli\n");
+          fprintf( inp_psn->outfile, "#                 Angelo Felline,\n");
+          fprintf( inp_psn->outfile, "#                 Michele Seeber (2009)\n");
+          fprintf( inp_psn->outfile, "# License       : GPL v 3\n");
+          fprintf( inp_psn->outfile, "#\n");
+          fprintf( inp_psn->outfile, "# PSN Ver       : 1.0\n");
+          fprintf( inp_psn->outfile, "#\n");
+          fprintf( inp_psn->outfile, "# Date          : %s", asctime(localtime(&inp_psn->time_tToday)));
+          fprintf( inp_psn->outfile, "#\n");
+          fprintf( inp_psn->outfile, "# Mol Name      : %s\n", OPT->IMOL_FILE);
+          fprintf( inp_psn->outfile, "# Seg Num       : %d\n", molecule->nSeg);
+          fprintf( inp_psn->outfile, "# Res Num       : %d\n", inp_psn->tot_nresidues);
+          fprintf( inp_psn->outfile, "# Trj Name      : %s\n", OPT->ITRJ_FILE);
+          fprintf( inp_psn->outfile, "# Frame Num     : %d\n", iNumOfFrames);
+          if(inp_psn->iPBCFlag == 0)
+            fprintf(inp_psn->outfile, "# PBC           : No\n");
+          else
+            fprintf(inp_psn->outfile, "# PBC           : Yes\n");
+          fprintf( inp_psn->outfile, "#\n");
+          fprintf( inp_psn->outfile, "# Title         : %s\n", inp_psn->title);
+          fprintf( inp_psn->outfile, "# Selection     : %s\n", inp_psn->sele.selestring);
+          fprintf( inp_psn->outfile, "# Sele Res Num  : %d\n", inp_psn->iNumOfSelRes);
+          fprintf( inp_psn->outfile, "# DistCutOff    : %f\n", inp_psn->fDistCutoff);
+        
+          fprintf( inp_psn->outfile, "# IntMin        : %s\n", inp_psn->cIminRange);
+          if(inp_psn->iGetIminFlag == 1)
+          {
+            fprintf( inp_psn->outfile, "# LCS Fract     : %f\n", inp_psn->fPCNSize);
+            fprintf( inp_psn->outfile, "# Dec Pos       : %d\n", inp_psn->iDecNum);
+            fprintf( inp_psn->outfile, "# Pre  Ic Val   : %f (delta %3.2f)\n", inp_psn->fPreIcValue, fabs(inp_psn->fPreIcValueDelta));
+            fprintf( inp_psn->outfile, "# Post Ic Val   : %f (delta %3.2f)\n", inp_psn->fPostIcValue, fabs(inp_psn->fPostIcValueDelta));
+            
+            if(inp_psn->iBestIcValue == 0)
+              fprintf( inp_psn->outfile, "# Best Ic Val   : PRE\n");
+            else if(inp_psn->iBestIcValue == 1)
+              fprintf( inp_psn->outfile, "# Best Ic Val   : POST\n");
+            else if(inp_psn->iBestIcValue == 2)
+              fprintf( inp_psn->outfile, "# Best Ic Val   : BOTH\n");
+          }
+          
+          else
+          {
+            fprintf( inp_psn->outfile, "# IntMinStart   : %f\n", inp_psn->fIntMinStart);
+            fprintf( inp_psn->outfile, "# IntMinStop    : %f\n", inp_psn->fIntMinStop);
+            fprintf( inp_psn->outfile, "# IntMinStep    : %f\n", inp_psn->fIntMinStep);
+          }
+          
+          fprintf( inp_psn->outfile, "# IntMin Values : %d\n", inp_psn->iNumOfIntMinSteps);
+          for(ii=0; ii<inp_psn->iNumOfIntMinSteps; ++ii)
+            fprintf( inp_psn->outfile, "# IntMin Value  : %-3d   %.5f\n", ii+1, inp_psn->pfIminValues[ii]);
+          
+          if(inp_psn->iHubEqFlag == 0)
+            fprintf( inp_psn->outfile, "# HubEquation   : NO\n");
+          else
+            fprintf( inp_psn->outfile, "# HubEquation   : YES\n");
+          
+          if(inp_psn->iMergeClustFlag == 0)
+            fprintf( inp_psn->outfile, "# MergeClust    : NO\n");
+          else
+            fprintf( inp_psn->outfile, "# MergeClust    : YES\n");
+          fprintf( inp_psn->outfile, "# MergeMinPop   : %d\n", inp_psn->iMergeMinPop);
+          
+          fprintf( inp_psn->outfile, "# HubContCutOff : %i\n", inp_psn->iHubContCutoff);
+          fprintf( inp_psn->outfile, "# Termini       : %i\n", inp_psn->iTerminiFlag);
+          fprintf( inp_psn->outfile, "# Proximity     : %i\n", inp_psn->iProxCutOff);
+          
+          if(inp_psn->iIntType == 0)
+            fprintf( inp_psn->outfile, "# Int Type      : SC\n");
+          else if(inp_psn->iIntType == 1)
+            fprintf( inp_psn->outfile, "# Int Type      : SC+CA\n");
+          else if(inp_psn->iIntType == 2)
+            fprintf( inp_psn->outfile, "# Int Type      : ALL\n");
+          
+          if(inp_psn->iWritePDBFlag == 0)
+            fprintf( inp_psn->outfile, "# WritePDB      : NO\n");
+          else
+            fprintf( inp_psn->outfile, "# WritePDB      : YES\n");
+          
+          fprintf( inp_psn->outfile, "#\n");
+          fprintf( inp_psn->outfile, "# Num Of NoLink : %d\n", inp_psn->iNumOfNoLinkPairs);
+          for(ii=0; ii<inp_psn->iNumOfNoLinkPairs; ii++)
+            fprintf( inp_psn->outfile, "# No Link       : %d %d   %d\n", ii+1, inp_psn->ppiNoLinkPairs[ii][0]+1, inp_psn->ppiNoLinkPairs[ii][1]+1);
+          
+          fprintf( inp_psn->outfile, "#\n");
+          fprintf( inp_psn->outfile, "# Num Of ForceLink : %d\n", inp_psn->iNumOfForceLinkPairs);
+          for(ii=0; ii<inp_psn->iNumOfForceLinkPairs; ii++)
+            fprintf( inp_psn->outfile, "# Force Link       : %d %d   %d\n", ii+1, inp_psn->ppiForceLinkPairs[ii][0]+1, inp_psn->ppiForceLinkPairs[ii][1]+1);
+          
+          fprintf(inp_psn->outfile, "# Num Of Merge  : %d\n", inp_psn->iNumOfMerge);
+          for(ii=0; ii<inp_psn->iNumOfMerge; ii++)
+            fprintf(inp_psn->outfile, "# Merge         : %d %s\n", ii+1, inp_psn->ppcMergedResidues[ii]);
+          
+          fprintf(inp_psn->outfile, "# Num Of Param  : %d\n", inp_psn->iNumOfParam);
+          for(ii=0; ii<inp_psn->iNumOfParam; ii++)
+            fprintf(inp_psn->outfile, "# Param         : %d %5s %f\n", ii+1, inp_psn->pcParamResVect[ii], inp_psn->pfParamValVect[ii]);
+          
+          if(inp_psn->iParamDBFlag)
+          {
+            fprintf(inp_psn->outfile, "# ParamDB File  : %s (%d entries)\n", inp_psn->cParamDBFileName, inp_psn->iNumOfParamDBEntries);
+            ReportUsedParamDBEntries(inp_psn, inp_psn->outfile, 0);
+          }
+          else
+            fprintf(inp_psn->outfile, "# ParamDB File  : None\n");
+          
+          fprintf(inp_psn->outfile, "# NoProxSeg Num : %d\n", inp_psn->iNumOfNoProxSeg);
+          for(ii=0; ii<inp_psn->iNumOfNoProxSeg; ii++)
+            fprintf(inp_psn->outfile, "# NoProxSeg     : %d %s\n", ii+1, inp_psn->pcNoProxSeg[ii]);
+          
+          fprintf( inp_psn->outfile, "# ======================================================================\n");
+          fprintf( inp_psn->outfile, "\n");
+          
+          fprintf( inp_psn->outfile, "*** Seg Info ***\n");
+          fprintf( inp_psn->outfile, "%-3s   %-5s   %-6s\n", "Id", "Seg", "TotRes");
+          for(ii=0; ii<molecule->nSeg; ii++)
+            fprintf( inp_psn->outfile, "%-3d   %-5s   %-6d\n", ii+1, molecule->segment[ii].segName, molecule->segment[ii].nRpS);
+          
+          fprintf( inp_psn->outfile, "========================\n");
+          
+          fprintf( inp_psn->outfile, "*** Seq ***\n");
+          fprintf(inp_psn->outfile, "%-10s   %-15s   %s\n", "Id", "Res", "NormFact");
+          for(ii=0; ii<molecule->nRes; ++ii)
+          {
+            sprintf(cTempLab, "%s:%c%-d", molecule->pRes[ii]->segName, molecule->seq1[ii], molecule->pRes[ii]->resn);
+            fprintf(inp_psn->outfile, "%-10d   %-15s   %.5f\n", ii+1, cTempLab, inp_psn->res_norm[ii]);
+          }
+          fprintf( inp_psn->outfile, "========================\n");
+        }
+      }
       
       // rewind trj and let's start again from the first frame!!
       return 999;
@@ -2352,7 +3190,7 @@ int Post_PSG(struct inp_psn *inp_psn, int iNumOfFrames, Molecule *molecule, stru
   fprintf(DistilledOutput, "#                 Michele Seeber (2009)\n");
   fprintf(DistilledOutput, "# License       : GPL v 3\n");
   fprintf(DistilledOutput, "#\n");
-  fprintf(DistilledOutput, "# PSN Ver       : 0.8c\n");
+  fprintf(DistilledOutput, "# PSN Ver       : 1.0\n");
   fprintf(DistilledOutput, "#\n");
   fprintf(DistilledOutput, "# Date          : %s", asctime(localtime(&inp_psn->time_tToday)));
   fprintf(DistilledOutput, "#\n"); 
@@ -2398,12 +3236,20 @@ int Post_PSG(struct inp_psn *inp_psn, int iNumOfFrames, Molecule *molecule, stru
     fprintf(DistilledOutput, "# IntMinStep    : %f\n", inp_psn->fIntMinStep);
   }
   
-  fprintf(DistilledOutput, "# StableCutOff  : %f\n", inp_psn->fStableCutoff);
-  
+  fprintf(DistilledOutput, "# IntMin Values : %d\n", inp_psn->iNumOfIntMinSteps);
+  for(ii=0; ii<inp_psn->iNumOfIntMinSteps; ++ii)
+    fprintf(DistilledOutput, "# IntMin Value  : %-3d   %.5f\n", ii+1, inp_psn->pfIminValues[ii]);
+
   if(inp_psn->iHubEqFlag == 0)
     fprintf(DistilledOutput, "# HubEquation   : NO\n");
   else
     fprintf(DistilledOutput, "# HubEquation   : YES\n");
+  
+  if(inp_psn->iMergeClustFlag == 0)
+    fprintf(DistilledOutput, "# MergeClust    : NO\n");
+  else
+    fprintf(DistilledOutput, "# MergeClust    : YES\n");
+  fprintf(DistilledOutput, "# MergeMinPop   : %d\n", inp_psn->iMergeMinPop);
   
   fprintf(DistilledOutput, "# HubContCutOff : %i\n", inp_psn->iHubContCutoff);
   fprintf(DistilledOutput, "# Termini       : %i\n", inp_psn->iTerminiFlag);
@@ -2415,6 +3261,11 @@ int Post_PSG(struct inp_psn *inp_psn, int iNumOfFrames, Molecule *molecule, stru
     fprintf(DistilledOutput, "# Int Type      : SC+CA\n");
   else if(inp_psn->iIntType == 2)
     fprintf(DistilledOutput, "# Int Type      : ALL\n");
+  
+  if(inp_psn->iWritePDBFlag == 0)
+    fprintf(DistilledOutput, "# WritePDB      : NO\n");
+  else
+    fprintf(DistilledOutput, "# WritePDB      : YES\n");
   
   fprintf(DistilledOutput, "#\n");
   fprintf(DistilledOutput, "# Num Of NoLink : %d\n", inp_psn->iNumOfNoLinkPairs);
@@ -2432,76 +3283,42 @@ int Post_PSG(struct inp_psn *inp_psn, int iNumOfFrames, Molecule *molecule, stru
   
   fprintf(DistilledOutput, "# Num Of Param  : %d\n", inp_psn->iNumOfParam);
   for(ii=0; ii<inp_psn->iNumOfParam; ii++)
-    fprintf(DistilledOutput, "# Param         : #%d %s %f\n", ii+1, inp_psn->pcParamResVect[ii], inp_psn->pfParamValVect[ii]);
+    fprintf(DistilledOutput, "# Param         : %d %5s %f\n", ii+1, inp_psn->pcParamResVect[ii], inp_psn->pfParamValVect[ii]);
+  
+  if(inp_psn->iParamDBFlag == 1)
+  {
+    fprintf(DistilledOutput, "# ParamDB File  : %s (%d entries)\n", inp_psn->cParamDBFileName, inp_psn->iNumOfParamDBEntries);
+    ReportUsedParamDBEntries(inp_psn, DistilledOutput, 0);
+  }
+  else
+    fprintf(DistilledOutput, "# ParamDB File  : None\n");
   
   fprintf(DistilledOutput, "# NoProxSeg Num : %d\n", inp_psn->iNumOfNoProxSeg);
   for(ii=0; ii<inp_psn->iNumOfNoProxSeg; ii++)
-    fprintf(DistilledOutput, "# NoProxSeg     : #%d %s\n", ii+1, inp_psn->pcNoProxSeg[ii]);
+    fprintf(DistilledOutput, "# NoProxSeg     : %d %s\n", ii+1, inp_psn->pcNoProxSeg[ii]);
   
   fprintf(DistilledOutput, "# ======================================================================\n");
 
   fprintf(DistilledOutput, "\n");
-
+  
   fprintf( DistilledOutput, "*** Seg Info ***\n");
-  jj=1;
+  fprintf( DistilledOutput, "%-3s   %-5s   %-6s\n", "Id", "Seg", "TotRes");
   for(ii=0; ii<molecule->nSeg; ii++)
-  {
-    fprintf( DistilledOutput, "%2d   %5s   %6d   %10d\n", ii+1, molecule->segment[ii].segName, molecule->segment[ii].nRpS, jj);
-    jj=jj+molecule->segment[ii].nRpS;
-  }
+    fprintf( DistilledOutput, "%-3d   %-5s   %-6d\n", ii+1, molecule->segment[ii].segName, molecule->segment[ii].nRpS);
+  
   fprintf( DistilledOutput, "========================\n");
   
   fprintf( DistilledOutput, "*** Seq ***\n");
-  
-  kk=0;
-  for(ii=0; ii<molecule->nSeg; ii++)
+  fprintf(DistilledOutput, "%-10s   %-15s   %s\n", "Id", "Res", "NormFact");
+  for(ii=0; ii<molecule->nRes; ++ii)
   {
-    for(jj=0; jj<molecule->segment[ii].nRpS; jj++)
-    {
-      kk++;
-
-      if     (strncmp(molecule->segment[ii].pRes[jj].resType, "ALA", 3)==0) strcpy(cResName, "A\0");
-      else if(strncmp(molecule->segment[ii].pRes[jj].resType, "ARG", 3)==0) strcpy(cResName, "R\0");
-      else if(strncmp(molecule->segment[ii].pRes[jj].resType, "ASN", 3)==0) strcpy(cResName, "N\0");
-      else if(strncmp(molecule->segment[ii].pRes[jj].resType, "ASP", 3)==0) strcpy(cResName, "D\0");
-      else if(strncmp(molecule->segment[ii].pRes[jj].resType, "CYS", 3)==0) strcpy(cResName, "C\0");
-      else if(strncmp(molecule->segment[ii].pRes[jj].resType, "CYN", 3)==0) strcpy(cResName, "C\0");
-      else if(strncmp(molecule->segment[ii].pRes[jj].resType, "GLU", 3)==0) strcpy(cResName, "E\0");
-      else if(strncmp(molecule->segment[ii].pRes[jj].resType, "GLN", 3)==0) strcpy(cResName, "Q\0");
-      else if(strncmp(molecule->segment[ii].pRes[jj].resType, "GLY", 3)==0) strcpy(cResName, "G\0");
-      else if(strncmp(molecule->segment[ii].pRes[jj].resType, "HIS", 3)==0) strcpy(cResName, "H\0");
-      else if(strncmp(molecule->segment[ii].pRes[jj].resType, "HSC", 3)==0) strcpy(cResName, "H\0");
-      else if(strncmp(molecule->segment[ii].pRes[jj].resType, "HSD", 3)==0) strcpy(cResName, "H\0");
-      else if(strncmp(molecule->segment[ii].pRes[jj].resType, "HSP", 3)==0) strcpy(cResName, "H\0");
-      else if(strncmp(molecule->segment[ii].pRes[jj].resType, "HID", 3)==0) strcpy(cResName, "H\0");
-      else if(strncmp(molecule->segment[ii].pRes[jj].resType, "ILE", 3)==0) strcpy(cResName, "I\0");
-      else if(strncmp(molecule->segment[ii].pRes[jj].resType, "LEU", 3)==0) strcpy(cResName, "L\0");
-      else if(strncmp(molecule->segment[ii].pRes[jj].resType, "LYS", 3)==0) strcpy(cResName, "K\0");
-      else if(strncmp(molecule->segment[ii].pRes[jj].resType, "LYP", 3)==0) strcpy(cResName, "K\0");
-      else if(strncmp(molecule->segment[ii].pRes[jj].resType, "MET", 3)==0) strcpy(cResName, "M\0");
-      else if(strncmp(molecule->segment[ii].pRes[jj].resType, "PHE", 3)==0) strcpy(cResName, "F\0");
-      else if(strncmp(molecule->segment[ii].pRes[jj].resType, "PRO", 3)==0) strcpy(cResName, "P\0");
-      else if(strncmp(molecule->segment[ii].pRes[jj].resType, "SER", 3)==0) strcpy(cResName, "S\0");
-      else if(strncmp(molecule->segment[ii].pRes[jj].resType, "THR", 3)==0) strcpy(cResName, "T\0");
-      else if(strncmp(molecule->segment[ii].pRes[jj].resType, "TRP", 3)==0) strcpy(cResName, "W\0");
-      else if(strncmp(molecule->segment[ii].pRes[jj].resType, "TYR", 3)==0) strcpy(cResName, "Y\0");
-      else if(strncmp(molecule->segment[ii].pRes[jj].resType, "VAL", 3)==0) strcpy(cResName, "V\0");
-      else if(strncmp(molecule->segment[ii].pRes[jj].resType, "RET", 3)==0) strcpy(cResName, "X\0");
-      else if(strncmp(molecule->segment[ii].pRes[jj].resType, "GDP", 3)==0) strcpy(cResName, "d\0");
-      else if(strncmp(molecule->segment[ii].pRes[jj].resType, "GTP", 3)==0) strcpy(cResName, "t\0");
-      else if(strncmp(molecule->segment[ii].pRes[jj].resType, "Mg+", 3)==0) strcpy(cResName, "m\0");
-      else if(strncmp(molecule->segment[ii].pRes[jj].resType, "ZMA", 3)==0) strcpy(cResName, "Z\0");
-      else                                                                  strcpy(cResName, "U\0");
-      
-      fprintf(DistilledOutput, "%-10d   %5s:%-10d   %5s:%1s%-10d   %.5f\n", kk, molecule->segment[ii].segName, molecule->segment[ii].pRes[jj].resn, molecule->segment[ii].segName, cResName, molecule->segment[ii].pRes[jj].resn, inp_psn->res_norm[kk - 1]);
-    }
+    sprintf(cTempLab1, "%s:%c%-d", molecule->pRes[ii]->segName, molecule->seq1[ii], molecule->pRes[ii]->resn);
+    fprintf(DistilledOutput, "%-10d   %-15s   %.5f\n", ii+1, cTempLab1, inp_psn->res_norm[ii]);
   }
   fprintf( DistilledOutput, "========================\n");
 
-  fStable=(inp_psn->fStableCutoff*iNumOfFrames);
-    
   fprintf(DistilledOutput, "*** Averaged Interaction Strength ***\n");
-  fprintf(DistilledOutput, "%-10s   %-10s   %-10s   %-s\n", "Res1", "Res2", "I.S.", "Freq");
+  fprintf(DistilledOutput, "%-10s   %-10s   %-10s   %-10s\n", "Res1", "Res2", "I.S.", "Freq");
   atmCounter1 = 0;
   
   for(ii=0; ii<molecule->nRes; ii++)
@@ -2514,8 +3331,9 @@ int Post_PSG(struct inp_psn *inp_psn, int iNumOfFrames, Molecule *molecule, stru
     {
       if(inp_psn->ppfAvgResInt[ii][jj]>0.0)
       {
-        //fprintf(DistilledOutput, " %4s:%-4d   %4s:%-4d   %5.3f   %.3f\n", molecule->rawmol.segId[atmCounter1], molecule->rawmol.resn[atmCounter1], molecule->rawmol.segId[atmCounter2], molecule->rawmol.resn[atmCounter2], (inp_psn->ppfAvgResInt[ii][jj]/(float)iNumOfFrames), ((inp_psn->ppiResResIntFreq[ii][jj]/(float)iNumOfFrames)*100.0));
-        fprintf(DistilledOutput, "%4s:%-4d   %4s:%-4d   %7.3f   %.3f\n", molecule->rawmol.segId[atmCounter1], molecule->rawmol.resn[atmCounter1], molecule->rawmol.segId[atmCounter2], molecule->rawmol.resn[atmCounter2], (inp_psn->ppfAvgResInt[ii][jj]/(float)iNumOfFrames), ((inp_psn->ppiResResIntFreq[ii][jj]/(float)iNumOfFrames)*100.0));
+        sprintf(cTempLab1, "%s:%c%-d", molecule->rawmol.segId[atmCounter1], molecule->seq1[ii], molecule->rawmol.resn[atmCounter1]);
+        sprintf(cTempLab2, "%s:%c%-d", molecule->rawmol.segId[atmCounter2], molecule->seq1[jj], molecule->rawmol.resn[atmCounter2]);
+        fprintf(DistilledOutput, "%-10s   %-10s   %-10.3f   %-10.3f\n", cTempLab1, cTempLab2, (inp_psn->ppfAvgResInt[ii][jj]/(float)iNumOfFrames), ((inp_psn->ppiResResIntFreq[ii][jj]/(float)iNumOfFrames)*100.0));
       }
       atmCounter2 += inp_psn->reslength2[jj];
     }
@@ -2525,12 +3343,12 @@ int Post_PSG(struct inp_psn *inp_psn, int iNumOfFrames, Molecule *molecule, stru
   fprintf(DistilledOutput, "========================\n");
 
   fprintf(DistilledOutput, "*** Stable Residue Interactions ***\n");
-  //fprintf(DistilledOutput, " Imin     Res1        Res2 Stable   Freq\n");
-  fprintf(DistilledOutput, "%5s   %-9s   %-9s   %6s   %6s   %s\n", "Imin", "  Res1", "  Res2", "Stable", "Freq", "AvgInt");
+  fprintf(DistilledOutput, "%-5s   %-10s   %-10s   %-7s   %-7s\n", "Imin", "Res1", "Res2", "Freq", "AvgInt");
   
-  for(ii=0; ii<inp_psn->iNumOfIntMinStep; ii++)
+  for(ii=0; ii<inp_psn->iNumOfIntMinSteps; ++ii)
   {
-    fImin=(inp_psn->fIntMinStart+(inp_psn->fIntMinStep*ii));
+    fImin=inp_psn->pfIminValues[ii];
+    
     atmCounter1 = 0;
     for(jj=0; jj<molecule->nRes; jj++)
     {
@@ -2540,84 +3358,330 @@ int Post_PSG(struct inp_psn *inp_psn, int iNumOfFrames, Molecule *molecule, stru
         
       for(kk=jj+1; kk<molecule->nRes; kk++)
       {
-        if(inp_psn->pppiStableResInt[ii][jj][kk] >= fStable)
-          iResIntStabFlag = 1;
-        else
-          iResIntStabFlag = 0;
-        
-        fFreq=((inp_psn->pppiStableResInt[ii][jj][kk]*100)/(float)iNumOfFrames);
-        
-        if(inp_psn->pppiStableResInt[ii][jj][kk] != 0.0)
-          fStableAvgIntStrength = (inp_psn->pppfStableResIntStrength[ii][jj][kk] / (float) inp_psn->pppiStableResInt[ii][jj][kk]);
-        else
-          fStableAvgIntStrength = 0.0;
-        
-        fprintf(DistilledOutput, "%5.3f   %4s:%-4d   %4s:%-4d   %6d   %6.2f   %7.3f\n",
-                                 fImin,
-                                 molecule->rawmol.segId[atmCounter1], molecule->rawmol.resn[atmCounter1],
-                                 molecule->rawmol.segId[atmCounter2], molecule->rawmol.resn[atmCounter2],
-                                 iResIntStabFlag, fFreq, fStableAvgIntStrength);
+        if(inp_psn->pppiStableResInt[ii][jj][kk] > 0)
+        {
+          fFreq=((inp_psn->pppiStableResInt[ii][jj][kk]*100)/(float)iNumOfFrames);
+          
+          if(inp_psn->pppiStableResInt[ii][jj][kk] != 0.0)
+            fStableAvgIntStrength = (inp_psn->pppfStableResIntStrength[ii][jj][kk] / (float) inp_psn->pppiStableResInt[ii][jj][kk]);
+          else
+            fStableAvgIntStrength = 0.0;
 
+          sprintf(cTempLab1, "%s:%c%-d", molecule->rawmol.segId[atmCounter1], molecule->seq1[jj], molecule->rawmol.resn[atmCounter1]);
+          sprintf(cTempLab2, "%s:%c%-d", molecule->rawmol.segId[atmCounter2], molecule->seq1[kk], molecule->rawmol.resn[atmCounter2]);
+          fprintf(DistilledOutput, "%-5.3f   %-10s   %-10s   %-7.2f   %-7.3f\n",
+                                   fImin, cTempLab1, cTempLab2, fFreq, fStableAvgIntStrength);
+        }
         atmCounter2 += inp_psn->reslength2[kk];
       }
       atmCounter1 += inp_psn->reslength2[jj];
     }
   }
-  fprintf(DistilledOutput, "========================\n");  
+  fprintf(DistilledOutput, "========================\n");
+
+  fprintf(DistilledOutput, "*** Stable Residue Interactions With Merged Clusters ***\n");
+  fprintf(DistilledOutput, "%-5s   %-10s   %-10s   %-7s   %-7s\n", "Imin", "Res1", "Res2", "MergeFreq", "MergeAvgInt");
+  if(inp_psn->iMergeClustFlag == 1)
+  {
+    for(ii=0; ii<inp_psn->iNumOfIntMinSteps; ++ii)
+    {
+      fImin=inp_psn->pfIminValues[ii];
+      atmCounter1 = 0;
+      for(jj=0; jj<molecule->nRes; jj++)
+      {
+        atmCounter2 = 0;
+        for( kk=0; kk<=jj; kk++)
+          atmCounter2 += inp_psn->reslength2[kk];
+          
+        for(kk=jj+1; kk<molecule->nRes; kk++)
+        {
+          if(inp_psn->pppiStableResIntMergeClust[ii][jj][kk] > 0)
+          {
+
+            fFreq=((inp_psn->pppiStableResIntMergeClust[ii][jj][kk]*100)/(float)iNumOfFrames);
+            
+            if(inp_psn->pppiStableResIntMergeClust[ii][jj][kk] != 0.0)
+              fStableAvgIntStrength = (inp_psn->pppfStableResIntStrengthMergeClust[ii][jj][kk] / (float) inp_psn->pppiStableResIntMergeClust[ii][jj][kk]);
+            else
+              fStableAvgIntStrength = 0.0;
+            
+            sprintf(cTempLab1, "%s:%c%-d", molecule->rawmol.segId[atmCounter1], molecule->seq1[jj], molecule->rawmol.resn[atmCounter1]);
+            sprintf(cTempLab2, "%s:%c%-d", molecule->rawmol.segId[atmCounter2], molecule->seq1[kk], molecule->rawmol.resn[atmCounter2]);
+            fprintf(DistilledOutput, "%-5.3f   %-10s   %-10s   %-7.2f   %-7.3f\n",
+                                     fImin, cTempLab1, cTempLab2, fFreq, fStableAvgIntStrength);
+          }
+          atmCounter2 += inp_psn->reslength2[kk];
+        }
+        atmCounter1 += inp_psn->reslength2[jj];
+      }
+    }
+  }
+  fprintf(DistilledOutput, "========================\n");
+
+  fprintf(DistilledOutput, "*** Nodes Degree ***\n");
+  fprintf(DistilledOutput, "%-5s   %-10s", "Imin", "Res");
+  for(ff=0; ff<iNumOfFreqCutOffList; ++ff)
+  {
+    sprintf(cTempLab1, "Deg@Frq%-7.2f", fFreqCutOffList[ff]);
+    fprintf(DistilledOutput, "%-15s", cTempLab1);
+  }
+  fprintf(DistilledOutput, "\n");
+  
+  for(ii=0; ii<inp_psn->iNumOfIntMinSteps; ++ii)
+  {
+    fImin=inp_psn->pfIminValues[ii];
+    for(jj=0; jj<molecule->nRes; jj++)
+    {
+      sprintf(cTempLab1, "%s:%c%-d", molecule->pRes[jj]->segName, molecule->seq1[jj], molecule->pRes[jj]->resn);
+      fprintf(DistilledOutput, "%-5.3f   %-10s", fImin, cTempLab1);
+      for(ff=0; ff<iNumOfFreqCutOffList; ++ff)
+      {
+        iNodeDeg = 0;
+        fMinFreq = fFreqCutOffList[ff];
+        for(kk=0; kk<molecule->nRes; kk++)
+        {
+          fFreq=((inp_psn->pppiStableResInt[ii][jj][kk]*100)/(float)iNumOfFrames);
+          if(fFreq>=fMinFreq)
+            iNodeDeg += 1;
+        }
+        fprintf(DistilledOutput, "%-15d", iNodeDeg);
+      }
+      fprintf(DistilledOutput, "\n");
+    }
+  }
+
+  if(inp_psn->iWritePDBFlag)
+  {
+    for(ii=0; ii<inp_psn->iNumOfIntMinSteps; ++ii)
+    {
+      fImin=inp_psn->pfIminValues[ii];
+    
+      for(ff=0; ff<iNumOfFreqCutOffList; ++ff)
+      {
+        fMinFreq = fFreqCutOffList[ff];
+    
+        for(ww=0; ww<molecule->nRes; ww++)
+          inp_psn->piNodeDegree[ww] = 0;
+        
+        // === clears original BetaFactors  ==========================
+        for( ww=0; ww< molecule->nSeg; ww++)
+          for( xx=0; xx< molecule->segment[ww].nRpS; xx++)
+           for( yy=0; yy< molecule->segment[ww].pRes[xx].nApR; yy++)
+             molecule->segment[ww].pRes[xx].pAto[yy].bFac  = 0.0;
+        for( ww=0; ww< molecule->nato; ww++)
+          molecule->rawmol.bFac[ww]  = 0.0;
+        // ===========================================================
+        
+        for(jj=0; jj<molecule->nRes; jj++)
+        {
+          for(kk=jj+1; kk<molecule->nRes; kk++)
+          {
+            fFreq=((inp_psn->pppiStableResInt[ii][jj][kk]*100)/(float)iNumOfFrames);
+            if(fFreq>=fMinFreq)
+            {
+              inp_psn->piNodeDegree[jj]++;
+              inp_psn->piNodeDegree[kk]++;
+            }
+          }
+        }
+        
+        atmCounter1 = 0;
+        for(jj=0; jj<molecule->nRes; jj++)
+        {
+          for( mm=0; mm<inp_psn->reslength2[jj]; mm++)
+            molecule->rawmol.bFac[atmCounter1+mm] = (float)inp_psn->piNodeDegree[jj];
+          atmCounter1 += inp_psn->reslength2[jj];
+        }
+        
+        // write down a pdb with degree values on b-factor field
+        sprintf(cPDBFileName, "deg%s-Imin%4.3f-Freq%4.3f.pdb", inp_psn->title, fImin, fMinFreq);
+        WritePdb_unstr( cPDBFileName, molecule );
+      }
+    }
+  }
+  fprintf(DistilledOutput, "========================\n");
+  
+  fprintf(DistilledOutput, "*** Nodes Degree With Merged Clusters ***\n");
+  fprintf(DistilledOutput, "%-5s   %-10s", "Imin", "Res");
+  for(ff=0; ff<iNumOfFreqCutOffList; ++ff)
+  {
+    sprintf(cTempLab1, "Deg@Frq%-7.2f", fFreqCutOffList[ff]);
+    fprintf(DistilledOutput, "%-15s", cTempLab1);
+  }
+  fprintf(DistilledOutput, "\n");
+  if(inp_psn->iMergeClustFlag == 1)
+  {
+    for(ii=0; ii<inp_psn->iNumOfIntMinSteps; ++ii)
+    {
+      fImin=inp_psn->pfIminValues[ii];
+      for(jj=0; jj<molecule->nRes; jj++)
+      {
+        sprintf(cTempLab1, "%s:%c%-d", molecule->pRes[jj]->segName, molecule->seq1[jj], molecule->pRes[jj]->resn);
+        fprintf(DistilledOutput, "%-5.3f   %-10s", fImin, cTempLab1);
+        for(ff=0; ff<iNumOfFreqCutOffList; ++ff)
+        {
+          iNodeDeg = 0;
+          fMinFreq = fFreqCutOffList[ff];
+          for(kk=0; kk<molecule->nRes; kk++)
+          {
+            fFreq=((inp_psn->pppiStableResIntMergeClust[ii][jj][kk]*100)/(float)iNumOfFrames);
+            if(fFreq>=fMinFreq)
+              iNodeDeg += 1;
+          }
+          fprintf(DistilledOutput, "%-15d", iNodeDeg);
+        }
+        fprintf(DistilledOutput, "\n");
+      }
+    }
+    
+    if(inp_psn->iWritePDBFlag)
+    {
+      for(ii=0; ii<inp_psn->iNumOfIntMinSteps; ++ii)
+      {
+        fImin=inp_psn->pfIminValues[ii];
+      
+        for(ff=0; ff<iNumOfFreqCutOffList; ++ff)
+        {
+          fMinFreq = fFreqCutOffList[ff];
+      
+          for(ww=0; ww<molecule->nRes; ww++)
+            inp_psn->piNodeDegree[ww] = 0;
+          
+          // === clears original BetaFactors  ==========================
+          for( ww=0; ww< molecule->nSeg; ww++)
+            for( xx=0; xx< molecule->segment[ww].nRpS; xx++)
+             for( yy=0; yy< molecule->segment[ww].pRes[xx].nApR; yy++)
+               molecule->segment[ww].pRes[xx].pAto[yy].bFac  = 0.0;
+          for( ww=0; ww< molecule->nato; ww++)
+            molecule->rawmol.bFac[ww]  = 0.0;
+          // ===========================================================
+          
+          for(jj=0; jj<molecule->nRes; jj++)
+          {
+            for(kk=jj+1; kk<molecule->nRes; kk++)
+            {
+              fFreq=((inp_psn->pppiStableResIntMergeClust[ii][jj][kk]*100)/(float)iNumOfFrames);
+              if(fFreq>=fMinFreq)
+              {
+                inp_psn->piNodeDegree[jj]++;
+                inp_psn->piNodeDegree[kk]++;
+              }
+            }
+          }
+          
+          atmCounter1 = 0;
+          for(jj=0; jj<molecule->nRes; jj++)
+          {
+            for( mm=0; mm<inp_psn->reslength2[jj]; mm++)
+              molecule->rawmol.bFac[atmCounter1+mm] = (float)inp_psn->piNodeDegree[jj];
+            atmCounter1 += inp_psn->reslength2[jj];
+          }
+          
+          // write down a pdb with degree values on b-factor field
+          sprintf(cPDBFileName, "mrgdeg%s-Imin%4.3f-Freq%4.3f.pdb", inp_psn->title, fImin, fMinFreq);
+          WritePdb_unstr( cPDBFileName, molecule );
+        }
+      }
+    }
+  }
+  fprintf(DistilledOutput, "========================\n");
 
   fprintf(DistilledOutput, "*** Hubs Frequencies ***\n");
-  fprintf(DistilledOutput, " Imin     Res     Stable      Frq\n");  
-  for(ii=0; ii<inp_psn->iNumOfIntMinStep; ii++)
+  fprintf(DistilledOutput, "%-5s   %-10s   %-7.3s\n", "Imin", "Res", "Frq");
+  for(ii=0; ii<inp_psn->iNumOfIntMinSteps; ++ii)
   {
-    // === clears original BetaFactors  ==========================
-    for( ww=0; ww< molecule->nSeg; ww++)
-      for( xx=0; xx< molecule->segment[ww].nRpS; xx++)
-       for( yy=0; yy< molecule->segment[ww].pRes[xx].nApR; yy++)
-       {
-         molecule->segment[ww].pRes[xx].pAto[yy].occup = 0.0;
-         molecule->segment[ww].pRes[xx].pAto[yy].bFac  = 0.0;
-       }
-       
-    for( ww=0; ww< molecule->nato; ww++)
+    if(inp_psn->iWritePDBFlag)
     {
-      molecule->rawmol.occup[ww] = 0.0;
-      molecule->rawmol.bFac[ww]  = 0.0;
+      // === clears original BetaFactors  ==========================
+      for( ww=0; ww< molecule->nSeg; ww++)
+        for( xx=0; xx< molecule->segment[ww].nRpS; xx++)
+         for( yy=0; yy< molecule->segment[ww].pRes[xx].nApR; yy++)
+           molecule->segment[ww].pRes[xx].pAto[yy].bFac  = 0.0;
+      for( ww=0; ww< molecule->nato; ww++)
+        molecule->rawmol.bFac[ww]  = 0.0;
+      // ===========================================================
     }
-    // ===========================================================
 
-    fImin=(inp_psn->fIntMinStart+(inp_psn->fIntMinStep*ii));
+    fImin=inp_psn->pfIminValues[ii];
     atmCounter1 = 0;
     for(jj=0; jj<molecule->nRes; jj++)
     {
       fFreq=((inp_psn->ppiStableHubs[ii][jj]*100)/(float)iNumOfFrames);
-      if(inp_psn->ppiStableHubs[ii][jj]>=fStable)
+      if(fFreq > 0)
       {
-        iHubFlag=1;
+        sprintf(cTempLab1, "%s:%c%-d", molecule->rawmol.segId[atmCounter1], molecule->seq1[jj], molecule->rawmol.resn[atmCounter1]);
+        fprintf(DistilledOutput, "%-5.3f   %-10s   %-7.3f\n", fImin, cTempLab1, fFreq);
       }
-      else
+      if(inp_psn->iWritePDBFlag)
       {
-        iHubFlag=0;
-      }
-      fprintf(DistilledOutput, "%5.3f   %4s:%-4d   %4d   %6.2f\n", fImin, molecule->rawmol.segId[atmCounter1], molecule->rawmol.resn[atmCounter1], iHubFlag, fFreq);
-      
-      for( mm=0; mm<inp_psn->reslength2[jj]; mm++)
-      {
-        molecule->rawmol.occup[atmCounter1+mm] = fFreq/100.0;
-        molecule->rawmol.bFac[atmCounter1+mm]  = iHubFlag;
+        for( mm=0; mm<inp_psn->reslength2[jj]; mm++)
+          molecule->rawmol.bFac[atmCounter1+mm]  = fFreq/100.0;
       }
       atmCounter1 += inp_psn->reslength2[jj];
     }
-    // write down a pdb with cluster-index on b-factor field
-    sprintf( cPDBFileName, "hub%s-%4.3f.pdb", inp_psn->title, (inp_psn->fIntMinStart+(inp_psn->fIntMinStep*ii)));
-    WritePdb_unstr( cPDBFileName, molecule );
+    
+    if(inp_psn->iWritePDBFlag)
+    {
+      // write down a pdb with cluster-index on b-factor field
+      sprintf( cPDBFileName, "hub%s-Imin%4.3f.pdb", inp_psn->title, (inp_psn->fIntMinStart+(inp_psn->fIntMinStep*ii)));
+      WritePdb_unstr( cPDBFileName, molecule );
+    }
   }
-  fprintf(DistilledOutput, "========================\n");  
+  fprintf(DistilledOutput, "========================\n");
+  
+  fprintf(DistilledOutput, "*** Hubs Frequencies With Merged Clusters ***\n");
+  fprintf(DistilledOutput, "%-5s   %-10s   %-7.3s\n", "Imin", "Res", "Frq");
+  
+  if(inp_psn->iMergeClustFlag == 1)
+  {
+    for(ii=0; ii<inp_psn->iNumOfIntMinSteps; ++ii)
+    {
+      if(inp_psn->iWritePDBFlag)
+      {
+        // === clears original BetaFactors  ==========================
+        for( ww=0; ww< molecule->nSeg; ww++)
+          for( xx=0; xx< molecule->segment[ww].nRpS; xx++)
+           for( yy=0; yy< molecule->segment[ww].pRes[xx].nApR; yy++)
+             molecule->segment[ww].pRes[xx].pAto[yy].bFac  = 0.0;
+        for( ww=0; ww< molecule->nato; ww++)
+          molecule->rawmol.bFac[ww]  = 0.0;
+        // ===========================================================
+      }
+    
+      fImin=inp_psn->pfIminValues[ii];
+      atmCounter1 = 0;
+      for(jj=0; jj<molecule->nRes; jj++)
+      {
+        fFreq=((inp_psn->ppiStableHubsMergeClust[ii][jj]*100)/(float)iNumOfFrames);
+        if(fFreq > 0)
+        {
+          sprintf(cTempLab1, "%s:%c%-d", molecule->rawmol.segId[atmCounter1], molecule->seq1[jj], molecule->rawmol.resn[atmCounter1]);
+          fprintf(DistilledOutput, "%-5.3f   %-10s   %-7.3f\n", fImin, cTempLab1, fFreq);
+        }
+        
+        if(inp_psn->iWritePDBFlag)
+        {
+          for( mm=0; mm<inp_psn->reslength2[jj]; mm++)
+            molecule->rawmol.bFac[atmCounter1+mm]  = fFreq/100.0;
+        }
+        atmCounter1 += inp_psn->reslength2[jj];
+      }
+      
+      if(inp_psn->iWritePDBFlag)
+      {
+        // write down a pdb with cluster-index on b-factor field
+        sprintf( cPDBFileName, "mrghub%s-Imin%4.3f.pdb", inp_psn->title, (inp_psn->fIntMinStart+(inp_psn->fIntMinStep*ii)));
+        WritePdb_unstr( cPDBFileName, molecule );
+      }
+    }
+  }
+  fprintf(DistilledOutput, "========================\n");
   
   fprintf(DistilledOutput, "*** Hub Correlations ***\n");
-  fprintf(DistilledOutput, " Imin    Res1        Res2         Corr     HubCorr  NotHubCorr \n");
-  for(ii=0; ii<inp_psn->iNumOfIntMinStep; ii++)
+  fprintf(DistilledOutput, "%-5s   %-10s   %-10s   %-10s   %-10s   %-10s\n", "Imin", "Res1", "Res2", "Corr", "HubCorr", "NotHubCorr");
+  for(ii=0; ii<inp_psn->iNumOfIntMinSteps; ++ii)
   {
-    fImin=(inp_psn->fIntMinStart+(inp_psn->fIntMinStep*ii));
+    fImin=inp_psn->pfIminValues[ii];
     atmCounter1 = 0;
     for(jj=0; jj<molecule->nRes; jj++)
     {
@@ -2631,7 +3695,10 @@ int Post_PSG(struct inp_psn *inp_psn, int iNumOfFrames, Molecule *molecule, stru
         {
           fHubCorr=fHubCorr*-1.0;
         }
-        fprintf(DistilledOutput, "%5.3f   %4s:%-4d   %4s:%-4d   %6.2f      %6.2f      %6.2f\n", fImin, molecule->rawmol.segId[atmCounter1], molecule->rawmol.resn[atmCounter1], molecule->rawmol.segId[atmCounter2], molecule->rawmol.resn[atmCounter2], fHubCorr, fHubTimes, fNotHubTimes);
+
+        sprintf(cTempLab1, "%s:%c%-d", molecule->rawmol.segId[atmCounter1], molecule->seq1[jj], molecule->rawmol.resn[atmCounter1]);
+        sprintf(cTempLab2, "%s:%c%-d", molecule->rawmol.segId[atmCounter2], molecule->seq1[kk], molecule->rawmol.resn[atmCounter2]);
+        fprintf(DistilledOutput, "%-5.3f   %-10s   %-10s   %-10.2f   %-10.2f   %-10.2f\n", fImin, cTempLab1, cTempLab2, fHubCorr, fHubTimes, fNotHubTimes);
         atmCounter2 += inp_psn->reslength2[kk];
       }
       atmCounter1 += inp_psn->reslength2[jj];
@@ -2640,135 +3707,208 @@ int Post_PSG(struct inp_psn *inp_psn, int iNumOfFrames, Molecule *molecule, stru
   fprintf(DistilledOutput, "========================\n");  
 
   fprintf(DistilledOutput, "*** Stable Cluster Compositions ***\n");
-  for(ii=0; ii<inp_psn->iNumOfIntMinStep; ii++)
-  {
-    // === clears original BetaFactors  ==========================
-    for( ww=0; ww< molecule->nSeg; ww++)
-      for( xx=0; xx< molecule->segment[ww].nRpS; xx++)
-       for( yy=0; yy< molecule->segment[ww].pRes[xx].nApR; yy++)
-         molecule->segment[ww].pRes[xx].pAto[yy].bFac = 0.0;
-    for( ww=0; ww< molecule->nato; ww++)
-      molecule->rawmol.bFac[ww] = 0.0;
-    // ===========================================================
   
-    for(jj=0; jj<inp_psn->tot_nresidues; jj++)
-      inp_psn->piNumResInteractions[jj]=0;
-     
-    for(jj=0; jj<inp_psn->tot_nresidues; jj++)
-      for(kk=0; kk<inp_psn->iMaxResInteractions; kk++)
-        inp_psn->ppiInteractions[jj][kk]=0;
-    
-    fImin=(inp_psn->fIntMinStart+(inp_psn->fIntMinStep*ii));
-    for(jj=0; jj<inp_psn->tot_nresidues; jj++)
-    {
-      for(kk=0; kk<inp_psn->tot_nresidues; kk++)
-      {
-        if(inp_psn->pppiStableResInt[ii][jj][kk]>fStable)
-        {
-          inp_psn->ppiInteractions[jj][inp_psn->piNumResInteractions[jj]]=kk;
-          inp_psn->piNumResInteractions[jj]++;
-        }
-      }
-    }
-    nclusters = linkwalk( molecule->nRes, inp_psn->ppiInteractions, inp_psn->piNumResInteractions, &inp_psn->cluster);
+  ppiStableLinksLargestClusterSizes = (int **) calloc(inp_psn->iNumOfIntMinSteps, sizeof(int *));
+  for(ii=0; ii<inp_psn->iNumOfIntMinSteps; ++ii)
+    ppiStableLinksLargestClusterSizes[ii]=(int *) calloc(iNumOfFreqCutOffList, sizeof(int));
+  
+  for(ii=0; ii<inp_psn->iNumOfIntMinSteps; ++ii)
+  {
+    fImin=inp_psn->pfIminValues[ii];
     fprintf(DistilledOutput, "Imin: %5.3f\n", fImin);
-
-    iClustNum=0;
-    iClustSize=0;
-    for(ww=0; ww<inp_psn->cluster.nclusters; ww++)
+    
+    for(ff=0; ff<iNumOfFreqCutOffList; ++ff)
     {
-      if(inp_psn->cluster.cluspop[ww]>2)
+      fMinFreq = fFreqCutOffList[ff];
+      fprintf(DistilledOutput, "Freq: %5.3f\n", fMinFreq);
+      
+      if(inp_psn->iWritePDBFlag)
       {
-        if(iClustSize<inp_psn->cluster.cluspop[ww])
+        // === clears original BetaFactors  ==========================
+        for( ww=0; ww< molecule->nSeg; ww++)
+          for( xx=0; xx< molecule->segment[ww].nRpS; xx++)
+           for( yy=0; yy< molecule->segment[ww].pRes[xx].nApR; yy++)
+             molecule->segment[ww].pRes[xx].pAto[yy].bFac = 0.0;
+        for( ww=0; ww< molecule->nato; ww++)
+          molecule->rawmol.bFac[ww] = 0.0;
+        // ===========================================================
+      }
+      
+      for(jj=0; jj<inp_psn->tot_nresidues; jj++)
+        inp_psn->piNumResInteractions[jj]=0;
+       
+      for(jj=0; jj<inp_psn->tot_nresidues; jj++)
+        for(kk=0; kk<inp_psn->iMaxResInteractions; kk++)
+          inp_psn->ppiInteractions[jj][kk]=0;
+
+      for(jj=0; jj<inp_psn->tot_nresidues; ++jj)
+      {
+        for(kk=jj+1; kk<inp_psn->tot_nresidues; ++kk)
         {
-          iClustSize=inp_psn->cluster.cluspop[ww];
+          fFreq=((inp_psn->pppiStableResInt[ii][jj][kk]*100)/(float)iNumOfFrames);
+          if(fFreq>=fMinFreq)
+          {
+            inp_psn->ppiInteractions[jj][inp_psn->piNumResInteractions[jj]]=kk;
+            inp_psn->piNumResInteractions[jj]++;
+            
+            inp_psn->ppiInteractions[kk][inp_psn->piNumResInteractions[kk]]=jj;
+            inp_psn->piNumResInteractions[kk]++;
+          }
         }
-        iClustNum++;
-        fprintf(DistilledOutput, "C %2d: ", iClustNum);
-        for(yy=0; yy<inp_psn->cluster.cluspop[ww]; yy++)
+      }
+      nclusters = linkwalk( molecule->nRes, inp_psn->ppiInteractions, inp_psn->piNumResInteractions, &inp_psn->cluster);
+
+      iClustNum=0;
+      for(ww=0; ww<inp_psn->cluster.nclusters; ww++)
+      {
+        if(inp_psn->cluster.cluspop[ww]>2)
         {
-          atmCounter2=0;
-          for(zz=0; zz<inp_psn->cluster.clusters[ww][yy]; zz++)
-              atmCounter2 += inp_psn->reslength2[zz];
-          
-          //fprintf(DistilledOutput, "%4s:%-d ", molecule->rawmol.segId[atmCounter2], inp_psn->cluster.clusters[ww][yy]+1); *-*
-          fprintf(DistilledOutput, "%4s:%-4d ", molecule->rawmol.segId[atmCounter2], molecule->rawmol.resn[atmCounter2]);
-          atmCounter1 = 0;
-          resindex = inp_psn->cluster.clusters[ww][yy];
-          for( mm=0; mm < resindex; mm++ )
-            atmCounter1 += inp_psn->reslength2[mm];
-          for( mm=0; mm<inp_psn->reslength2[resindex]; mm++ )
-            molecule->rawmol.bFac[atmCounter1+mm] = iClustNum;
+          if(ppiStableLinksLargestClusterSizes[ii][ff]<inp_psn->cluster.cluspop[ww])
+            ppiStableLinksLargestClusterSizes[ii][ff]=inp_psn->cluster.cluspop[ww];
+
+          iClustNum++;
+          fprintf(DistilledOutput, "C%d: ", iClustNum);
+          for(yy=0; yy<inp_psn->cluster.cluspop[ww]; yy++)
+          {
+            resindex = molecule->pRes[inp_psn->cluster.clusters[ww][yy]]->presn;
+            fprintf(DistilledOutput, "%-10s ", inp_psn->ppcResId2Lab[resindex-1]);
+
+            atmCounter1 = 0;
+            resindex = inp_psn->cluster.clusters[ww][yy];
+            for( mm=0; mm < resindex; mm++ )
+              atmCounter1 += inp_psn->reslength2[mm];
+            
+            if(inp_psn->iWritePDBFlag)
+              for( mm=0; mm<inp_psn->reslength2[resindex]; mm++ )
+                molecule->rawmol.bFac[atmCounter1+mm] = iClustNum;
+          }
+          fprintf(DistilledOutput, "\n");
         }
-        fprintf(DistilledOutput, "\n");
+      }
+      
+      if(inp_psn->iWritePDBFlag)
+      {
+        // write down a pdb with cluster-index on b-factor field
+        sprintf( cPDBFileName, "cls%s-Imin%4.3f-Freq%4.3f.pdb", inp_psn->title, fImin, fMinFreq);
+        WritePdb_unstr( cPDBFileName, molecule );
       }
     }
+  }
+  fprintf(DistilledOutput, "========================\n");
 
-    // write down a pdb with cluster-index on b-factor field
-    sprintf( cPDBFileName, "cls%s-%4.3f.pdb", inp_psn->title, fImin);
-    WritePdb_unstr( cPDBFileName, molecule );
-    inp_psn->ppiLargestClusterSize[ii][1]=iClustSize;
+  fprintf(DistilledOutput, "*** Stable Cluster Compositions With Merged Clusters ***\n");
+  if(inp_psn->iMergeClustFlag == 1)
+  {
+    for(ii=0; ii<inp_psn->iNumOfIntMinSteps; ++ii)
+    {
+      fImin=inp_psn->pfIminValues[ii];
+      fprintf(DistilledOutput, "Imin: %5.3f\n", fImin);
+      
+      for(ff=0; ff<iNumOfFreqCutOffList; ++ff)
+      {
+        fMinFreq = fFreqCutOffList[ff];
+        fprintf(DistilledOutput, "Freq: %5.3f\n", fMinFreq);
+        
+        if(inp_psn->iWritePDBFlag)
+        {
+          // === clears original BetaFactors  ==========================
+          for( ww=0; ww< molecule->nSeg; ww++)
+            for( xx=0; xx< molecule->segment[ww].nRpS; xx++)
+             for( yy=0; yy< molecule->segment[ww].pRes[xx].nApR; yy++)
+               molecule->segment[ww].pRes[xx].pAto[yy].bFac = 0.0;
+          for( ww=0; ww< molecule->nato; ww++)
+            molecule->rawmol.bFac[ww] = 0.0;
+          // ===========================================================
+        }
+        
+        for(jj=0; jj<inp_psn->tot_nresidues; jj++)
+          inp_psn->piNumResInteractions[jj]=0;
+         
+        for(jj=0; jj<inp_psn->tot_nresidues; jj++)
+          for(kk=0; kk<inp_psn->iMaxResInteractions; kk++)
+            inp_psn->ppiInteractions[jj][kk]=0;
+    
+        for(jj=0; jj<inp_psn->tot_nresidues; ++jj)
+        {
+          for(kk=jj+1; kk<inp_psn->tot_nresidues; ++kk)
+          {
+            fFreq=((inp_psn->pppiStableResIntMergeClust[ii][jj][kk]*100)/(float)iNumOfFrames);
+            if(fFreq>=fMinFreq)
+            {
+              inp_psn->ppiInteractions[jj][inp_psn->piNumResInteractions[jj]]=kk;
+              inp_psn->piNumResInteractions[jj]++;
+              
+              inp_psn->ppiInteractions[kk][inp_psn->piNumResInteractions[kk]]=jj;
+              inp_psn->piNumResInteractions[kk]++;
+            }
+          }
+        }
+        nclusters = linkwalk( molecule->nRes, inp_psn->ppiInteractions, inp_psn->piNumResInteractions, &inp_psn->cluster);
+    
+        iClustNum=0;
+        for(ww=0; ww<inp_psn->cluster.nclusters; ww++)
+        {
+          if(inp_psn->cluster.cluspop[ww]>2)
+          {
+            iClustNum++;
+            fprintf(DistilledOutput, "C%d: ", iClustNum);
+            for(yy=0; yy<inp_psn->cluster.cluspop[ww]; yy++)
+            {
+              resindex = molecule->pRes[inp_psn->cluster.clusters[ww][yy]]->presn;
+              fprintf(DistilledOutput, "%-10s ", inp_psn->ppcResId2Lab[resindex-1]);
+              
+              atmCounter1 = 0;
+              resindex = inp_psn->cluster.clusters[ww][yy];
+              for( mm=0; mm < resindex; mm++ )
+                atmCounter1 += inp_psn->reslength2[mm];
+              if(inp_psn->iWritePDBFlag)
+                for( mm=0; mm<inp_psn->reslength2[resindex]; mm++ )
+                  molecule->rawmol.bFac[atmCounter1+mm] = iClustNum;
+            }
+            fprintf(DistilledOutput, "\n");
+          }
+        }
+        
+        if(inp_psn->iWritePDBFlag)
+        {
+          // write down a pdb with cluster-index on b-factor field
+          sprintf( cPDBFileName, "mrgcls%s-Imin%4.3f-Freq%4.3f.pdb", inp_psn->title, fImin, fMinFreq);
+          WritePdb_unstr( cPDBFileName, molecule );
+        }
+      }
+    }
   }
   fprintf(DistilledOutput, "========================\n");
 
   fprintf(DistilledOutput, "*** Largest Cluster Size ***\n");
-  fprintf(DistilledOutput, "  Imin       Sim%%        Sim       Avg%%       Avg\n");
-  for(ii=0; ii<inp_psn->iNumOfIntMinStep; ii++)
+  fprintf(DistilledOutput, "%-6s   %-18s   %-18s", "Imin", "AvgSize%", "AvgSize");
+  for(ff=0; ff<iNumOfFreqCutOffList; ++ff)
   {
-    fImin=(inp_psn->fIntMinStart+(inp_psn->fIntMinStep*ii));
-    fprintf(DistilledOutput, "%6.3f     %6.2f     %6.2f     %6.2f     %5d\n",
-                                                            fImin,
-                                                            (((inp_psn->ppiLargestClusterSize[ii][0]/(float)iNumOfFrames)*100)/(float)inp_psn->tot_nresidues),
-                                                            (inp_psn->ppiLargestClusterSize[ii][0]/(float)iNumOfFrames),
-                                                            ((inp_psn->ppiLargestClusterSize[ii][1]*100)/(float)inp_psn->tot_nresidues),
-                                                            inp_psn->ppiLargestClusterSize[ii][1]);
-  }  
+    sprintf(cTempLab1, "Size%%@Frq%-7.2f", fFreqCutOffList[ff]);
+    fprintf(DistilledOutput, "%-18s", cTempLab1);
+    sprintf(cTempLab1, "Size@Frq%-7.2f", fFreqCutOffList[ff]);
+    fprintf(DistilledOutput, "%-18s", cTempLab1);
+  }
+  fprintf(DistilledOutput, "\n");
+  for(ii=0; ii<inp_psn->iNumOfIntMinSteps; ++ii)
+  {
+    fImin=inp_psn->pfIminValues[ii];
+    fSizePcn = (((inp_psn->piLargestClusterSize[ii]/(float)iNumOfFrames)*100)/(float)inp_psn->iNumOfSelRes);
+    fSizeNum = (inp_psn->piLargestClusterSize[ii]/(float)iNumOfFrames);
+    fprintf(DistilledOutput, "%-6.3f   %-18.3f   %-18.3f", fImin, fSizePcn, fSizeNum);
+    for(ff=0; ff<iNumOfFreqCutOffList; ++ff)
+    {
+      fSizePcn = (((float)ppiStableLinksLargestClusterSizes[ii][ff]/(float)inp_psn->iNumOfSelRes)*100.0);
+      fSizeNum = (float)ppiStableLinksLargestClusterSizes[ii][ff];
+      fprintf(DistilledOutput, "%-18.3f", fSizePcn);
+      fprintf(DistilledOutput, "%-18d", (int)fSizeNum);
+    }
+    fprintf(DistilledOutput, "\n");
+  }
+
   fprintf(DistilledOutput, "========================\n");
   
-  // === Node Degrees =============================================== //
-  for(ii=0; ii<inp_psn->iNumOfIntMinStep; ii++)
-  {
-    fImin=(inp_psn->fIntMinStart+(inp_psn->fIntMinStep*ii));
 
-    for(ww=0; ww<molecule->nRes; ww++)
-      inp_psn->piNodeDegree[ww] = 0;
-
-    // === clears original BetaFactors  ==========================
-    for( ww=0; ww< molecule->nSeg; ww++)
-      for( xx=0; xx< molecule->segment[ww].nRpS; xx++)
-       for( yy=0; yy< molecule->segment[ww].pRes[xx].nApR; yy++)
-         molecule->segment[ww].pRes[xx].pAto[yy].bFac  = 0.0;
-       
-    for( ww=0; ww< molecule->nato; ww++)
-      molecule->rawmol.bFac[ww]  = 0.0;
-    // ===========================================================
-    
-    for(jj=0; jj<molecule->nRes-1; jj++)
-    {
-      for(kk=jj+1; kk<molecule->nRes; kk++)
-      {
-        if(inp_psn->pppiStableResInt[ii][jj][kk] >= fStable)
-        {
-          inp_psn->piNodeDegree[jj]++;
-          inp_psn->piNodeDegree[kk]++;
-        }
-      }
-    }
-    
-    atmCounter1 = 0;
-    for(jj=0; jj<molecule->nRes; jj++)
-    {
-      for( mm=0; mm<inp_psn->reslength2[jj]; mm++)
-        molecule->rawmol.bFac[atmCounter1+mm] = (float)inp_psn->piNodeDegree[jj];
-
-      atmCounter1 += inp_psn->reslength2[jj];
-    }
-    
-    // write down a pdb with degree values on b-factor field
-    sprintf(cPDBFileName, "deg%s-%4.3f.pdb", inp_psn->title, fImin);
-    WritePdb_unstr( cPDBFileName, molecule );
-  }
-  // === Node Degrees =============================================== //
   
   return 0;  
 }
@@ -2853,6 +3993,7 @@ int    *piNodeIndex;                                                    // List 
 int     iNumOfPoxInt=0;                                                 // Num of possible interactions among nodes
 int     iNumOfForceLinkPairs=0;                                         // Num Of Forced Links
 int   **ppiForceLinkPairs;                                              // Forced Link Pairs
+int     iMergeClustFlag=0;                                              // Search shortest paths using merged clusters
 
 float  *pfTmpScore;                                                     // Tmp Path score
 float  *pfTmpWeights;                                                   // Tmp Path weights
@@ -2892,29 +4033,30 @@ void PSNPathError(int iErrNum)
 {
   
   /*
-    PSNPATH                 <--->  0
-    GetPSNParam             <--->  1
-    SequenceCheck           <--->  2
-    GetCorrData             <--->  3
-    SetIntVar               <--->  4
-    ClearAll                <--->  5
-    GetBadFrames            <--->  6
-    GetCorrRes              <--->  7
-    GetPaths                <--->  8
-    FindPath                <--->  9
-    GenPath                 <---> 10
-    SavePath                <---> 11
-    SaveData                <---> 12
-    ClearIntMatrix          <---> 13
-    ClearAllLite            <---> 14
-    GetFrameInt             <---> 15
-    SavePathLite            <---> 16
-    GetPSGData              <---> 17
-    LoadAvgLabIdx           <---> 18
-    LoadStableLinks         <---> 19
-    IntMatrixFilter         <---> 20
-    GetIcritFromFile        <---> 21
-    GetStrongestInteraction <---> 22
+    PSNPATH                    <--->  0
+    GetPSNParam                <--->  1
+    SequenceCheck              <--->  2
+    GetCorrData                <--->  3
+    SetIntVar                  <--->  4
+    ClearAll                   <--->  5
+    GetBadFrames               <--->  6
+    GetCorrRes                 <--->  7
+    GetPaths                   <--->  8
+    FindPath                   <--->  9
+    GenPath                    <---> 10
+    SavePath                   <---> 11
+    SaveData                   <---> 12
+    ClearIntMatrix             <---> 13
+    ClearAllLite               <---> 14
+    GetFrameInt                <---> 15
+    SavePathLite               <---> 16
+    GetPSGData                 <---> 17
+    LoadAvgLabIdx              <---> 18
+    LoadStableLinks            <---> 19
+    IntMatrixFilter            <---> 20
+    GetIcritFromFile           <---> 21
+    GetStrongestInteraction    <---> 22
+    ApplyMergeInfoInPathSearch <---> 23
   */
   
   char  cErrorFileName[512];
@@ -3071,7 +4213,7 @@ int PSNPATH(char **ppcInput, int iInputLineNum)
     
     iOptionFlag = 0;
     sprintf(pcInputLine, "%s", ppcInput[iInputLineNum]);
-    
+
     if(!strncmp(pcInputLine, "BEGIN", 5) || !strncmp(pcInputLine, "END", 3) || pcInputLine[0] == '#')
       iOptionFlag = 1;
     
@@ -3374,6 +4516,31 @@ int PSNPATH(char **ppcInput, int iInputLineNum)
       iNumOfForceLinkPairs++;
       iOptionFlag = 1;
     }
+    
+    else if (strncmp(pcInputLine, "--MERGECLUST", 12) == 0)
+    {
+      
+      sscanf(pcInputLine, "--MERGECLUST %s", cTemp);
+      
+      if(strcmp(cTemp, "YES") == 0)
+        iMergeClustFlag = 1;
+
+      else if(strcmp(cTemp, "NO") == 0)
+        iMergeClustFlag = 0;
+      
+      else if(strcmp(cTemp, "1") == 0)
+        iMergeClustFlag = 1;
+
+      else if(strcmp(cTemp, "0") == 0)
+        iMergeClustFlag = 0;
+
+      else
+      {
+        fprintf( stderr, "PSNPATH module: invalid --MERGECLUST value ''%s'', valid values are: YES, 1, NO or 0\n", cTemp);
+        exit(5);
+      }
+      iOptionFlag = 1;
+    }
 
     if(iOptionFlag == 0)
     {
@@ -3595,10 +4762,7 @@ int PSNPATH(char **ppcInput, int iInputLineNum)
     return 1;
   
   iNumOfPoxInt = (int) ((((float) iNumOfRes * (float) iNumOfRes) - (float) iNumOfRes) / 2.0);
-  
-  
-  
-  
+
   // *** Allocations ***
   
   if(iPSNTypeFlag == 1)
@@ -3795,7 +4959,7 @@ int PSNPATH(char **ppcInput, int iInputLineNum)
           sscanf(pcSequence[iRes2], "%[^:]:%1s%d", cTmpSegName, cTmpResCode, &iTmpResNum);
           sprintf(cTmpRes2, "%s_%s%d", cTmpSegName, cTmpResCode, iTmpResNum);
           
-          sprintf(cOutPutFileName, "PSNPath-%s-%s.path", cTmpRes1, cTmpRes2);
+          sprintf(cOutPutFileName, "PSNPath-%s-%s-%s.path", cPathTitle, cTmpRes1, cTmpRes2);
           
           FOutFile = fopen(cOutPutFileName, "w");
           if(FOutFile == NULL)
@@ -3806,7 +4970,7 @@ int PSNPATH(char **ppcInput, int iInputLineNum)
 
           if(iFrameFlag == 1)
           {
-            sprintf(cFrameFileName, "PSNPath-%s-%s.frame", cTmpRes1, cTmpRes2);
+            sprintf(cFrameFileName, "PSNPath-%s-%s-%s.frame", cPathTitle, cTmpRes1, cTmpRes2);
             FFrameFile = fopen(cFrameFileName, "w");
             if(FFrameFile == NULL)
             {
@@ -3819,7 +4983,7 @@ int PSNPATH(char **ppcInput, int iInputLineNum)
           
           if(iStatFlag == 1)
           {
-            sprintf(cStatFileName, "PSNPath-%s-%s.stat", cTmpRes1, cTmpRes2);
+            sprintf(cStatFileName, "PSNPath-%s-%s-%s.stat", cPathTitle, cTmpRes1, cTmpRes2);
             FStatFile = fopen(cStatFileName, "w");
             if(FStatFile == NULL)
             {
@@ -3843,6 +5007,9 @@ int PSNPATH(char **ppcInput, int iInputLineNum)
           
           else if(iPSNTypeFlag == 1)
           {
+            if(iMergeClustFlag == 1)
+              ApplyMergeInfoInPathSearch();
+            
             FindPath();
             GenPath(iRes1, 0);
             SavePath();
@@ -3903,7 +5070,7 @@ int PSNPATH(char **ppcInput, int iInputLineNum)
         sscanf(pcSequence[iRes2], "%[^:]:%1s%d", cTmpSegName, cTmpResCode, &iTmpResNum);
         sprintf(cTmpRes2, "%s_%s%d", cTmpSegName, cTmpResCode, iTmpResNum);
         
-        sprintf(cOutPutFileName, "PSNPath-%s-%s.path", cTmpRes1, cTmpRes2);
+        sprintf(cOutPutFileName, "PSNPath-%s-%s-%s.path", cPathTitle, cTmpRes1, cTmpRes2);
         
         FOutFile = fopen(cOutPutFileName, "w");
         if(FOutFile == NULL)
@@ -3914,7 +5081,7 @@ int PSNPATH(char **ppcInput, int iInputLineNum)
         
         if(iFrameFlag == 1)
         {
-          sprintf(cFrameFileName, "PSNPath-%s-%s.frame", cTmpRes1, cTmpRes2);
+          sprintf(cFrameFileName, "PSNPath-%s-%s-%s.frame", cPathTitle, cTmpRes1, cTmpRes2);
           FFrameFile = fopen(cFrameFileName, "w");
           if(FFrameFile == NULL)
           {
@@ -3927,7 +5094,7 @@ int PSNPATH(char **ppcInput, int iInputLineNum)
         
         if(iStatFlag == 1)
         {
-          sprintf(cStatFileName, "PSNPath-%s-%s.stat", cTmpRes1, cTmpRes2);
+          sprintf(cStatFileName, "PSNPath-%s-%s-%s.stat", cPathTitle, cTmpRes1, cTmpRes2);
           FStatFile = fopen(cStatFileName, "w");
           if(FStatFile == NULL)
           {
@@ -3951,6 +5118,9 @@ int PSNPATH(char **ppcInput, int iInputLineNum)
         
         else if(iPSNTypeFlag == 1)
         {
+          if(iMergeClustFlag == 1)
+            ApplyMergeInfoInPathSearch();
+          
           FindPath();
           GenPath(iRes1, 0);
           SavePath();
@@ -4024,7 +5194,11 @@ int PSNPATH(char **ppcInput, int iInputLineNum)
       }
       
       if(iPSNTypeFlag == 0 || iPSNTypeFlag == 2)
+      {
         GetFrameInt();
+        if(iMergeClustFlag == 1)
+          ApplyMergeInfoInPathSearch();
+      }
 
       iBlockCont++;
       
@@ -4146,7 +5320,7 @@ int PSNPATH(char **ppcInput, int iInputLineNum)
 float GetIcritFromFile(int iGetIcriticFlag)
 {
   int     ii, jj;                                                       // Some iterators
-  int     iFoundFlag=0;                                                 // Some iterators
+  int     iFoundFlag=0;
   float   fPre, fPost, fBest, fFirst, fLast;
   float   fIcritc;
   char    cLine[1000];
@@ -4299,6 +5473,9 @@ int GetPSNParam(char **ppcInput, int iInputLineNum)
   int    *piSegLastResNum;
   int     iLineNum;                                                     // Used to parse input file and find --OFFSET directive(s)
   int     iTmpSegOffSet;
+  int     iHasMergeClustInfoFlag=0;                                     // 1 if passed raw file has mergeclust info
+  
+  float   fNormFact;
   
   char    cTmpSegName[10], cTmpResType[5];                              // Res seg and type used to add offest using -o option
   char    cResCode[15];                                                 // used to read sequence in the form segname:resname+resnum
@@ -4326,13 +5503,59 @@ int GetPSNParam(char **ppcInput, int iInputLineNum)
   printf("*-*|%s|\n", cLine);
   */
   
+  if(iMergeClustFlag == 1)
+  {
+    // check if passed raw file has mergeclust info
+    while(1)
+    {
+      if(fgets(cLine, 100, FRawFile)==NULL && ( !feof(FRawFile) || ferror(FRawFile) ))
+      {
+        fprintf(stderr, "PSNPATH Error: found corrupted file while reading psn params\n");
+        exit(1);
+      }
+
+      if(strncmp(cLine, "# MergeClust    : NO", 20) == 0)
+      {
+        iHasMergeClustInfoFlag = 0;
+        break;
+      }
+      
+      if(strncmp(cLine, "# MergeClust    : 0", 19) == 0)
+      {
+        iHasMergeClustInfoFlag = 0;
+        break;
+      }
+      
+      if(strncmp(cLine, "# MergeClust    : YES", 21) == 0)
+      {
+        iHasMergeClustInfoFlag = 1;
+        break;
+      }
+      
+      if(strncmp(cLine, "# MergeClust    : 1", 19) == 0)
+      {
+        iHasMergeClustInfoFlag = 1;
+        break;
+      }
+      
+      if(strcmp(cLine, "*** Seg Info ***\n")==0)
+        break;
+    }
+    if(iHasMergeClustInfoFlag == 0)
+    {
+      fprintf(stderr, "PSNPATH Error: missing MERGECLUST info in passed raw file\n");
+      exit(1);
+    }
+    rewind(FRawFile);
+  }
+  
   // Reads number of segments, residues and frames from psn file header
   while(1)
   {
     
     if(fgets(cLine, 100, FRawFile)==NULL && ( !feof(FRawFile) || ferror(FRawFile) ))
     {
-      fprintf(stderr, "PSN Error: found corrupted file while reading psn params\n");
+      fprintf(stderr, "PSNPATH Error: found corrupted file while reading psn params\n");
       exit(1);
     }
   
@@ -4378,7 +5601,7 @@ int GetPSNParam(char **ppcInput, int iInputLineNum)
     
     if(fgets(cLine, 100, FRawFile)==NULL && ( !feof(FRawFile) || ferror(FRawFile) ))
     {
-      fprintf(stderr, "PSN Error: found corrupted file while reading psn params\n");
+      fprintf(stderr, "PSNPATH Error: found corrupted file while reading psn params\n");
       exit(1);
     }
     
@@ -4455,8 +5678,8 @@ int GetPSNParam(char **ppcInput, int iInputLineNum)
       fprintf( stderr, "PSNPATH module: Unable to laod sequence from file: %s\n", cRawPSNFileName);
       return 1;
     }
-    
-    if(strcmp(cLine, "*** Seq ***\n")==0)
+
+    if(strcmp(cLine, "Id           Res               NormFact\n")==0)
       break;
   }
   
@@ -4467,15 +5690,8 @@ int GetPSNParam(char **ppcInput, int iInputLineNum)
       fprintf(stderr, "PSN Error: found corrupted file while reading psn params\n");
       exit(1);
     }
-    
-    // reading a raw file
-    if(iPSNTypeFlag == 0 || iPSNTypeFlag == 2)
-      sscanf(cLine, "%d %s", &iProgResNum, cResCode);
-    
-    // reading an avg file
-    else if(iPSNTypeFlag == 1)
-      sscanf(cLine, "%d %s %s", &iProgResNum, cJunk, cResCode);
-    
+
+    sscanf(cLine, "%d %s %f", &iProgResNum, cResCode, &fNormFact);
     strcpy(pcRawSequence[iProgResNum-1], cResCode);
     sscanf(cResCode, "%[^:]:%1s%d", cTmpSegName, cTmpResType, &iTmpResNum);
     
@@ -4536,7 +5752,7 @@ int GetPSNParam(char **ppcInput, int iInputLineNum)
       return 1;
     }
   }
-  
+
   iCalcStep = 0;
   
   return 0;
@@ -4610,10 +5826,16 @@ void GetCorrData()
   
   cLine[0] = '\0';
   cJunk[0] = '\0';
-  
+
   for(ii=0; ii<iNumOfRes; ii++)
-    for(jj=0; jj<iNumOfRes; jj++)
-      ppfCorMatrix[ii][jj]=0.0;
+  {
+    ppfCorMatrix[ii][ii] = 0.0;
+    for(jj=ii+1; jj<iNumOfRes; jj++)
+    {
+      ppfCorMatrix[ii][jj] = 0.0;
+      ppfCorMatrix[jj][ii] = 0.0;
+    }
+  }
   
   while(fgets(cLine, 200, FCorFile)!=NULL)                              // skip header
   {
@@ -4838,7 +6060,7 @@ void LoadAvgLabIdx()
       exit(1);
     }
     
-    if(strncmp(cLine, "*** Seq ***", 11) == 0)
+    if(strncmp(cLine, "Id           Res               NormFact", 39) == 0)
       break;
   }
   
@@ -4935,13 +6157,14 @@ void GetPSGData()
   float   fTmpImin, fTmpFreq, fTmpAvgInt;
   
   iCalcStep = 17;
-  
 
   for(ii=0; ii<iNumOfRes; ++ii)
   {
-    for(jj=0; jj<iNumOfRes; ++jj)
+    ppfIntMatrix[ii][ii] = -1.0;
+    for(jj=ii+1; jj<iNumOfRes; ++jj)
     {
-      ppfIntMatrix[ii][jj]     = -1.0;
+      ppfIntMatrix[ii][jj] = -1.0;
+      ppfIntMatrix[jj][ii] = -1.0;
     }
   }
   
@@ -5202,73 +6425,143 @@ void LoadStableLinks()
   
   for(ii=0; ii<iNumOfRes; ++ii)
   {
-    for(jj=0; jj<iNumOfRes; ++jj)
+    ppfIntMatrix[ii][ii] = -1.0;
+    for(jj=ii+1; jj<iNumOfRes; ++jj)
     {
-      ppfIntMatrix[ii][jj]     = -1.0;
+      ppfIntMatrix[ii][jj] = -1.0;
+      ppfIntMatrix[jj][ii] = -1.0;
     }
   }
-  
-  while(1)
-  {
-    if(fgets(cLine, 1000, FAvgFile)==NULL && ( !feof(FAvgFile) || ferror(FAvgFile) ))
-    {
-      fprintf(stderr, "PSN Error: found corrupted file while reading stable links from avg file\n");
-      exit(1);
-    }
-    if(strncmp(cLine, "*** Stable Residue Interactions ***", 35) == 0)
-    {
-      // skip header
-      fgets(cLine, 1000, FAvgFile);
-      break;
-    }
-  }
-  
-  while(1)
-  {
-    if(fgets(cLine, 1000, FAvgFile)==NULL && ( !feof(FAvgFile) || ferror(FAvgFile) ))
-    {
-      fprintf(stderr, "PSN Error: found corrupted file while reading stable links from avg file\n");
-      exit(1);
-    }
-    sscanf(cLine, "%f %s %s %d %f %f", &fTmpImin, cTmpRes1, cTmpRes2, &iJunk, &fTmpFreq, &fTmpAvgInt);
-    if(fTmpImin == fIntMinCutOff)
-    {
 
-      iTmpRes1 = NodeLabToIndex(cTmpRes1);
-      iTmpRes2 = NodeLabToIndex(cTmpRes2);
-      
-      ppfStableLink[iTmpRes1][iTmpRes2] = fTmpFreq;
-      ppfStableLink[iTmpRes2][iTmpRes1] = fTmpFreq;
-      
-      break;
-    }
-  }
-  
-  while(1)
+  if(iMergeClustFlag == 0)
   {
-    if(fgets(cLine, 1000, FAvgFile)==NULL && ( !feof(FAvgFile) || ferror(FAvgFile) ))
+    while(1)
     {
-      fprintf(stderr, "PSN Error: found corrupted file while reading stable links from avg file\n");
-      exit(1);
+      if(fgets(cLine, 1000, FAvgFile)==NULL && ( !feof(FAvgFile) || ferror(FAvgFile) ))
+      {
+        fprintf(stderr, "PSN Error: found corrupted file while reading stable links from avg file\n");
+        exit(1);
+      }
+      if(strncmp(cLine, "*** Stable Residue Interactions ***", 35) == 0)
+      {
+        // skip header
+        fgets(cLine, 1000, FAvgFile);
+        break;
+      }
+    }
+  
+    while(1)
+    {
+      if(fgets(cLine, 1000, FAvgFile)==NULL && ( !feof(FAvgFile) || ferror(FAvgFile) ))
+      {
+        fprintf(stderr, "PSN Error: found corrupted file while reading stable links from avg file\n");
+        exit(1);
+      }
+      sscanf(cLine, "%f %s %s %f %f", &fTmpImin, cTmpRes1, cTmpRes2, &fTmpFreq, &fTmpAvgInt);
+      if(fTmpImin == fIntMinCutOff)
+      {
+    
+        iTmpRes1 = NodeLabToIndex(cTmpRes1);
+        iTmpRes2 = NodeLabToIndex(cTmpRes2);
+        
+        ppfStableLink[iTmpRes1][iTmpRes2] = fTmpFreq;
+        ppfStableLink[iTmpRes2][iTmpRes1] = fTmpFreq;
+        
+        break;
+      }
     }
     
-    if(strncmp(cLine, "========================", 24) == 0)
-      break;
-    
-    sscanf(cLine, "%f %s %s %d %f %f", &fTmpImin, cTmpRes1, cTmpRes2, &iJunk, &fTmpFreq, &fTmpAvgInt);
-    
-    if(fTmpImin == fIntMinCutOff)
+    while(1)
     {
-      iTmpRes1 = NodeLabToIndex(cTmpRes1);
-      iTmpRes2 = NodeLabToIndex(cTmpRes2);
-      ppfStableLink[iTmpRes1][iTmpRes2] = fTmpFreq;
-      ppfStableLink[iTmpRes2][iTmpRes1] = fTmpFreq;
+      if(fgets(cLine, 1000, FAvgFile)==NULL && ( !feof(FAvgFile) || ferror(FAvgFile) ))
+      {
+        fprintf(stderr, "PSN Error: found corrupted file while reading stable links from avg file\n");
+        exit(1);
+      }
+      
+      if(strncmp(cLine, "========================", 24) == 0)
+        break;
+      
+      sscanf(cLine, "%f %s %s %f %f", &fTmpImin, cTmpRes1, cTmpRes2, &fTmpFreq, &fTmpAvgInt);
+      
+      if(fTmpImin == fIntMinCutOff)
+      {
+        iTmpRes1 = NodeLabToIndex(cTmpRes1);
+        iTmpRes2 = NodeLabToIndex(cTmpRes2);
+        ppfStableLink[iTmpRes1][iTmpRes2] = fTmpFreq;
+        ppfStableLink[iTmpRes2][iTmpRes1] = fTmpFreq;
+      }
+      
+      else
+        break;
     }
-    
-    else
-      break;
   }
   
+  else
+  {
+    
+    while(1)
+    {
+      if(fgets(cLine, 1000, FAvgFile)==NULL && ( !feof(FAvgFile) || ferror(FAvgFile) ))
+      {
+        fprintf(stderr, "PSN Error: found corrupted file while reading stable links from avg file\n");
+        exit(1);
+      }
+      if(strncmp(cLine, "*** Stable Residue Interactions With Merged Clusters ***", 56) == 0)
+      
+      {
+        // skip header
+        fgets(cLine, 1000, FAvgFile);
+        break;
+      }
+    }
+    
+    while(1)
+    {
+      if(fgets(cLine, 1000, FAvgFile)==NULL && ( !feof(FAvgFile) || ferror(FAvgFile) ))
+      {
+        fprintf(stderr, "PSN Error: found corrupted file while reading stable links from avg file\n");
+        exit(1);
+      }
+      sscanf(cLine, "%f %s %s %f %f", &fTmpImin, cTmpRes1, cTmpRes2, &fTmpFreq, &fTmpAvgInt);
+      if(fTmpImin == fIntMinCutOff)
+      {
+    
+        iTmpRes1 = NodeLabToIndex(cTmpRes1);
+        iTmpRes2 = NodeLabToIndex(cTmpRes2);
+        
+        ppfStableLink[iTmpRes1][iTmpRes2] = fTmpFreq;
+        ppfStableLink[iTmpRes2][iTmpRes1] = fTmpFreq;
+        
+        break;
+      }
+    }
+    
+    while(1)
+    {
+      if(fgets(cLine, 1000, FAvgFile)==NULL && ( !feof(FAvgFile) || ferror(FAvgFile) ))
+      {
+        fprintf(stderr, "PSN Error: found corrupted file while reading stable links from avg file\n");
+        exit(1);
+      }
+      
+      if(strncmp(cLine, "========================", 24) == 0)
+        break;
+      
+      sscanf(cLine, "%f %s %s %f %f", &fTmpImin, cTmpRes1, cTmpRes2, &fTmpFreq, &fTmpAvgInt);
+      
+      if(fTmpImin == fIntMinCutOff)
+      {
+        iTmpRes1 = NodeLabToIndex(cTmpRes1);
+        iTmpRes2 = NodeLabToIndex(cTmpRes2);
+        ppfStableLink[iTmpRes1][iTmpRes2] = fTmpFreq;
+        ppfStableLink[iTmpRes2][iTmpRes1] = fTmpFreq;
+      }
+      
+      else
+        break;
+    }
+  }
   //GetUniqIntFreqList();
   iCalcStep = 0;
 }
@@ -5288,7 +6581,7 @@ void GetPaths()
   char    cMagic[20];
   char    cLine[999999];
   char    cAtmList[999999];
-  float   fTmpRIS, fTmpHIS;
+  float   fTmpRIS, fTmpHIS1, fTmpHIS2;
   
   iCalcStep = 8;
   
@@ -5344,7 +6637,7 @@ void GetPaths()
         fprintf(stderr, "PSN Error: found corrupted file while reading res-res interactions from raw file\n");
         exit(1);
       }
-      sscanf(cLine, "%s %d %d %f %f %d %s", cMagic, &iTmpRes1, &iTmpRes2, &fTmpRIS, &fTmpHIS, &iAtmPairs, cAtmList);
+      sscanf(cLine, "%s %d %d %f %f %d %s", cMagic, &iTmpRes1, &iTmpRes2, &fTmpRIS, &fTmpHIS1, &fTmpHIS2, &iAtmPairs, cAtmList);
       
       if(strcmp(cMagic, "&")!=0)
         break;
@@ -5363,11 +6656,16 @@ void GetPaths()
         }
         
         ppfRealIntMatrix[iTmpRes1][iTmpRes2] = fTmpRIS;
+        ppfRealIntMatrix[iTmpRes2][iTmpRes1] = fTmpRIS;
         
         ppfIntMatrix[iTmpRes1][iTmpRes2] = GetLinkWeight(fTmpRIS);
+        ppfIntMatrix[iTmpRes2][iTmpRes1] = GetLinkWeight(fTmpRIS);
+        
         if(iPSNTypeFlag == 2 && fIntMinFreq == 0.0)
+        {
           ppfIntMatrixBackup[iTmpRes1][iTmpRes2] = ppfIntMatrix[iTmpRes1][iTmpRes2];
-
+          ppfIntMatrixBackup[iTmpRes2][iTmpRes1] = ppfIntMatrix[iTmpRes2][iTmpRes1];
+        }
       }
     }
     
@@ -5376,8 +6674,8 @@ void GetPaths()
     {
       for(ii=0; ii<iNumOfForceLinkPairs; ++ii)
       {
-        
-        iTmpRes2 = ppiForceLinkPairs[ii][0];
+
+        iTmpRes1 = ppiForceLinkPairs[ii][0];
         iTmpRes2 = ppiForceLinkPairs[ii][1];
         
         if(iWeightFlag == 0){
@@ -5389,8 +6687,8 @@ void GetPaths()
           fTmpRIS = 0.1;
         }
         
-        ppfRealIntMatrix[iTmpRes2][iTmpRes2]   = fTmpRIS;
-        ppfRealIntMatrix[iTmpRes2][iTmpRes1]   = fTmpRIS;
+        ppfRealIntMatrix[iTmpRes1][iTmpRes2]   = 999.999;
+        ppfRealIntMatrix[iTmpRes2][iTmpRes1]   = 999.999;
         ppfIntMatrix[iTmpRes1][iTmpRes2]       = fTmpRIS;
         ppfIntMatrix[iTmpRes2][iTmpRes1]       = fTmpRIS;
         
@@ -5404,12 +6702,114 @@ void GetPaths()
     
     if(iPSNTypeFlag == 2 && fIntMinFreq == 0.0)
       IntMatrixFilter();
-      
+
+    if(iMergeClustFlag == 1)
+      ApplyMergeInfoInPathSearch();
+    
     FindPath();
     GenPath(iRes1, 0);
     SavePath();
     iCalcStep = 0;
   }
+}
+
+void ApplyMergeInfoInPathSearch()
+{
+  int     ii, jj;
+  int     iTmpRes1=0, iTmpRes2=0;
+  int     iResNum=0;
+  int     iClsNum=0;
+  int     iResNumLen=0;
+  int     iAtm;
+  
+  float   fTmpRIS=0.0, fTmpHIS1=0.0, fTmpHIS2=0.0, fImin=-9.9;
+  
+  char    cMagic[20];
+  char    cLine[999999];
+  char    cAtmList[999999];
+  char    cJunk[100], cBuffer[10];
+
+  iCalcStep = 23;
+
+  // Load merge info
+  while(1)
+  {
+    if(fgets(cLine, 999999, FRawFile)==NULL && ( !feof(FRawFile) || ferror(FRawFile) ))
+    {
+      fprintf(stderr, "PSNPATH Error: found corrupted file while reading res-res interactions from raw file\n");
+      exit(1);
+    }
+    
+    if(strncmp(cLine, "MC END", 6)==0)
+      break;
+    
+    if(strncmp(cLine, "MImin:", 6)==0)
+      sscanf(cLine, "%s%f", cJunk, &fImin);
+    
+    if(strncmp(cLine, "ML", 2)==0)
+    {
+      sscanf(cLine, "ML   %d   %d   %f", &iTmpRes1, &iTmpRes2, &fTmpRIS);
+      if(fImin == fIntMinCutOff)
+      {
+
+        iTmpRes1--;
+        iTmpRes2--;
+
+        if(iPSNTypeFlag == 2)
+        {
+          if(ppfStableLink[iTmpRes1][iTmpRes2] < fIntMinFreq)
+            continue;
+        }
+        
+        ppfRealIntMatrix[iTmpRes1][iTmpRes2] = fIntMinCutOff;
+        ppfRealIntMatrix[iTmpRes2][iTmpRes1] = fIntMinCutOff;
+        ppfIntMatrix[iTmpRes1][iTmpRes2] = GetLinkWeight(fIntMinCutOff);
+        ppfIntMatrix[iTmpRes2][iTmpRes1] = GetLinkWeight(fIntMinCutOff);
+        if(iPSNTypeFlag == 2 && fIntMinFreq == 0.0)
+        {
+          ppfIntMatrixBackup[iTmpRes1][iTmpRes2] = ppfIntMatrix[iTmpRes1][iTmpRes2];
+          ppfIntMatrixBackup[iTmpRes2][iTmpRes1] = ppfIntMatrix[iTmpRes2][iTmpRes1];
+        }
+      }
+    }
+
+    if(iCheckClustFlag == 1)
+    {
+
+      if(strncmp(cLine, "MC", 2) == 0 && fImin == fIntMinCutOff)
+      {
+        sscanf(cLine, "MC %d: ", &iClsNum);
+        for(ii=0; ii<strlen(cLine); ii++)
+        {
+          if(cLine[ii]==':')
+          {
+            iResNumLen=-1;
+            for(jj=ii+2; jj<strlen(cLine); jj++)
+            {
+              if(cLine[jj]!=' ')
+              {
+                iResNumLen++;
+                cBuffer[iResNumLen]=cLine[jj];
+              }
+              
+              else
+              {
+                iResNumLen++;
+                cBuffer[iResNumLen]='\0';
+                iResNumLen=-1;
+                sscanf(cBuffer, "%d", &iResNum);
+                iResNum--;
+                piClusters[iResNum] = iClsNum;
+                //printf(">>> %.3f %3d %3d\n", fImin, iResNum, iClsNum);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  
+  iCalcStep = 0;
 }
 
 void GetFrameInt()
@@ -5430,7 +6830,7 @@ void GetFrameInt()
   char    cAtmList[999999];
   char    cJunk[100], cBuffer[10];
   
-  float   fTmpRIS=0.0, fTmpHIS=0.0, fImin=-9.9;
+  float   fTmpRIS=0.0, fTmpHIS1=0.0, fTmpHIS2=0.0, fImin=-9.9;
   
   iCalcStep = 15;
   
@@ -5460,7 +6860,7 @@ void GetFrameInt()
       fprintf(stderr, "PSN Error: found corrupted file while reading res-res interactions from raw file\n");
       exit(1);
     }
-    sscanf(cLine, "%s %d %d %f %f %d %s", cMagic, &iTmpRes1, &iTmpRes2, &fTmpRIS, &fTmpHIS, &iAtm, cAtmList);
+    sscanf(cLine, "%s %d %d %f %f %d %s", cMagic, &iTmpRes1, &iTmpRes2, &fTmpRIS, &fTmpHIS1, &fTmpHIS2, &iAtm, cAtmList);
     
     if(strcmp(cMagic, "&")!=0)
       break;
@@ -5479,11 +6879,15 @@ void GetFrameInt()
       }
 
       ppfRealIntMatrix[iTmpRes1][iTmpRes2] = fTmpRIS;
+      ppfRealIntMatrix[iTmpRes2][iTmpRes1] = fTmpRIS;
       
       ppfIntMatrix[iTmpRes1][iTmpRes2] = GetLinkWeight(fTmpRIS);
+      ppfIntMatrix[iTmpRes2][iTmpRes1] = GetLinkWeight(fTmpRIS);
       if(iPSNTypeFlag == 2 && fIntMinFreq == 0.0)
+      {
         ppfIntMatrixBackup[iTmpRes1][iTmpRes2] = ppfIntMatrix[iTmpRes1][iTmpRes2];
-
+        ppfIntMatrixBackup[iTmpRes2][iTmpRes1] = ppfIntMatrix[iTmpRes2][iTmpRes1];
+      }
     }
   }
   
@@ -5497,10 +6901,11 @@ void GetFrameInt()
       
       if(fgets(cLine, 999999, FRawFile)==NULL && ( !feof(FRawFile) || ferror(FRawFile) ))
       {
-        fprintf(stderr, "PSN Error: found corrupted file while reading res-res interactions from raw file\n");
+        fprintf(stderr, "PSNPATH Error: found corrupted file while reading res-res interactions from raw file\n");
         exit(1);
       }
-      if(strncmp(cLine, "nFr: ", 5) == 0)
+      //if(strncmp(cLine, "nFr: ", 5) == 0)
+      if(strncmp(cLine, ">MRG", 4) == 0)
         break;
 
       else if(strncmp(cLine, "Imin:", 5)==0)
@@ -5542,8 +6947,7 @@ void GetFrameInt()
   {
     for(ii=0; ii<iNumOfForceLinkPairs; ++ii)
     {
-      
-      iTmpRes2 = ppiForceLinkPairs[ii][0];
+      iTmpRes1 = ppiForceLinkPairs[ii][0];
       iTmpRes2 = ppiForceLinkPairs[ii][1];
       
       if(iWeightFlag == 0){
@@ -5555,8 +6959,8 @@ void GetFrameInt()
         fTmpRIS = 0.1;
       }
       
-      ppfRealIntMatrix[iTmpRes2][iTmpRes2]   = fTmpRIS;
-      ppfRealIntMatrix[iTmpRes2][iTmpRes1]   = fTmpRIS;
+      ppfRealIntMatrix[iTmpRes1][iTmpRes2]   = 999.999;
+      ppfRealIntMatrix[iTmpRes2][iTmpRes1]   = 999.999;
       ppfIntMatrix[iTmpRes1][iTmpRes2]       = fTmpRIS;
       ppfIntMatrix[iTmpRes2][iTmpRes1]       = fTmpRIS;
       
@@ -5567,7 +6971,7 @@ void GetFrameInt()
       }
     }
   }
-  
+
   iCalcStep = 0;
 }
 
@@ -5684,23 +7088,37 @@ void ClearIntMatrix()
   
   if(iCheckClustFlag == 1)
   {
-    for(ii=0; ii<iNumOfRes; ii++)
+    for(ii=0; ii<iNumOfRes; ++ii)
     {
-      piClusters[ii] = 0;
-      for(jj=0; jj<iNumOfRes; jj++)
+      piClusters[ii]       =  0;
+      ppfIntMatrix[ii][ii] = -1.0;
+      if(iPSNTypeFlag == 2 && fIntMinFreq == 0.0)
+        ppfIntMatrixBackup[ii][ii] = -1.0;
+      
+      for(jj=ii+1; jj<iNumOfRes; ++jj)
       {
-        ppfIntMatrix[ii][jj]         = -1.0;
+        ppfIntMatrix[ii][jj] = -1.0;
+        ppfIntMatrix[jj][ii] = -1.0;
         if(iPSNTypeFlag == 2 && fIntMinFreq == 0.0)
+        {
           ppfIntMatrixBackup[ii][jj] = -1.0;
+          ppfIntMatrixBackup[jj][ii] = -1.0;
+        }
       }
     }
   }
   
   else
   {
-    for(ii=0; ii<iNumOfRes; ii++)
-      for(jj=0; jj<iNumOfRes; jj++)
+    for(ii=0; ii<iNumOfRes; ++ii)
+    {
+      ppfIntMatrix[ii][ii] = -1.0;
+      for(jj=ii+1; jj<iNumOfRes; ++jj)
+      {
         ppfIntMatrix[ii][jj] = -1.0;
+        ppfIntMatrix[jj][ii] = -1.0;
+      }
+    }
   }
   
   iCalcStep = 0;
@@ -5716,31 +7134,28 @@ void ClearAll()
   
   if(iPSNTypeFlag == 0 || iPSNTypeFlag == 2)
   {
-    for(ii=0; ii<iNumOfRes; ii++)
+    for(ii=0; ii<iNumOfRes; ++ii)
     {
-      for(jj=0; jj<iNumOfRes; jj++)
+      ppiPrevNode[ii][ii]        =    0;
+      ppfIntMatrix[ii][ii]       = -1.0;
+      if(iPSNTypeFlag == 2 && fIntMinFreq == 0.0)
+        ppfIntMatrixBackup[ii][ii] = -1.0;
+      for(jj=ii+1; jj<iNumOfRes; ++jj)
       {
-        ppfIntMatrix[ii][jj]         = -1.0;
+        ppfIntMatrix[ii][jj] = -1.0;
+        ppfIntMatrix[jj][ii] = -1.0;
+        ppiPrevNode[ii][jj]  =  0;
+        ppiPrevNode[jj][ii]  =  0;
         if(iPSNTypeFlag == 2 && fIntMinFreq == 0.0)
+        {
           ppfIntMatrixBackup[ii][jj] = -1.0;
-        
-        ppiPrevNode[ii][jj]          =    0;
+          ppfIntMatrixBackup[jj][ii] = -1.0;
+        }
       }
     }
   }
   
-  if(iPSNTypeFlag == 1)
-  {
-    for(ii=0; ii<iNumOfRes; ii++)
-    {
-      for(jj=0; jj<iNumOfRes; jj++)
-      {
-        ppiPrevNode[ii][jj]  =    0;
-      }
-    }
-  }
-  
-  for(ii=0; ii<iNumOfRes; ii++)
+  for(ii=0; ii<iNumOfRes; ++ii)
   {
     if(pfPathLength[ii] != 999999.9999)
       pfPathLength[ii]   = 999999.9999;
@@ -5749,7 +7164,7 @@ void ClearAll()
       break;
   }
   
-  for(ii=0; ii<iNumOfRes; ii++)
+  for(ii=0; ii<iNumOfRes; ++ii)
   {
     if(piVisited[ii] != 0)
       piVisited[ii]   = 0;
@@ -5759,24 +7174,18 @@ void ClearAll()
   }
 
   iStopFlag = 0;
-  
-  for(ii=0; ii<MAXNUMOFPATHS; ii++)
+  for(ii=0; ii<MAXNUMOFPATHS; ++ii)
   {
-    
     if(iStopFlag == 1)
       break;
-    
-    for(jj=0; jj<iNumOfRes; jj++)
+    for(jj=0; jj<iNumOfRes; ++jj)
     {
-
       if(ppiPathMatrix[ii][jj] != -1)
         ppiPathMatrix[ii][jj]   = -1;
-        
       else
       {
         if(jj == 0)
           iStopFlag = 1;
-          
         break;
       }
     }
@@ -5795,52 +7204,49 @@ void ClearAllLite()
   
   iCalcStep = 14;
   
-  for(ii=0; ii<iNumOfRes; ii++)
-    for(jj=0; jj<iNumOfRes; jj++)
+  for(ii=0; ii<iNumOfRes; ++ii)
+  {
+    ppiPrevNode[ii][ii] = 0;
+    for(jj=ii+1; jj<iNumOfRes; ++jj)
+    {
       ppiPrevNode[ii][jj] = 0;
-    
-  for(ii=0; ii<iNumOfRes; ii++)
+      ppiPrevNode[jj][ii] = 0;
+    }
+  }
+
+  for(ii=0; ii<iNumOfRes; ++ii)
   {
     if(pfPathLength[ii] != 999999.9999)
       pfPathLength[ii]   = 999999.9999;
-      
     else
       break;
   }
 
-  for(ii=0; ii<iNumOfRes; ii++)
+  for(ii=0; ii<iNumOfRes; ++ii)
   {
     if(piVisited[ii] != 0)
       piVisited[ii]   = 0;
-    
     else
       break;
   }
   
   iStopFlag = 0;
-  
-  for(ii=0; ii<MAXNUMOFPATHS; ii++)
+  for(ii=0; ii<MAXNUMOFPATHS; ++ii)
   {
-    
     if(iStopFlag == 1)
       break;
-    
-    for(jj=0; jj<iNumOfRes; jj++)
+    for(jj=0; jj<iNumOfRes; ++jj)
     {
-
       if(ppiPathMatrix[ii][jj] != -1)
         ppiPathMatrix[ii][jj]   = -1;
-        
       else
       {
         if(jj == 0)
           iStopFlag = 1;
-          
         break;
       }
     }
   }
-  
   iNumOfGenPaths = 0;
   
   iCalcStep = 0;
@@ -5860,10 +7266,10 @@ void FindPath()
   
   iLastDepth=0;
     
-  for(kk=0; kk<iNumOfRes; kk++)
+  for(kk=0; kk<iNumOfRes; ++kk)
   {
     iTmp=-1;
-    for(jj=0; jj<iNumOfRes; jj++)
+    for(jj=0; jj<iNumOfRes; ++jj)
     {
       if(!piVisited[jj] && ((iTmp == -1) || (pfPathLength[jj] < pfPathLength[iTmp])))
       {
@@ -5956,20 +7362,26 @@ void SavePath()
   float   fScoreMin=FLT_MAX, fScoreMax=FLT_MIN, fAvgScore=0.0;          // Used by -plt option
   
   iCalcStep = 11;
-  
-  for(ii=0; ii<MAXNUMOFPATHS; ii++)
+
+  for(ii=0; ii<MAXNUMOFPATHS; ++ii)
   {
-    pcTmpPaths[ii][0] = '\0';
-    piTmpPathsLen[ii] = 0;
-    pfTmpScore[ii]    = 0.0;
-    pfTmpWeights[ii]  = 0.0;
+    if(piTmpPathsLen[ii] != 0)
+    {
+      pcTmpPaths[ii][0] = '\0';
+      piTmpPathsLen[ii] = 0;
+      pfTmpScore[ii]    = 0.0;
+      pfTmpWeights[ii]  = 0.0;
+    }
+    
+    else
+      break;
   }
   
   iPathNum = -1;
 
   if(iNumOfGenPaths>0)
   {
-    for(ii=0; ii<MAXNUMOFPATHS; ii++)
+    for(ii=0; ii<MAXNUMOFPATHS; ++ii)
     {
       if(ppiPathMatrix[ii][0]!=-1)
       {
@@ -6056,16 +7468,16 @@ void SavePath()
   
   else
   {
-    iPathNum=0;
-    fIntSum      = 0.0;
+    iPathNum         = 0;
+    fIntSum          = 0.0;
     strcpy(pcTmpPaths[0], "[NULL_PATH]");
-    piTmpPathsLen[0]=0;
-    pfTmpScore[0]=0.0;
+    piTmpPathsLen[0] = 0;
+    pfTmpScore[0]    = 0.0;
   }
     
   iPathNum++;
   
-  for(kk=0; kk<iPathNum; kk++)
+  for(kk=0; kk<iPathNum; ++kk)
   {
     if(pfTmpScore[kk] == 2.0 )
       continue;
@@ -6080,9 +7492,7 @@ void SavePath()
     
     // Discards paths smaller than user-defined minimum length
     if(piTmpPathsLen[kk] != 0 && (piTmpPathsLen[kk] - 2) < iMinLen)
-    {
       continue;
-    }
     
     if(iStatFlag == 1)
     {
@@ -6178,7 +7588,7 @@ void SavePathLite()
   iCalcStep = 16;
   if(iNumOfGenPaths>0)
   {
-    for(ii=0; ii<MAXNUMOFPATHS; ii++)
+    for(ii=0; ii<MAXNUMOFPATHS; ++ii)
     {
       if(ppiPathMatrix[ii][0]!=-1)
       {
@@ -6188,7 +7598,7 @@ void SavePathLite()
         iLastRes  = -1;
         fIntSum   = 0.0;
         
-        for(jj=0; jj<iNumOfRes; jj++)
+        for(jj=0; jj<iNumOfRes; ++jj)
         {
           if(ppiPathMatrix[ii][jj]!=-1)
           {
@@ -6258,7 +7668,7 @@ void SaveData()
   iCalcStep = 12;
   //iFrameCont++;
   
-  for(ii=0; ii<iNumOfPaths; ii++)
+  for(ii=0; ii<iNumOfPaths; ++ii)
   {
     
     // Discards paths with frequencies under user-defined limit
@@ -6480,7 +7890,7 @@ void SaveData()
   
   
   
-  for(ii=0; ii<iNumOfPaths; ii++)
+  for(ii=0; ii<iNumOfPaths; ++ii)
   {
     // Discards paths with frequencies under user-defined limit
     if(((piPathFreq[ii]*100)/(float)(iFrameCont)) < fMinFreq)
@@ -6520,30 +7930,34 @@ void SaveData()
 // === PSN Param Section ===============================================
 int InitPSNParam(char **ppcInput, int iInputLineNum)
 {
-  int     ii, jj;                                                       // Some iterators
-  int     iTmpCont1, iTmpCont2;
+  int     ii, jj;                                                               // Some iterators
+  int     iMolCont, iTrjCont, iIgnoreCont;
   int     iOriginalInputLineNum;
-  int     iOptionFlag;                                                  // Used to catch invalid options
+  int     iOptionFlag;                                                          // Used to catch invalid options
+  int     iStartIndex;
   
-  char    pcInputLine[1024];                                            // Input lines
-  char    cFileName[1024], cSeleString[1024];                           // Temporary strings
+  char    pcInputLine[1024];                                                    // Input lines
+  char    cMolFile[1024], cTrjFile[1024], cSeleString[1024];                    // Temporary strings
   char   *cTemp1, cTemp2[1024];
   
-  float   fParam;                                                       // Normalization factor
+  float   fParam;                                                               // Normalization factor
   
   struct inp_psnparam inp_psnparam;
   
+  
   // === Default values ==================
-  inp_psnparam.iAvgMode            = 0;
-  inp_psnparam.iNumOfIgnore        = 0;
-  inp_psnparam.iNumOfMol           = 0;
-  inp_psnparam.iNumOfTargetAtoms   = 0;
-  inp_psnparam.iNumOfWarning       = 0;
-  inp_psnparam.iVerboseFlag        = 0;
-  inp_psnparam.fDistCutoff         = 4.5;
-  inp_psnparam.fAvgMaxInteractions = 0.0;
-  inp_psnparam.cTarget[0]          = '\0';
-  inp_psnparam.cVerboseFileName[0] = '\0';
+  inp_psnparam.iAvgMode                 = 0;
+  inp_psnparam.iNumOfIgnore             = 0;
+  inp_psnparam.iNumOfMol                = 0;
+  inp_psnparam.iNumOfTrj                = 0;
+  inp_psnparam.iNumOfTargetAtoms        = 0;
+  inp_psnparam.iSetNumOfTargetAtomsFlag = 1;
+  inp_psnparam.iNumOfWarning            = 0;
+  inp_psnparam.iVerboseFlag             = 0;
+  inp_psnparam.fDistCutoff              = 4.5;
+  inp_psnparam.fAvgMaxInteractions      = 0.0;
+  inp_psnparam.cTarget[0]               = '\0';
+  inp_psnparam.cVerboseFileName[0]      = '\0';
   strcpy(inp_psnparam.cTitle, "NoTitle");
   // =====================================
 
@@ -6574,6 +7988,12 @@ int InitPSNParam(char **ppcInput, int iInputLineNum)
     else if(strncmp(pcInputLine, "--MOL", 5) == 0)
     {
       inp_psnparam.iNumOfMol++;
+      iOptionFlag = 1;
+    }
+
+    else if(strncmp(pcInputLine, "--TRJ", 5) == 0)
+    {
+      inp_psnparam.iNumOfTrj++;
       iOptionFlag = 1;
     }
     
@@ -6621,19 +8041,36 @@ int InitPSNParam(char **ppcInput, int iInputLineNum)
     return 1;
   }
   
-  if(inp_psnparam.iNumOfMol == 0)
+  if((inp_psnparam.iNumOfMol + inp_psnparam.iNumOfTrj) == 0)
   {
-    fprintf(stderr, "PSNParam module: Need at least one --MOL option\n");
+    fprintf(stderr, "PSNParam module: Need to set at least one --MOL or one --TRJ option\n");
     return 1;
   }
   
   // allocates some vectors
-  inp_psnparam.ccMolFileVect = (char **) calloc(inp_psnparam.iNumOfMol, sizeof(char *));
-  inp_psnparam.ccMolSeleVect = (char **) calloc(inp_psnparam.iNumOfMol, sizeof(char *));
-  for(ii=0; ii<inp_psnparam.iNumOfMol; ++ii)
+  if(inp_psnparam.iNumOfMol > 0)
   {
-    inp_psnparam.ccMolFileVect[ii] = (char *) calloc(1024, sizeof(char));
-    inp_psnparam.ccMolSeleVect[ii] = (char *) calloc(1024, sizeof(char));
+    inp_psnparam.ccMolFileVect = (char **) calloc(inp_psnparam.iNumOfMol, sizeof(char *));
+    inp_psnparam.ccMolSeleVect = (char **) calloc(inp_psnparam.iNumOfMol, sizeof(char *));
+    for(ii=0; ii<inp_psnparam.iNumOfMol; ++ii)
+    {
+      inp_psnparam.ccMolFileVect[ii] = (char *) calloc(1024, sizeof(char));
+      inp_psnparam.ccMolSeleVect[ii] = (char *) calloc(1024, sizeof(char));
+    }
+  }
+  
+  if(inp_psnparam.iNumOfTrj > 0)
+  {
+    inp_psnparam.xxx           = (Traj  *) calloc(1,                      sizeof(Traj  ));
+    inp_psnparam.ccRefFileVect = (char **) calloc(inp_psnparam.iNumOfTrj, sizeof(char *));
+    inp_psnparam.ccTrjFileVect = (char **) calloc(inp_psnparam.iNumOfTrj, sizeof(char *));
+    inp_psnparam.ccTrjSeleVect = (char **) calloc(inp_psnparam.iNumOfTrj, sizeof(char *));
+    for(ii=0; ii<inp_psnparam.iNumOfTrj; ++ii)
+    {
+      inp_psnparam.ccRefFileVect[ii] = (char *) calloc(1024, sizeof(char));
+      inp_psnparam.ccTrjFileVect[ii] = (char *) calloc(1024, sizeof(char));
+      inp_psnparam.ccTrjSeleVect[ii] = (char *) calloc(1024, sizeof(char));
+    }
   }
   
   inp_psnparam.ccIgnoreVect = (char **) calloc(inp_psnparam.iNumOfIgnore, sizeof(char *));
@@ -6643,48 +8080,203 @@ int InitPSNParam(char **ppcInput, int iInputLineNum)
   memset(pcInputLine, '\0', sizeof(pcInputLine));
   iInputLineNum = iOriginalInputLineNum;
   
-  iTmpCont1 = -1;
-  iTmpCont2 = -1;
+  iMolCont    = -1;
+  iTrjCont    = -1;
+  iIgnoreCont = -1;
   // Process input file directives
   while(strncmp(pcInputLine, "END", 3) != 0)
   {
     sprintf(pcInputLine, "%s", ppcInput[iInputLineNum]);
     if(strncmp(pcInputLine, "--MOL ", 6) == 0)
     {
-      iTmpCont1++;
+      iMolCont++;
       
-      strcpy(cSeleString, pcInputLine + 6);                             // get option values
-      cSeleString[strlen(cSeleString) - 1] = '\0';                      // delete newline char
+      pcInputLine[strlen(pcInputLine) - 1] = '\0';                              // delete newline char
+      cMolFile[0]    = '\0';
+      cSeleString[0] = '\0';
       
-      cTemp1 = strchr(cSeleString, ' ');                                // find the first space char
-      
-      if(cTemp1)
+      // find first space after --MOL
+      iStartIndex = 0;
+      for(ii=0; ii<strlen(pcInputLine); ++ii)
       {
-        strncpy(cFileName, cSeleString, cTemp1 - cSeleString);          // extract file name
-        cFileName[cTemp1 - cSeleString] = '\0';                         // add null
-        
-        strcpy(cSeleString, cSeleString + strlen(cFileName) + 1);       // extract sele string
-        
-        //printf("*-* |%s| |%s|\n", cFileName, cSeleString);
-        
-        
-        strcpy(inp_psnparam.ccMolFileVect[iTmpCont1], cFileName);       // update file name vect
-        strcpy(inp_psnparam.ccMolSeleVect[iTmpCont1], cSeleString);     // updare sele string vect
+        if(pcInputLine[ii] == 32)
+        {
+          iStartIndex = ii;
+          break;
+        }
       }
       
-      else
+      // find first file name char
+      for(ii=iStartIndex; ii<strlen(pcInputLine); ++ii)
+      {
+        if(pcInputLine[ii] != 32)
+        {
+          iStartIndex = ii;
+          break;
+        }
+      }
+      
+      // copy file name in cMolFile
+      jj = -1;
+      for(ii=iStartIndex; ii<strlen(pcInputLine); ++ii)
+      {
+        if(pcInputLine[ii] != 32)
+        {
+          iStartIndex++;
+          jj++;
+          cMolFile[jj] = pcInputLine[ii];
+        }
+        else
+          break;
+      }
+      jj++;
+      cMolFile[jj] = '\0';
+      
+      // find first sele string char
+      for(ii=iStartIndex; ii<strlen(pcInputLine); ++ii)
+      {
+        if(pcInputLine[ii] != 32)
+        {
+          iStartIndex = ii;
+          break;
+        }
+      }
+      
+      // copy sele string in cSeleString
+      jj = -1;
+      for(ii=iStartIndex; ii<strlen(pcInputLine); ++ii)
+      {
+        jj++;
+        cSeleString[jj] = pcInputLine[ii];
+      }
+      jj++;
+      cSeleString[jj] = '\0';
+
+      //printf("*-*\n|%s|\n|%s|\n|%s|\n*-*\n", pcInputLine, cMolFile, cSeleString);
+
+      if(strlen(cMolFile) == 0 || strlen(cSeleString) == 0)
       {
         // something goes wrong
         fprintf(stderr, "PSNParam module: Invalid --MOL line: %s\n", pcInputLine);
         exit(1);
       }
+      
+      strcpy(inp_psnparam.ccMolFileVect[iMolCont], cMolFile);                   // update file name vect
+      strcpy(inp_psnparam.ccMolSeleVect[iMolCont], cSeleString);                // update sele string vect
+    }
+    
+    if(strncmp(pcInputLine, "--TRJ ", 6) == 0)
+    {
+      iTrjCont++;
+      
+      pcInputLine[strlen(pcInputLine) - 1] = '\0';                              // delete newline char
+      cMolFile[0]    = '\0';
+      cTrjFile[0]    = '\0';
+      cSeleString[0] = '\0';
+      
+      // find first space after --TRJ
+      iStartIndex = 0;
+      for(ii=0; ii<strlen(pcInputLine); ++ii)
+      {
+        if(pcInputLine[ii] == 32)
+        {
+          iStartIndex = ii;
+          break;
+        }
+      }
+      
+      // find first ref file name char
+      for(ii=iStartIndex; ii<strlen(pcInputLine); ++ii)
+      {
+        if(pcInputLine[ii] != 32)
+        {
+          iStartIndex = ii;
+          break;
+        }
+      }
+      
+      // copy ref file name in cMolFile
+      jj = -1;
+      for(ii=iStartIndex; ii<strlen(pcInputLine); ++ii)
+      {
+        if(pcInputLine[ii] != 32)
+        {
+          iStartIndex++;
+          jj++;
+          cMolFile[jj] = pcInputLine[ii];
+        }
+        else
+          break;
+      }
+      jj++;
+      cMolFile[jj] = '\0';
+      
+      // find first trj file name char
+      for(ii=iStartIndex; ii<strlen(pcInputLine); ++ii)
+      {
+        if(pcInputLine[ii] != 32)
+        {
+          iStartIndex = ii;
+          break;
+        }
+      }
+      
+      // copy trj file name in cMolFile
+      jj = -1;
+      for(ii=iStartIndex; ii<strlen(pcInputLine); ++ii)
+      {
+        if(pcInputLine[ii] != 32)
+        {
+          iStartIndex++;
+          jj++;
+          cTrjFile[jj] = pcInputLine[ii];
+        }
+        else
+          break;
+      }
+      jj++;
+      cTrjFile[jj] = '\0';
+
+      // find first sele string char
+      for(ii=iStartIndex; ii<strlen(pcInputLine); ++ii)
+      {
+        if(pcInputLine[ii] != 32)
+        {
+          iStartIndex = ii;
+          break;
+        }
+      }
+
+      // copy sele string in cSeleString
+      jj = -1;
+      for(ii=iStartIndex; ii<strlen(pcInputLine); ++ii)
+      {
+        jj++;
+        cSeleString[jj] = pcInputLine[ii];
+      }
+      jj++;
+      cSeleString[jj] = '\0';
+
+      //printf("*-*\n|%d|\n|%s|\n|%s|\n|%s|\n|%s|\n*-*\n", iTrjCont, pcInputLine, cMolFile, cTrjFile, cSeleString);
+      //exit(0);
+
+      if(strlen(cMolFile) == 0 || strlen(cTrjFile) == 0 || strlen(cSeleString) == 0)
+      {
+        // something goes wrong
+        fprintf(stderr, "PSNParam module: Invalid --TRJ line: %s\n", pcInputLine);
+        exit(1);
+      }
+      
+      strcpy(inp_psnparam.ccRefFileVect[iTrjCont], cMolFile);                   // update ref vect
+      strcpy(inp_psnparam.ccTrjFileVect[iTrjCont], cTrjFile);                   // update trj vect
+      strcpy(inp_psnparam.ccTrjSeleVect[iTrjCont], cSeleString);                // update sele string vect
     }
     
     if(strncmp(pcInputLine, "--IGNORE", 8) == 0)
     {
-      iTmpCont2++;
+      iIgnoreCont++;
       sscanf(pcInputLine, "--IGNORE %s", cSeleString);
-      strcpy(inp_psnparam.ccIgnoreVect[iTmpCont2], cSeleString);
+      strcpy(inp_psnparam.ccIgnoreVect[iIgnoreCont], cSeleString);
     }
     
     iInputLineNum++;
@@ -6700,7 +8292,7 @@ int InitPSNParam(char **ppcInput, int iInputLineNum)
     fprintf(inp_psnparam.FVerboseFile, "#       *** WORDOM PSNParam MODULE ***      \n");
     fprintf(inp_psnparam.FVerboseFile, "# ==========================================\n");
     fprintf(inp_psnparam.FVerboseFile, "#\n");
-    fprintf(inp_psnparam.FVerboseFile, "# Version         : 0.1a\n");
+    fprintf(inp_psnparam.FVerboseFile, "# Version         : 0.2\n");
     fprintf(inp_psnparam.FVerboseFile, "# License         : GPL 3\n");
     fprintf(inp_psnparam.FVerboseFile, "# Copyright       : Fanelli, Felline\n");
     fprintf(inp_psnparam.FVerboseFile, "#                   University of Modena\n");
@@ -6713,9 +8305,17 @@ int InitPSNParam(char **ppcInput, int iInputLineNum)
     fprintf(inp_psnparam.FVerboseFile, "# Average Mode    : %d\n", inp_psnparam.iAvgMode);
     fprintf(inp_psnparam.FVerboseFile, "# Distance CutOff : %f\n", inp_psnparam.fDistCutoff);
     fprintf(inp_psnparam.FVerboseFile, "#\n");
+    
     fprintf(inp_psnparam.FVerboseFile, "# Num Of Mol      : %d\n", inp_psnparam.iNumOfMol);
     for(ii=0; ii<inp_psnparam.iNumOfMol; ++ii)
-      fprintf(inp_psnparam.FVerboseFile, "# Mol %d, File %s, Sele %s\n", ii+1, inp_psnparam.ccMolFileVect[ii], inp_psnparam.ccMolSeleVect[ii]);
+      //fprintf(inp_psnparam.FVerboseFile, "# %d Mol: %s, Sele: %s\n", ii+1, inp_psnparam.ccMolFileVect[ii], inp_psnparam.ccMolSeleVect[ii]);
+      fprintf(inp_psnparam.FVerboseFile, "# Mol# %d, File %s, Sele %s\n", ii+1, inp_psnparam.ccMolFileVect[ii], inp_psnparam.ccMolSeleVect[ii]);
+    fprintf(inp_psnparam.FVerboseFile, "#\n");
+    
+    fprintf(inp_psnparam.FVerboseFile, "# Num Of Trj      : %d\n", inp_psnparam.iNumOfTrj);
+    for(ii=0; ii<inp_psnparam.iNumOfTrj; ++ii)
+      //fprintf(inp_psnparam.FVerboseFile, "# %d Ref: %s, Trj: %s, Sele: %s\n", ii+1, inp_psnparam.ccRefFileVect[ii], inp_psnparam.ccTrjFileVect[ii], inp_psnparam.ccTrjSeleVect[ii]);
+      fprintf(inp_psnparam.FVerboseFile, "# Trj# %d Ref %s, Trj %s, Sele %s\n", ii+1, inp_psnparam.ccRefFileVect[ii], inp_psnparam.ccTrjFileVect[ii], inp_psnparam.ccTrjSeleVect[ii]);
     fprintf(inp_psnparam.FVerboseFile, "#\n");
 
     fprintf(inp_psnparam.FVerboseFile, "# Num Of Ignore   : %d\n", inp_psnparam.iNumOfIgnore);
@@ -6727,9 +8327,12 @@ int InitPSNParam(char **ppcInput, int iInputLineNum)
   }
   
   for(ii=0; ii<inp_psnparam.iNumOfMol; ++ii)
-    CalcPSNParam(&inp_psnparam, ii);
+    CalcPSNParamFromMol(&inp_psnparam, ii);
   
-  fParam = inp_psnparam.fAvgMaxInteractions / (float) inp_psnparam.iNumOfMol;
+  for(ii=0; ii<inp_psnparam.iNumOfTrj; ++ii)
+    CalcPSNParamFromTrj(&inp_psnparam, ii);
+  
+  fParam = inp_psnparam.fAvgMaxInteractions / (float) (inp_psnparam.iNumOfMol+inp_psnparam.iNumOfTrj);
   
   if(inp_psnparam.iNumOfWarning != 0)
   {
@@ -6739,7 +8342,7 @@ int InitPSNParam(char **ppcInput, int iInputLineNum)
       fprintf(stderr, "There were %d warnings, run again this analysis with --VERBOSE option setted to 1 and read the log file\n", inp_psnparam.iNumOfWarning);
   }
 
-  fParam = inp_psnparam.fAvgMaxInteractions / (float) inp_psnparam.iNumOfMol;
+  fParam = inp_psnparam.fAvgMaxInteractions / (float) (inp_psnparam.iNumOfMol + inp_psnparam.iNumOfTrj);
 
   fprintf(stdout, "The Normalization Factor for mol %s is %f\n", inp_psnparam.cTarget, fParam);
   
@@ -6753,31 +8356,26 @@ int InitPSNParam(char **ppcInput, int iInputLineNum)
   return 0;
 }
 
-void CalcPSNParam(struct inp_psnparam *inp_psnparam, int iMolIndex)
+void CalcPSNParamFromMol(struct inp_psnparam *inp_psnparam, int iMolIndex)
 {
-  int     ii, jj;                                                       // some iterators
-  int     iNumOfTarget;                                                 // the number of target residue in this molecule
-  int     iNumOfSeleRes;                                                // the number of selected residues
-  int     iSetTargetAtmNumFlag;                                         // 1 if the number of target atoms has to be setted
-  int     iTargetId;                                                    // progressive target id number
-  int     iNumOfInteractions;                                           // the number of target interactions
-  int     iNumOfThisTargetAtoms;                                        // the number of this target atoms
-  int     iNumOfIgnoredInt;                                             // the number of ingored interactions
+  int     ii, jj;                                                               // some iterators
+  int     iNumOfTarget;                                                         // the number of target residue in this molecule
+  int     iNumOfSeleRes;                                                        // the number of selected residues
+  int     iTargetId;                                                            // progressive target id number
+  int     iNumOfInteractions;                                                   // the number of target interactions
+  int     iNumOfThisTargetAtoms;                                                // the number of this target atoms
+  int     iNumOfIgnoredInt;                                                     // the number of ingored interactions
   int     iIsHydrogenFlag;
   
   char    cLastRes[15], cThisRes[15], cTestRes[15];
   char    cBestTarget[100], cThisTarget[100];
   
-  float   fTargetCoordX, fTargetCoordY, fTargetCoordZ;                  // target x, y, and z coordinates
-  float   fTestCoordX, fTestCoordY, fTestCoordZ;                        // other residues x, y and z coordinates
-  float   fDist;                                                        // Atom-Atom distance
-  float   fMaxInteractions;                                             // highest number of target itneractions
+  float   fTargetCoordX, fTargetCoordY, fTargetCoordZ;                          // target x, y, and z coordinates
+  float   fTestCoordX, fTestCoordY, fTestCoordZ;                                // other residues x, y and z coordinates
+  float   fDist;                                                                // Atom-Atom distance
+  float   fMaxInteractions;                                                     // highest number of target itneractions
   
   // Set the number of target atoms from the first target residue in the first passed molecule
-  if(iMolIndex == 0)
-    iSetTargetAtmNumFlag = 1;
-  else
-    iSetTargetAtmNumFlag = 0;
 
   // read the iMolIndex-th molecule
   inp_psnparam->molecule = ReadMolecule(inp_psnparam->ccMolFileVect[iMolIndex], wrd_whichmoltype(inp_psnparam->ccMolFileVect[iMolIndex]));
@@ -6803,13 +8401,7 @@ void CalcPSNParam(struct inp_psnparam *inp_psnparam, int iMolIndex)
     // skip all hydrogens
     if(inp_psnparam->molecule->rawmol.atmtype[inp_psnparam->sele.selatm[ii]-1][0] == 'H')
       continue;
-    
-    //if(inp_psnparam->molecule->rawmol.atmtype[inp_psnparam->sele.selatm[ii]-1][0] == 'H')
-    //  iIsHydrogenFlag = 1;
-    //else
-    //  iIsHydrogenFlag = 0;
-    //printf("??? %d %s %d\n", ii, inp_psnparam->molecule->rawmol.atmtype[inp_psnparam->sele.selatm[ii]-1], iIsHydrogenFlag);
-    
+
     sprintf(cThisRes, "%s:%s%d",
             inp_psnparam->molecule->rawmol.segId[inp_psnparam->sele.selatm[ii]-1],
             inp_psnparam->molecule->rawmol.restype[inp_psnparam->sele.selatm[ii]-1],
@@ -6825,18 +8417,21 @@ void CalcPSNParam(struct inp_psnparam *inp_psnparam, int iMolIndex)
     }
     
     if(strcmp(inp_psnparam->molecule->rawmol.restype[inp_psnparam->sele.selatm[ii]-1], inp_psnparam->cTarget) == 0)
-      if(iNumOfTarget == 1 && iSetTargetAtmNumFlag == 1)
+      if(iNumOfTarget == 1 && inp_psnparam->iSetNumOfTargetAtomsFlag == 1)
         inp_psnparam->iNumOfTargetAtoms++;
   }
 
-  if(inp_psnparam->iVerboseFlag == 1 && iSetTargetAtmNumFlag == 1)
+  if(inp_psnparam->iVerboseFlag == 1 && inp_psnparam->iSetNumOfTargetAtomsFlag == 1)
+  {
     fprintf(inp_psnparam->FVerboseFile, "Target Ref Atm Num                    : %d non hydrogen atoms\n\n", inp_psnparam->iNumOfTargetAtoms);
+    inp_psnparam->iSetNumOfTargetAtomsFlag = 0;
+  }
   
   // some fancy info about this molecule                                       
   if(inp_psnparam->iVerboseFlag == 1)                                          
   {                                                                            
-    fprintf(inp_psnparam->FVerboseFile, "Mol  Num                              : %d\n", iMolIndex + 1);
-    fprintf(inp_psnparam->FVerboseFile, "File Name                             : %s\n", inp_psnparam->ccMolFileVect[iMolIndex]);
+    fprintf(inp_psnparam->FVerboseFile, "Mol Num                               : %d\n", iMolIndex + 1);
+    fprintf(inp_psnparam->FVerboseFile, "Mol Name                              : %s\n", inp_psnparam->ccMolFileVect[iMolIndex]);
     fprintf(inp_psnparam->FVerboseFile, "Seg Num                               : %d\n", inp_psnparam->molecule->nSeg);
     fprintf(inp_psnparam->FVerboseFile, "PBC Flag                              : %d\n", inp_psnparam->molecule->coor.pbc_flag);
     fprintf(inp_psnparam->FVerboseFile, "Selection                             : %s\n", inp_psnparam->ccMolSeleVect[iMolIndex]);
@@ -7004,6 +8599,258 @@ void CalcPSNParam(struct inp_psnparam *inp_psnparam, int iMolIndex)
   
   // de-allocate molecule
   DelMolecule(inp_psnparam->molecule);
+
+  inp_psnparam->fAvgMaxInteractions = inp_psnparam->fAvgMaxInteractions + fMaxInteractions;
+}
+
+void CalcPSNParamFromTrj(struct inp_psnparam *inp_psnparam, int iMolIndex)
+{
+  int     ii, jj, ff;                                                           // some iterators
+  int     iNumOfTarget;                                                         // the number of target residue in this molecule
+  int     iNumOfSeleRes;                                                        // the number of selected residues
+  int     iTargetId;                                                            // progressive target id number
+  int     iNumOfInteractions;                                                   // the number of target interactions
+  int     iNumOfThisTargetAtoms;                                                // the number of this target atoms
+  int     iNumOfIgnoredInt;                                                     // the number of ingored interactions
+  int     iIsHydrogenFlag;
+  int     iNumOfFrames;
+  
+  char    cLastRes[15], cThisRes[15], cTestRes[15];
+  char    cBestTarget[100], cThisTarget[100];
+  
+  float   fTargetCoordX, fTargetCoordY, fTargetCoordZ;                          // target x, y, and z coordinates
+  float   fTestCoordX, fTestCoordY, fTestCoordZ;                                // other residues x, y and z coordinates
+  float   fDist;                                                                // Atom-Atom distance
+  float   fMaxInteractions;                                                     // highest number of target itneractions
+  float   fTrjAvgNormFact;                                                      // average norm fact
+  
+  Traj    Trj;
+  CoorSet *Crd;
+
+  inp_psnparam->molecule = ReadMolecule(inp_psnparam->ccRefFileVect[iMolIndex], wrd_whichmoltype(inp_psnparam->ccRefFileVect[iMolIndex]));
+  OpenTrj(inp_psnparam->ccTrjFileVect[iMolIndex], &Trj, "r");
+  ReadTrjHeader(&Trj);
+  Crd = InitCoor(Trj.hdr->nato);
+  
+  // set and get selection
+  strcpy(inp_psnparam->sele.selestring, inp_psnparam->ccTrjSeleVect[iMolIndex]);
+  GetSele(inp_psnparam->sele.selestring, &inp_psnparam->sele, inp_psnparam->molecule);
+  
+  // check for target residue(s) and set the reference number of target atoms
+  iNumOfSeleRes = 0;
+  iNumOfTarget  = 0;
+  for(ii=0; ii<inp_psnparam->sele.nselatm; ++ii)
+  {
+    // skip all hydrogens
+    if(inp_psnparam->molecule->rawmol.atmtype[inp_psnparam->sele.selatm[ii]-1][0] == 'H')
+      continue;
+
+    sprintf(cThisRes, "%s:%s%d",
+            inp_psnparam->molecule->rawmol.segId[inp_psnparam->sele.selatm[ii]-1],
+            inp_psnparam->molecule->rawmol.restype[inp_psnparam->sele.selatm[ii]-1],
+            inp_psnparam->molecule->rawmol.resn[inp_psnparam->sele.selatm[ii]-1]);
+
+    if(strcmp(cThisRes, cLastRes) != 0)
+    {
+      strcpy(cLastRes, cThisRes);
+      iNumOfSeleRes++;
+    
+      if(strcmp(inp_psnparam->molecule->rawmol.restype[inp_psnparam->sele.selatm[ii]-1], inp_psnparam->cTarget) == 0)
+        iNumOfTarget++;
+    }
+    
+    if(strcmp(inp_psnparam->molecule->rawmol.restype[inp_psnparam->sele.selatm[ii]-1], inp_psnparam->cTarget) == 0)
+      if(iNumOfTarget == 1 && inp_psnparam->iSetNumOfTargetAtomsFlag == 1)
+        inp_psnparam->iNumOfTargetAtoms++;
+  }
+
+  if(inp_psnparam->iVerboseFlag == 1 && inp_psnparam->iSetNumOfTargetAtomsFlag == 1)
+  {
+    fprintf(inp_psnparam->FVerboseFile, "Target Ref Atm Num                    : %d non hydrogen atoms\n\n", inp_psnparam->iNumOfTargetAtoms);
+    inp_psnparam->iSetNumOfTargetAtomsFlag = 0;
+  }
+  
+  // some fancy info about this molecule                                       
+  if(inp_psnparam->iVerboseFlag == 1)                                          
+  {                                                                            
+    fprintf(inp_psnparam->FVerboseFile, "Trj Num                               : %d\n", iMolIndex + 1);
+    fprintf(inp_psnparam->FVerboseFile, "Ref Name                              : %s\n", inp_psnparam->ccRefFileVect[iMolIndex]);
+    fprintf(inp_psnparam->FVerboseFile, "Trj Name                              : %s\n", inp_psnparam->ccTrjFileVect[iMolIndex]);
+    fprintf(inp_psnparam->FVerboseFile, "Frame Num                             : %d\n", Trj.hdr->nframe);
+    fprintf(inp_psnparam->FVerboseFile, "Seg Num                               : %d\n", inp_psnparam->molecule->nSeg);
+    fprintf(inp_psnparam->FVerboseFile, "PBC Flag                              : %d\n", Crd->pbc_flag);
+    fprintf(inp_psnparam->FVerboseFile, "Selection                             : %s\n", inp_psnparam->ccTrjSeleVect[iMolIndex]);
+    
+    if(inp_psnparam->sele.nselatm != 0)
+      fprintf(inp_psnparam->FVerboseFile, "Num of Sele Atoms                     : %d\n", inp_psnparam->sele.nselatm);
+    else
+    {
+      inp_psnparam->iNumOfWarning++;
+      fprintf(inp_psnparam->FVerboseFile, "Num of Sele Atoms                     : WARNING: 0 atom selected!\n");
+    }
+    
+    if(iNumOfSeleRes != 0)
+      fprintf(inp_psnparam->FVerboseFile, "Num of Sele Residues                  : %d\n", iNumOfSeleRes);
+    else
+    {
+      inp_psnparam->iNumOfWarning++;
+      fprintf(inp_psnparam->FVerboseFile, "Num of Sele Residues                  : WARNING: 0 residue selected\n");
+    }
+    
+    if(iNumOfTarget != 0)
+      fprintf(inp_psnparam->FVerboseFile, "Num of Target Residues                : %d\n", iNumOfTarget);
+    else
+    {
+      inp_psnparam->iNumOfWarning++;
+      fprintf(inp_psnparam->FVerboseFile, "Num of Target Residues                : WARNING: 0 target in selection\n");
+    }
+  }
+  
+  fTrjAvgNormFact = 0;
+  for(ff=0; ff<Trj.hdr->nframe; ++ff)
+  {
+    // reading frame ff
+    ReadTrjCoor(&Trj, Crd, ff+1);
+    
+    // calculate the number target interactions
+    cLastRes[0]           = '\0';
+    cThisRes[0]           = '\0';
+    cTestRes[0]           = '\0';
+    cBestTarget[0]        = '\0';
+    iNumOfInteractions    = 0;
+    fMaxInteractions      = 0;
+    iTargetId             = 0;
+    iNumOfThisTargetAtoms = 0;
+    iNumOfIgnoredInt      = 0;
+    
+    for(ii=0; ii<inp_psnparam->sele.nselatm; ++ii)
+    {
+      if(inp_psnparam->molecule->rawmol.atmtype[inp_psnparam->sele.selatm[ii]-1][0] == 'H')
+        continue;
+      
+      if(strcmp(inp_psnparam->molecule->rawmol.restype[inp_psnparam->sele.selatm[ii]-1], inp_psnparam->cTarget) == 0)
+      {
+        sprintf(cThisRes, "%s:%s%d",
+                inp_psnparam->molecule->rawmol.segId[inp_psnparam->sele.selatm[ii]-1],
+                inp_psnparam->molecule->rawmol.restype[inp_psnparam->sele.selatm[ii]-1],
+                inp_psnparam->molecule->rawmol.resn[inp_psnparam->sele.selatm[ii]-1]);
+        
+        if(strcmp(cThisRes, cLastRes) != 0)
+        {
+          sprintf(cThisTarget, "#%d/%s/%d", iTargetId, cLastRes, iNumOfThisTargetAtoms);
+          if(inp_psnparam->iVerboseFlag == 1 && iTargetId != 0)
+          {
+            if(iNumOfThisTargetAtoms == inp_psnparam->iNumOfTargetAtoms)
+              fprintf(inp_psnparam->FVerboseFile, "Target %-30s : %d (%d ignored)\n", cThisTarget, iNumOfInteractions, iNumOfIgnoredInt);
+            else
+            {
+              inp_psnparam->iNumOfWarning++;
+              fprintf(inp_psnparam->FVerboseFile, "Target %-30s : %d (%d ignored) WARNING: target of different size %d atoms instead of %d\n", cThisTarget, iNumOfInteractions, iNumOfThisTargetAtoms, inp_psnparam->iNumOfTargetAtoms, iNumOfIgnoredInt);
+            }
+          }
+          
+          if(inp_psnparam->iAvgMode == 0)
+          {
+            if(fMaxInteractions < iNumOfInteractions)
+            {
+              fMaxInteractions = iNumOfInteractions;
+              sprintf(cBestTarget, "#%d/%s", iTargetId, cLastRes);
+            }
+          }
+          
+          else
+            fMaxInteractions = fMaxInteractions + iNumOfInteractions;
+          
+          strcpy(cLastRes, cThisRes);
+          iNumOfInteractions    = 0;
+          iNumOfThisTargetAtoms = 0;
+          iNumOfIgnoredInt      = 0;
+          iTargetId++;
+          iNumOfThisTargetAtoms++;
+        }
+        
+        else
+          iNumOfThisTargetAtoms++;
+        
+        for(jj=0; jj<inp_psnparam->sele.nselatm; ++jj)
+        {
+    
+          if(inp_psnparam->molecule->rawmol.atmtype[inp_psnparam->sele.selatm[jj]-1][0] == 'H')
+            continue;
+    
+          sprintf(cTestRes, "%s:%s%d",
+                inp_psnparam->molecule->rawmol.segId[inp_psnparam->sele.selatm[jj]-1],
+                inp_psnparam->molecule->rawmol.restype[inp_psnparam->sele.selatm[jj]-1],
+                inp_psnparam->molecule->rawmol.resn[inp_psnparam->sele.selatm[jj]-1]);
+          
+          if(strcmp(cTestRes, cLastRes) != 0)
+          {
+            if(CheckIgnore(inp_psnparam, inp_psnparam->molecule->rawmol.restype[inp_psnparam->sele.selatm[jj]-1]) == 0)
+            {
+              fTargetCoordX = Crd->xcoor[inp_psnparam->sele.selatm[ii]-1];
+              fTargetCoordY = Crd->ycoor[inp_psnparam->sele.selatm[ii]-1];
+              fTargetCoordZ = Crd->zcoor[inp_psnparam->sele.selatm[ii]-1];
+              
+              fTestCoordX   = Crd->xcoor[inp_psnparam->sele.selatm[jj]-1];
+              fTestCoordY   = Crd->ycoor[inp_psnparam->sele.selatm[jj]-1];
+              fTestCoordZ   = Crd->zcoor[inp_psnparam->sele.selatm[jj]-1];
+
+              fDist = DistanceCoor(fTargetCoordX, fTargetCoordY, fTargetCoordZ,
+                                   fTestCoordX,   fTestCoordY,   fTestCoordZ,
+                                   Crd->pbc_flag);
+              
+              //printf("%3d   %3d   %3d   %.5f   %.5f   %.5f   %.5f   %.5f   %.5f\n", ff+1, ii+1, jj+1, fTargetCoordX, fTargetCoordY, fTargetCoordZ, fTestCoordX, fTestCoordY, fTestCoordZ);
+              if(fDist <= inp_psnparam->fDistCutoff)
+                iNumOfInteractions++;
+            }
+            
+            else
+              iNumOfIgnoredInt++;
+          }
+        }
+      }
+    }
+  
+    // process the last target
+    if(inp_psnparam->iAvgMode == 0)
+    {
+      if(fMaxInteractions < iNumOfInteractions)
+      {
+        fMaxInteractions = (float) iNumOfInteractions;
+        sprintf(cBestTarget, "#%d/%s", iTargetId, cLastRes);
+      }
+    }
+    
+    if(inp_psnparam->iAvgMode == 1)
+    {
+      fMaxInteractions = fMaxInteractions + (float) iNumOfInteractions;
+      strcpy(cBestTarget, "***averaged***");
+      fMaxInteractions = fMaxInteractions / (float) iNumOfTarget;
+    }
+    
+    fTrjAvgNormFact += fMaxInteractions;
+  }
+  
+  fMaxInteractions = (fTrjAvgNormFact / (float) Trj.hdr->nframe);
+  
+  sprintf(cThisTarget, "#%d/%s/%d", iTargetId, cLastRes, iNumOfThisTargetAtoms);
+  if(inp_psnparam->iVerboseFlag == 1 && iTargetId != 0)
+  {
+    if(iNumOfThisTargetAtoms == inp_psnparam->iNumOfTargetAtoms)
+      fprintf(inp_psnparam->FVerboseFile, "Target %-30s : %.5f (%d ignored)\n", cThisTarget, fMaxInteractions, iNumOfIgnoredInt);
+    else
+    {
+      inp_psnparam->iNumOfWarning++;
+      fprintf(inp_psnparam->FVerboseFile, "Target %-30s : %.5f (%d ignored) WARNING: target of different size %d atoms instead of %d\n", cThisTarget, fMaxInteractions, iNumOfThisTargetAtoms, inp_psnparam->iNumOfTargetAtoms, iNumOfIgnoredInt);
+    }
+  }
+
+  if(inp_psnparam->iVerboseFlag == 1)
+    fprintf(inp_psnparam->FVerboseFile, "Max Num Of Interactions               : %f by target %s\n\n", fMaxInteractions, cBestTarget);
+  
+  // de-allocate
+  DelMolecule(inp_psnparam->molecule);
+  DelCoor(Crd);
 
   inp_psnparam->fAvgMaxInteractions = inp_psnparam->fAvgMaxInteractions + fMaxInteractions;
 }

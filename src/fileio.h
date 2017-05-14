@@ -273,6 +273,10 @@ typedef struct res
     int           resn;         // residue number
     int          presn;         // progressive residue number
     Atom         *pAto;         // Atoms 
+    int           isAA;         // whether it is an aminoacid or not (has C, CA, N and O atoms)
+    void         *pSeg;         // parent structure
+    int       segIndex;         // index of segment in molecule->pSeg
+    char       segName[5];      // parent segment name
 } Res;
 /* ------------------------------------------------------------------ */
 /* ------------------------------------------------------------------ */

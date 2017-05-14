@@ -163,6 +163,10 @@ float getf( float *floatvec, int index)
    {
      return self->atomn[index];
    };
+   char * Atmtype( int index )
+   {
+     return self->atmtype[index];
+   };
    int Resn( int index )
    {
      return self->resn[index];
@@ -782,6 +786,10 @@ typedef struct res
     int           resn;         // residue number
     int          presn;         // progressive residue number
     Atom         *pAto;         // Atoms 
+    int           isAA;         // whether it is an aminoacid or not (has C, CA, N and O atoms)
+    void         *pSeg;         // parent structure
+    int       segIndex;         // index of segment in molecule->pSeg
+    char       segName[5];      // parent segment name
 } Res;
 /* ------------------------------------------------------------------ */
 /* ------------------------------------------------------------------ */

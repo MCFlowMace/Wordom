@@ -1,0 +1,7 @@
+BEGIN gcluster
+--TITLE g_RMSD
+--SELE /*/*/CA
+--METHOD leader
+--DISTANCE rmsd
+--CUTOFF 1.5
+END

@@ -1,0 +1,7 @@
+BEGIN gcluster
+--TITLE g_DRMS
+--SELE /*/*/CA
+--METHOD leader
+--DISTANCE drms
+--CUTOFF 1.1
+END

@@ -23,6 +23,9 @@ wrd_add_test("proj")
 wrd_add_test("cluster1")
 wrd_add_test("cluster2")
 
+# RMSD- and DRMS-based Clustering on GPU (GCLUSTER)
+wrd_add_test("gCluster")
+
 # Molecular Surface (SURF)
 wrd_add_test("surface")
 

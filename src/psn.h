@@ -39,12 +39,12 @@ struct inp_psn
   int        **atmList;
   int        **ppiInteractions;
   int         *piNumResInteractions;
-  int          iNumOfIntMinStep;
+  int          iNumOfIntMinSteps;
   int          iMaxResInteractions;
-	int          iFrameNum;
+  int          iFrameNum;
   int          iHubContCutoff;
   int          iMaxNumOfLink;
-  int        **ppiLargestClusterSize;
+  int         *piLargestClusterSize;
   int          iWarningFlag;
   int          iVerboseFlag;
   int          iTerminiFlag;
@@ -59,11 +59,14 @@ struct inp_psn
   int          iNumOfMerge;
   int          iMergeMaxResNum;
   int       ***pppiStableResInt;
+  int       ***pppiStableResIntMergeClust;
   int      ****ppppiHubCorr;
   int       ***pppiClusters;
   int          iMaxClustNum;
   int        **ppiTmpStableHubs;
   int        **ppiStableHubs;
+  int        **ppiStableHubsMergeClust;
+  int        **ppiTempStableHubsMergeClust;
   int         *piNodeDegree;
   int          iNumOfSelRes;
   int          iNumOfParam;
@@ -76,27 +79,49 @@ struct inp_psn
   int        **ppiResResIntFreq;
   int          iIntType;
   int          iHubEqFlag;
+  int          iWritePDBFlag;
+  int          iParamDBFlag;
+  int          iUsedParamDBFlag;
+
+  int          iMergeClustFlag;
+  int          iMergeMinPop;
+  int         *piNodeClust;
+  int         *piClustsPop;
+  int          iNumOfPoxInt;
+  int        **ppiFrameLinks;
   
-  char         title[512];
-  char         cRawFileName[512];
+  int         *piNodeClusters;
+  int         *piClustSize;
+  int        **ppiIntMatrix;
+  int          iGetIminAlgo;
+  int          iNumOfParamDBEntries;
+  int         *piUsedDBParamIndices;
+  
+  char         title[999];
+  char         cRawFileName[99];
   char       **ppcMergedResidues;
   char       **pcParamResVect;
-  char         cIminRange[512];
+  char         cIminRange[999];
   char      ***pppcIntAtomNamePairs;
   char       **pcNoProxSeg;
   char       **pcSeleResSegId;
+  char         cParamDBFileName[999];
+  char       **pcParamDBResVect;
+  char       **ppcResId2Lab;
   
   float      **ppfIntStrength;
   float      **ppfHubsIntStrength;
   float       *res_norm;
   float        fDistCutoff;
   float        fIntMinStart, fIntMinStop, fIntMinStep;
-  float        fStableCutoff;
   float      **ppfAvgResInt;
   float     ***pppfStableResIntStrength;
+  float     ***pppfStableResIntStrengthMergeClust;
   float       *pfParamValVect;
+  float       *pfParamDBValVect;
   float        fPreIcValue, fPostIcValue;
   float        fPreIcValueDelta, fPostIcValueDelta;
+  float       *pfIminValues;
   
   double       fPCNSize;
   
@@ -122,7 +147,7 @@ struct inp_psn
 */
 int     linkwalk(int nres, int **linklist, int *nlinks, struct simplecluster *cluster);
 // ---------------------------------------------------------------------
-float   fGetNormFactor(char *resType);
+float   GetAANormFactor(char *resType);
 // ---------------------------------------------------------------------
 int     Read_iPSG ( char **input, int inp_index, struct inp_psn *inp_psn, char *printout, Molecule *molecule, int iNumOfFrames, struct sopt *OPT);
 // ---------------------------------------------------------------------
@@ -132,13 +157,29 @@ int     Post_PSG(struct inp_psn *inp_psn, int iNumOfFrames, Molecule *molecule, 
 // ---------------------------------------------------------------------
 float   GetUserNormFactor(struct inp_psn *inp_psn, char *resType);
 // ---------------------------------------------------------------------
+float   GetParamDBNormFactor(struct inp_psn *inp_psn, char *resType);
+// ---------------------------------------------------------------------
+float   GetNormFactor(struct inp_psn *inp_psn, char *resType, int isAAFlag);
+// ---------------------------------------------------------------------
 void    GetImin(struct inp_psn *inp_psn, struct sopt *OPT, Molecule *molecule);
 // ---------------------------------------------------------------------
-double  GetBigClsSize(FILE *FRawFile, int *piNodeClusters, int *piClustSize, float fImin, int iNumOfNodes, int **ppiIntMatrix);
+void    GetImin2(struct inp_psn *inp_psn, struct sopt *OPT, Molecule *molecule);
+// ---------------------------------------------------------------------
+double  GetBigClsSize(FILE *FRawFile, int *piNodeClusters, int *piClustSize, float fImin, int iNumOfNodes, int iNumOfSeleRes, int **ppiIntMatrix);
+// ---------------------------------------------------------------------
+double  GetBigClsSize2(struct inp_psn *inp_psn, float fImin);
 // ---------------------------------------------------------------------
 int     UpdateClusters(int iTmpRes1, int iTmpRes2, int *piNodeClusters, int iNumOfNodes, int iLastCluster);
 // ---------------------------------------------------------------------
 void    GetIminClearAll(int iNumOfNodes, int *piNodeClusters, int *piClustSize, int iLastCluster);
+// ---------------------------------------------------------------------
+void    MergeClusters(struct inp_psn *inp_psn, int iIntMinIterationNum, float fImin);
+// ---------------------------------------------------------------------
+int     SetNodeClustVect(struct inp_psn *inp_psn);
+// ---------------------------------------------------------------------
+void    LoadParamDB(struct inp_psn *inp_psn);
+// ---------------------------------------------------------------------
+void    ReportUsedParamDBEntries(struct inp_psn *inp_psn, FILE *FileHandler, int iReportMode);
 // ---------------------------------------------------------------------
 
 /* PSN Path Section */
@@ -173,6 +214,7 @@ float   GetBadFrames();                                                 // Gets 
 float   GetIcritFromFile(int);                                          // Returns the Icritic value from raw file
 float   GetLinkWeight(float);                                           // Calculates the weight of passed link on the basis of iWeightFlag and res-res interaction strength
 void    GetStrongestInteraction();                                      // Finds the strongest res-res interaction strength
+void    ApplyMergeInfoInPathSearch();                                   // Get MergeClust info from rawFile and use 'em all
 // =====================================================================
 
 
@@ -183,13 +225,18 @@ struct inp_psnparam
   int                   iAvgMode;                                       // Average Mode
   int                   iNumOfIgnore;                                   // Res to ignore in links
   int                   iNumOfMol;                                      // Number of Molecules
+  int                   iNumOfTrj;                                      // Number of Trajectories
   int                   iVerboseFlag;                                   // If 1 a detailed file is created
   int                   iNumOfWarning;                                  // The number of warning
+  int                   iSetNumOfTargetAtomsFlag;                       // Flag to Set the Number of target residues
   int                   iNumOfTargetAtoms;                              // Number of target residues
   
   char                **ccIgnoreVect;                                   // Vect of --IGNORE
   char                **ccMolFileVect;                                  // Vect of --MOL file name
   char                **ccMolSeleVect;                                  // Vect of --MOL sele string
+  char                **ccTrjFileVect;                                  // Vect of --TRJ trajectory file name
+  char                **ccRefFileVect;                                  // Vect of --TRJ reference file name
+  char                **ccTrjSeleVect;                                  // Vect of --TRJ sele string
   char                  cTarget[1024];                                  // "Residue" to be parametrized
   char                  cTitle[1024];                                   // Title, used for verbose file
   char                  cVerboseFileName[1024];                         // Verbose filename
@@ -199,6 +246,7 @@ struct inp_psnparam
   
   Selection             sele;                                           // selection structure
   Molecule             *molecule;                                       // molecule structure ptr
+  Traj                 *xxx;                                           // trajectory structure ptr
   
   FILE                 *FVerboseFile;                                   // Verbose file handler
   
@@ -209,7 +257,8 @@ struct inp_psnparam
 // === Function Prototypes =============================================
 int  InitPSNParam(char **, int);
 int  CheckIgnore(struct inp_psnparam *, char *);
-void CalcPSNParam(struct inp_psnparam *, int);
+void CalcPSNParamFromMol(struct inp_psnparam *, int);
+void CalcPSNParamFromTrj(struct inp_psnparam *, int);
 // =====================================================================
 
 #endif
