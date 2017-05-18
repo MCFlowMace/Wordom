@@ -181,6 +181,7 @@ struct inp_Cluster
   // for Gcluster array of distance matrices or array of all coords
   float 		*gclust_dmtx;
   float			*gclust_coords;
+  int			 device; //number of device to run on for multi GPU systems
 };
 
 // ------------------------------------------------------------------

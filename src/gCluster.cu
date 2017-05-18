@@ -815,6 +815,29 @@ void errorHandler  (cudaError_t error, int line){
   }
 }
 
+extern "C" int find_GPUs() {
+	
+	int deviceCount, device, realGPUs;
+	struct cudaDeviceProp prop;
+	cudaError_t cudaResultCode = cudaGetDeviceCount(&deviceCount);
+	if (cudaResultCode != cudaSuccess)
+		deviceCount = 0;
+		
+	// look for the number of real GPUs not counting CUDA emulation devices
+	for (device = 0; device < deviceCount; ++device) {
+		errorHandler(cudaGetDeviceProperties(&prop, device),__LINE__);
+		if (prop.major != 9999) { // 9999 is an emulation device
+			realGPUs++;
+			fprintf(stderr,"Device %d:\n",device);
+			fprintf(stderr,"%s @%dMHz\n",prop.name,prop.clockRate/1000);
+			fprintf(stderr,"Total memory: %dMBytes\n",prop.totalGlobalMem/(1000*1000));
+			fprintf(stderr,"\n");
+		}
+	}
+	
+	return realGPUs;
+}
+
 // the CUDA compiler generates C++ object files, thus the main procedure has to be an extern "C" for usage in wordom
 extern "C" int gClusterRmsd (struct inp_Cluster *inp_cluster,float *distance) {
 	
@@ -826,6 +849,7 @@ extern "C" int gClusterRmsd (struct inp_Cluster *inp_cluster,float *distance) {
 	int *frameapp = inp_cluster->frameapp;
 	int super = inp_cluster->super;
 	int step = inp_cluster->step;
+	int device = inp_cluster->device;
 	int frames = totframe/step+(totframe%step == 0 ? 0 : 1); //the number of frames that have to be analysed 
 	
 	size_t coords_size = 3*nato*sizeof(float); //memory size for coords of a single frame in one dimension
@@ -839,26 +863,26 @@ extern "C" int gClusterRmsd (struct inp_Cluster *inp_cluster,float *distance) {
 	int *devPtr_frameapp1;
 	int *devPtr_frameapp2;
 			
-	int deviceCount; // number of devices, i.e. gpus
-	int device;
 	int threadsPerBlock;
 	int blocks;
-	struct cudaDeviceProp properties;		
-	cudaError_t cudaResultCode = cudaGetDeviceCount(&deviceCount);
-	if (cudaResultCode != cudaSuccess)
-		deviceCount = 0;
+	struct cudaDeviceProp properties;
+	errorHandler(cudaSetDevice(device),__LINE__);
+	errorHandler(cudaGetDeviceProperties(&properties, device),__LINE__);
 		
-	fprintf(stderr,"Starting GPU calculation, devicecount : %d\n", deviceCount);
+	fprintf(stderr,"Starting GPU calculation\n");
+	
+	if(properties.kernelExecTimeoutEnabled)
+		fprintf(stderr,"WARNING! The GPU you are using was set up with a run time limit for kernels. Therefore it is likely that the calculation of large proteins fails!\n");
 		
 	// machines with no GPUs can still report one emulation device 	
-	for (device = 0; device < deviceCount; ++device) {
+	/*for (device = 0; device < deviceCount; ++device) {
 		cudaGetDeviceProperties(&properties, device);
 		if (properties.major != 9999) // 9999 means emulation only
 			if (device==0){
 				fprintf(stderr,"multiProcessorCount %d\n",properties.multiProcessorCount);
 				fprintf(stderr,"maxThreadsPerMultiProcessor %d\n",properties.maxThreadsPerMultiProcessor);
 			}
-	}
+	}*/
 	
 	//fprintf(stderr,"threads per block: %d\n",threadsPerBlock);
 	
@@ -968,6 +992,7 @@ extern "C" int gClusterDrms (struct inp_Cluster *inp_cluster,float *distance)
     float nointrasegm_corr_fact = 1.0;
     int *frameapp = inp_cluster->frameapp;
     int step = inp_cluster->step;
+    int device = inp_cluster->device;
     int frames = totframe/step+(totframe%step == 0 ? 0 : 1); //the number of frames that have to be analysed 
      
     //change correction factor if correction should be applied
@@ -984,19 +1009,9 @@ extern "C" int gClusterDrms (struct inp_Cluster *inp_cluster,float *distance)
 	float *devPtr_distance;
 	int *devPtr_frameapp1;
 	int *devPtr_frameapp2;
-			
-	int deviceCount; // number of devices, i.e. gpus
-	int device;
-	int threadsPerBlock;
-	struct cudaDeviceProp properties;		
-	cudaError_t cudaResultCode = cudaGetDeviceCount(&deviceCount);
-	if (cudaResultCode != cudaSuccess)
-		deviceCount = 0;
-		
-	fprintf(stderr,"Starting GPU calculation, devicecount : %d\n", deviceCount);
-		
+				
 	// machines with no GPUs can still report one emulation device 	
-	for (device = 0; device < deviceCount; ++device) {
+	/*for (device = 0; device < deviceCount; ++device) {
 		cudaGetDeviceProperties(&properties, device);
 		if (properties.major != 9999) // 9999 means emulation only
 			if (device==0){
@@ -1008,7 +1023,23 @@ extern "C" int gClusterDrms (struct inp_Cluster *inp_cluster,float *distance)
 				else
 					threadsPerBlock = 256;
 			}
-	}
+	}*/
+	
+	struct cudaDeviceProp properties;
+	errorHandler(cudaSetDevice(device),__LINE__);
+	errorHandler(cudaGetDeviceProperties(&properties, device),__LINE__);
+		
+	fprintf(stderr,"Starting GPU calculation\n");
+	
+	if(properties.kernelExecTimeoutEnabled)
+		fprintf(stderr,"WARNING! The GPU you are using was set up with a run time limit for kernels. Therefore it is likely that the calculation of large proteins fails!\n");
+		
+	int threadsPerBlock;
+	if(properties.major == 2)
+		threadsPerBlock = 192;
+	else
+		threadsPerBlock = 256;
+	
 	size_t freemem;
 	size_t total;
 		

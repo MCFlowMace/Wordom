@@ -1472,7 +1472,7 @@ int whichModule( char *typestring )
 	   #ifdef CUDA
 		return 84 ;
 		#endif
-		fprintf(stderr, "gcluster requires compilation on a system with a CUDA GPU!\n");
+		fprintf(stderr, "gcluster requires compilation on a system with CUDA!\n");
 	}
    if(!strncmp( typestring, "sample", 6))
     return 99 ;

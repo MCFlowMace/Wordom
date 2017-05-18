@@ -481,6 +481,17 @@ int Read_iGcluster ( char **input, int inp_index, struct inp_Cluster *inp_cluste
    float       cutoff;
    int         gotit;
    
+   int realGPUs = find_GPUs();
+   
+   if(realGPUs >0 ) {
+		
+		fprintf(stderr,"Number of GPUs: %d\n",realGPUs);
+	   
+	} else {
+		fprintf(stderr,"No GPUs installed on the system. Cannot run gCluster!\n");
+		exit(-1);
+	}
+   
    extern short int  no_frame_par;
    no_frame_par = 1;
    
@@ -499,6 +510,7 @@ int Read_iGcluster ( char **input, int inp_index, struct inp_Cluster *inp_cluste
    inp_cluster->cmapd = 0;
    inp_cluster->cmapd_cutoff = 0;
    inp_cluster->nointrasegm = 0;
+   inp_cluster->device = 0;
    
    
    strcpy( inp_cluster->inmol, molecule->rawmol.name );
@@ -518,6 +530,11 @@ int Read_iGcluster ( char **input, int inp_index, struct inp_Cluster *inp_cluste
     else if ( !strncmp(buffer, "--SELE", 6))
     {
       sscanf(buffer, "--SELE %[^\n]%*c ", inp_cluster->sele.selestring);
+      gotit = 1;
+    }
+    else if ( !strncmp(buffer, "--DEVICE", 6))
+    {
+      sscanf(buffer, "--DEVICE %u", &(inp_cluster->device));
       gotit = 1;
     }
     else if ( !strncmp(buffer, "--FIT", 5))
@@ -650,6 +667,11 @@ int Read_iGcluster ( char **input, int inp_index, struct inp_Cluster *inp_cluste
     inp_index++;
    }
    
+   if((inp_cluster->device+1)>realGPUs || inp_cluster->device<0) {
+	   fprintf(stderr,"Please supply the number of an existing device (--DEVICE)\n");
+	   exit(12);
+   }
+   
    if(cutoff == 0) 
    {
 	   fprintf(stderr,"Please supply a cutoff (use --CUTOFF)\n");
@@ -727,7 +749,7 @@ int Read_iGcluster ( char **input, int inp_index, struct inp_Cluster *inp_cluste
      exit(0);
    }
 
-   fprintf(stderr,"# GPU Clustering using method %d , distance %d (cmapd_cutoff %f), cutoff %8.3f on %d selected atoms (%s) nointrasegm %d cmapd %d\n",inp_cluster->method,inp_cluster->distance,inp_cluster->cmapd_cutoff,cutoff,inp_cluster->sele.nselatm, inp_cluster->sele.selestring,inp_cluster->nointrasegm, inp_cluster->cmapd);
+   fprintf(stderr,"# GPU Clustering using method %d , distance %d (cmapd_cutoff %f), cutoff %8.3f on %d selected atoms (%s) nointrasegm %d cmapd %d on device %d\n",inp_cluster->method,inp_cluster->distance,inp_cluster->cmapd_cutoff,cutoff,inp_cluster->sele.nselatm, inp_cluster->sele.selestring,inp_cluster->nointrasegm, inp_cluster->cmapd, inp_cluster->device);
    sprintf( inp_cluster->header,"# Clustering using method %d , distance %d, cutoff %8.3f on %d selected atoms (%s)\n",inp_cluster->method,inp_cluster->distance,cutoff,inp_cluster->sele.nselatm, inp_cluster->sele.selestring);
    if( inp_cluster->method == 3 && inp_cluster->maxspeed )
      fprintf(stderr, "# Using maxspeed cluster search (default for GPU clustering)\n");

@@ -24,4 +24,7 @@ int gClusterDrms (struct inp_Cluster *inp_cluster,float *distance);
 //Uses the gpu to calculate the RMSD and assigns the frames to clusters
 int gClusterRmsd (struct inp_Cluster *inp_cluster,float *distance);
 
+//Report the number of existing CUDA GPUs
+int find_GPUs();
+
 #endif /*GCLUSTER_H*/
