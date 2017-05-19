@@ -488,7 +488,7 @@ int Read_iGcluster ( char **input, int inp_index, struct inp_Cluster *inp_cluste
 		fprintf(stderr,"Number of GPUs: %d\n",realGPUs);
 	   
 	} else {
-		fprintf(stderr,"No GPUs installed on the system. Cannot run gCluster!\n");
+		fprintf(stderr,"No CUDA GPUs found on the system. Cannot run gCluster!\n");
 		exit(-1);
 	}
    
