@@ -830,7 +830,8 @@ extern "C" int find_GPUs() {
 			realGPUs++;
 			fprintf(stderr,"Device %d:\n",device);
 			fprintf(stderr,"%s @%dMHz\n",prop.name,prop.clockRate/1000);
-			fprintf(stderr,"Total memory: %dMBytes\n",prop.totalGlobalMem/(1000*1000));
+			fprintf(stderr,"Total memory: %dMBytes @%dMHz\n",prop.totalGlobalMem/(1000*1000),prop.memoryClockRate/1000);
+			fprintf(stderr,"Bus Width: %dbit\n",prop.memoryBusWidth);
 			fprintf(stderr,"\n");
 		}
 	}
@@ -976,7 +977,9 @@ extern "C" int gClusterRmsd (struct inp_Cluster *inp_cluster,float *distance) {
 		errorHandler( cudaFree(devPtr_gclust_coords),__LINE__);
 		errorHandler( cudaFree(devPtr_frameapp1),__LINE__);
 		errorHandler( cudaFree(devPtr_frameapp2),__LINE__);
-		errorHandler( cudaFree(devPtr_distance),__LINE__);		
+		errorHandler( cudaFree(devPtr_distance),__LINE__);
+		
+		errorHandler( cudaDeviceReset(),__LINE__);
 		return 0;		
 }
 	
@@ -1209,7 +1212,7 @@ extern "C" int gClusterDrms (struct inp_Cluster *inp_cluster,float *distance)
 			errorHandler(cudaFree(devPtr_newClusters),__LINE__);			
 		}	
 		
-			
+		errorHandler( cudaDeviceReset(),__LINE__);	
 		return 0;		
 		
 		} else {
@@ -1275,7 +1278,9 @@ extern "C" int gClusterDrms (struct inp_Cluster *inp_cluster,float *distance)
 			errorHandler( cudaFree(devPtr_gclust_dmtx),__LINE__);
 			errorHandler( cudaFree(devPtr_frameapp1),__LINE__);
 			errorHandler( cudaFree(devPtr_frameapp2),__LINE__);
-			errorHandler( cudaFree(devPtr_distance),__LINE__);		
+			errorHandler( cudaFree(devPtr_distance),__LINE__);
+			
+			errorHandler( cudaDeviceReset(),__LINE__);		
 			return 0;
 	   }
 	}
