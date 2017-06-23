@@ -904,6 +904,22 @@ BEGIN orienta
 --SELE /C/1/C : /C/10/N
 END
 \end{verbatim}
+
+\subsection{Clustering using the GPU(GCLUSTER)}
+On machines equipped with one or more CUDA capable graphic cards and the CUDA package, wordom will automatically compile also a gpu version of the clustering algorithm, which behaves exactly as the serial version (apart from sporadic rounding-up errors, due to the use of single precision). The GPU clustering can be up to 20 times faster than the serial one in certain cases. At the moment, only the leader algorithm has been implemented on the GPU. The GCLUSTER analysis takes as input the same keywords as CLUSTER with the leader algorithm. An additional keyword (--DEVICE $n$ ) allows to direct the calculation to the graphic card with device id $n$, in a multi-gpu machine. GCLUSTER creates two output files named $title$ and $title$.out where $title$ is the string provided with the --TITLE keyword. The first is similar to the same output file of the regular clustering module (CLUSTER). The other one contains the information that is usually printed to stdout by the regular clustering module (output to Stdout will only print the frame numbers and, if not used together with other analysis modules, it can be suppressed).The GPU version of the code has a main-memory footprint that scales linearly with trajectory length. The --SKIP $sk$ option can be used to analyse only one every $sk$ frames thus reducing the memory footprint of the algorithm.
+
+\textbf{\large Sample Input}:
+\begin{verbatim}
+BEGIN gcluster
+--TITLE g_DRMS
+--SELE /*/*/CA
+--METHOD leader
+--DISTANCE drms
+--CUTOFF 1.1
+END
+\end{verbatim}
+
+
 \clearpage
 
 \section{Principal Component Analysis (PCA)}
