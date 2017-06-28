@@ -498,6 +498,43 @@ void superimpose ( int npoints, float **referenceSet, float **tomoveSet, float r
    return;
 }*/
 // ------------------------------------------------------------------
+Molecule * molSuperimpose(Molecule *mol1, Molecule *mol2, Selection *sele1, Selection *sele2) {
+  int     ii, jj;
+  float **refSet, **movSet;
+  float   rotMatrix[3][3], transVec[3];
+  Molecule *mol3;
+  
+  if( sele1->nselatm != sele2->nselatm ) {
+    return NULL;
+  }
+  
+  mol3 = CopyMol( mol1 );
+  
+  refSet = (float **) calloc( sele1->nselatm, sizeof(float *));
+  for( ii=0; ii<sele1->nselatm; ii++ )
+    refSet[ii] == (float *) calloc(3, sizeof(float));
+  movSet = (float **) calloc( sele2->nselatm, sizeof(float *));
+  for( ii=0; ii<sele2->nselatm; ii++ )
+    movSet[ii] == (float *) calloc(3, sizeof(float));
+  
+  for( ii=0; ii<sele1->nselatm; ii++ ) {
+    refSet[ii][0] = mol1->coor.xcoor[ii];
+    refSet[ii][1] = mol1->coor.ycoor[ii];
+    refSet[ii][2] = mol1->coor.zcoor[ii];
+    movSet[ii][0] = mol2->coor.xcoor[ii];
+    movSet[ii][1] = mol2->coor.ycoor[ii];
+    movSet[ii][2] = mol2->coor.zcoor[ii];
+  }
+  
+  superimpose( sele1->nselatm, refSet, movSet, rotMatrix, transVec);
+  
+  for( ii=0; ii<3*mol1->nato; ii++)
+    mol3->coor.cords[ii] = mol2->coor.cords[ii];
+  applyRotTrans( mol3->coor.coors, rotMatrix, transVec, mol3->nato);
+  
+  return mol3;
+}
+// ------------------------------------------------------------------
 void CalcRMSDRotTrans(int npoints, float **referenceSet, float **tomoveSet, float rotMatrix[3][3], float transVec[3])
 {
    // same as superimpose, attempting to use coor[3][nato] format
@@ -644,7 +681,7 @@ int applyRotTrans( float **moving, float rotmatrix[3][3], float transvec[3], int
     moving[2][ii] = cc + transvec[2]; //+ zcenter
    }
    
-   return 0;
+  return 0;
 }
 // ------------------------------------------------------------------
 float RmsdCalc(float **refcoor, float **movcoor, int nato, int super )
@@ -1417,8 +1454,7 @@ float * DistanceSelCoor( CoorSet *coorset1, Selection *sele1, CoorSet *coorset2,
    return distances;
 }
 
-double 
-AngleCalc( double *a, double *b, double *c)
+double AngleCalc( double *a, double *b, double *c)
 {
     double dist12, dist23, dist13, angle_cos;
    

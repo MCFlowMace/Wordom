@@ -1509,6 +1509,8 @@ int whichEModule( char *typestring )
     return 14;
    if(!strncmp( typestring, "psnparam", 8))
     return  15;
+   if(!strncmp( typestring, "pcatools", 8))
+    return  16;
    if(!strncmp( typestring, "ring", 4))
     return 70;
    if(!strncmp( typestring, "sample", 6))
@@ -1724,6 +1726,9 @@ void Calc2 ( struct sopt *OPT )
          break;
        case 15 :
          InitPSNParam( input_text, iA_data.begIndex[ii] );
+         break;
+       case 16 :
+         PCAToolsReadInp( input_text, iA_data.begIndex[ii] );
          break;
        case 70 :
          Compute_Ring( input_text, iA_data.begIndex[ii] );

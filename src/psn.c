@@ -264,10 +264,7 @@ float GetAANormFactor(char *resType)
   //  norm = 23.5;
   
   else
-  {
-    fprintf( stderr, "Could not recognize residue >%s<: will take norm as 999999.99 (low interaction propensity)\n\n", resType);
-    norm = 999999.99;
-  }
+    norm = -999.999;
   
   return norm;
 }
@@ -288,13 +285,17 @@ float GetParamDBNormFactor(struct inp_psn *inp_psn, char *resType)
   int              ii;
   
   if(inp_psn->iParamDBFlag)
+  {
     for(ii=0; ii<inp_psn->iNumOfParamDBEntries; ii++)
+    {
       if(strcmp(resType, inp_psn->pcParamDBResVect[ii]) == 0)
       {
         inp_psn->iUsedParamDBFlag         = 1;
         inp_psn->piUsedDBParamIndices[ii] = 1;
         return inp_psn->pfParamDBValVect[ii];
       }
+    }
+  }
   return -999.999;
 }
 
@@ -303,26 +304,19 @@ float GetNormFactor(struct inp_psn *inp_psn, char *resType, int isAAFlag)
   float   fNormFactor;
   
   if(isAAFlag)
-    return GetAANormFactor(resType);
+    fNormFactor = GetAANormFactor(resType);
   
   else
   {
     fNormFactor = GetUserNormFactor(inp_psn, resType);
-    if(fNormFactor > 0)
-      return fNormFactor;
-    else
-    {
-      if(inp_psn->iParamDBFlag)
-      {
-        fNormFactor = GetParamDBNormFactor(inp_psn, resType);
-        if(fNormFactor > 0)
-          return fNormFactor;
-        else
-          return 999999.99;
-      }
-      else
-        return 999999.99;
-    }
+    if(fNormFactor < 0 && inp_psn->iParamDBFlag)
+      fNormFactor = GetParamDBNormFactor(inp_psn, resType);
+  }
+  
+  if(fNormFactor < 0)
+  {
+    fprintf( stderr, "Could not recognize residue >%s<: will take norm as 99999.99999 (low interaction propensity)\n\n", resType);
+    return 99999.99999;
   }
 }
 
@@ -513,7 +507,7 @@ void GetImin(struct inp_psn *inp_psn, struct sopt *OPT, Molecule *molecule)
   int           DEBUG=0;
   
   char          cResName[6];
-  char          cTempLab[80];
+  char          cTempLab[80], cTempLab2[80];
   
   double        fI0Size, fIcSize;
   double        fLowerImin=0.0, fHigherImin=10.0, fHalfImin;
@@ -828,11 +822,16 @@ void GetImin(struct inp_psn *inp_psn, struct sopt *OPT, Molecule *molecule)
   fprintf( inp_psn->outfile, "========================\n");
   
   fprintf( inp_psn->outfile, "*** Seq ***\n");
-  fprintf(inp_psn->outfile, "%-10s   %-15s   %s\n", "Id", "Res", "NormFact");
+  fprintf(inp_psn->outfile, "%-10s   %-15s   %-5s   %s\n", "Id", "Res", "Atm", "NormFact");
   for(ii=0; ii<molecule->nRes; ++ii)
   {
     sprintf(cTempLab, "%s:%c%-d", molecule->pRes[ii]->segName, molecule->seq1[ii], molecule->pRes[ii]->resn);
-    fprintf(inp_psn->outfile, "%-10d   %-15s   %.5f\n", ii+1, cTempLab, inp_psn->res_norm[ii]);
+    if(molecule->pRes[ii]->isAA)
+      sprintf(cTempLab2, "%s", "CA");
+    else
+      sprintf(cTempLab2, "%s", molecule->pRes[ii]->pAto[0].atmType);
+
+    fprintf(inp_psn->outfile, "%-10d   %-15s   %-5s   %.5f\n", ii+1, cTempLab, cTempLab2, inp_psn->res_norm[ii]);
   }
   fprintf( inp_psn->outfile, "========================\n");
 
@@ -1126,7 +1125,7 @@ int Read_iPSG ( char **input, int inp_index, struct inp_psn *inp_psn, char *prin
   
   char             bbatoms[1024], buffer[10240], cIntMinRange[50];
   char             cCOOTerAtoms[50], cNHTerAtoms[50], cResName[6];
-  char             cTmpString1[50], cTmpString2[50], cTempLab[80];
+  char             cTmpString1[50], cTmpString2[50], cTempLab[80], cTempLab2[80];
   char            *cToken, cMergeResType[5], cTempChArray[50];
   
   float            fTempFloat;
@@ -2276,15 +2275,20 @@ int Read_iPSG ( char **input, int inp_index, struct inp_psn *inp_psn, char *prin
       fprintf( inp_psn->outfile, "%-3d   %-5s   %-6d\n", ii+1, molecule->segment[ii].segName, molecule->segment[ii].nRpS);
     
     fprintf( inp_psn->outfile, "========================\n");
-    
+
     fprintf( inp_psn->outfile, "*** Seq ***\n");
-    fprintf(inp_psn->outfile, "%-10s   %-15s   %s\n", "Id", "Res", "NormFact");
+    fprintf(inp_psn->outfile, "%-10s   %-15s   %-5s   %s\n", "Id", "Res", "Atm", "NormFact");
     for(ii=0; ii<molecule->nRes; ++ii)
     {
       sprintf(cTempLab, "%s:%c%-d", molecule->pRes[ii]->segName, molecule->seq1[ii], molecule->pRes[ii]->resn);
-      fprintf(inp_psn->outfile, "%-10d   %-15s   %.5f\n", ii+1, cTempLab, inp_psn->res_norm[ii]);
+      if(molecule->pRes[ii]->isAA)
+        sprintf(cTempLab2, "%s", "CA");
+      else
+        sprintf(cTempLab2, "%s", molecule->pRes[ii]->pAto[0].atmType);
+    
+      fprintf(inp_psn->outfile, "%-10d   %-15s   %-5s   %.5f\n", ii+1, cTempLab, cTempLab2, inp_psn->res_norm[ii]);
     }
-    fprintf( inp_psn->outfile, "========================\n");
+    fprintf( inp_psn->outfile, "========================\n");    
   }
   
   return 0;
@@ -3161,11 +3165,16 @@ int Post_PSG(struct inp_psn *inp_psn, int iNumOfFrames, Molecule *molecule, stru
           fprintf( inp_psn->outfile, "========================\n");
           
           fprintf( inp_psn->outfile, "*** Seq ***\n");
-          fprintf(inp_psn->outfile, "%-10s   %-15s   %s\n", "Id", "Res", "NormFact");
+          fprintf(inp_psn->outfile, "%-10s   %-15s   %-5s   %s\n", "Id", "Res", "Atm", "NormFact");
           for(ii=0; ii<molecule->nRes; ++ii)
           {
             sprintf(cTempLab, "%s:%c%-d", molecule->pRes[ii]->segName, molecule->seq1[ii], molecule->pRes[ii]->resn);
-            fprintf(inp_psn->outfile, "%-10d   %-15s   %.5f\n", ii+1, cTempLab, inp_psn->res_norm[ii]);
+            if(molecule->pRes[ii]->isAA)
+              sprintf(cTempLab2, "%s", "CA");
+            else
+              sprintf(cTempLab2, "%s", molecule->pRes[ii]->pAto[0].atmType);
+          
+            fprintf(inp_psn->outfile, "%-10d   %-15s   %-5s   %.5f\n", ii+1, cTempLab, cTempLab2, inp_psn->res_norm[ii]);
           }
           fprintf( inp_psn->outfile, "========================\n");
         }
@@ -3308,14 +3317,19 @@ int Post_PSG(struct inp_psn *inp_psn, int iNumOfFrames, Molecule *molecule, stru
   
   fprintf( DistilledOutput, "========================\n");
   
-  fprintf( DistilledOutput, "*** Seq ***\n");
-  fprintf(DistilledOutput, "%-10s   %-15s   %s\n", "Id", "Res", "NormFact");
+  fprintf(DistilledOutput, "*** Seq ***\n");
+  fprintf(DistilledOutput, "%-10s   %-15s   %-5s   %s\n", "Id", "Res", "Atm", "NormFact");
   for(ii=0; ii<molecule->nRes; ++ii)
   {
-    sprintf(cTempLab1, "%s:%c%-d", molecule->pRes[ii]->segName, molecule->seq1[ii], molecule->pRes[ii]->resn);
-    fprintf(DistilledOutput, "%-10d   %-15s   %.5f\n", ii+1, cTempLab1, inp_psn->res_norm[ii]);
+    sprintf(cTempLab, "%s:%c%-d", molecule->pRes[ii]->segName, molecule->seq1[ii], molecule->pRes[ii]->resn);
+    if(molecule->pRes[ii]->isAA)
+      sprintf(cTempLab2, "%s", "CA");
+    else
+      sprintf(cTempLab2, "%s", molecule->pRes[ii]->pAto[0].atmType);
+
+    fprintf(DistilledOutput, "%-10d   %-15s   %-5s   %.5f\n", ii+1, cTempLab, cTempLab2, inp_psn->res_norm[ii]);
   }
-  fprintf( DistilledOutput, "========================\n");
+  fprintf(DistilledOutput, "========================\n");
 
   fprintf(DistilledOutput, "*** Averaged Interaction Strength ***\n");
   fprintf(DistilledOutput, "%-10s   %-10s   %-10s   %-10s\n", "Res1", "Res2", "I.S.", "Freq");
@@ -3922,7 +3936,7 @@ int Post_PSG(struct inp_psn *inp_psn, int iNumOfFrames, Molecule *molecule, stru
 
 // ------------------------------------------------------------------
 // === Macro Definitions ===============================================
-#define PSNPATHVERSTRING     "0.7a"                                     // Version string
+#define PSNPATHVERSTRING     "0.8"                                     // Version string
 // =====================================================================
 
 // === Global Variables ================================================
@@ -4177,11 +4191,13 @@ int PSNPATH(char **ppcInput, int iInputLineNum)
   int     iOriginalInputLineNum;
   int     iOptionFlag;                                                  // Used to catch invalid options
   int     iNumOfResInFile;                                              // Number of residues in resfile
-  int     iTmpResNum;                                                   // Used to generate output file names
+  int     iTmpResNum, iTemp;                                            // Used to generate output file names
   int     iBlockCont;                                                   // Save frame in current block
   int     iCalcFlag;                                                    // Used with iCheckClustFlag
   int     iTempRes1, iTempRes2;
   int     iGetIcriticFlag=0;                                            // 0: user defined; 1: pre; 2: post; 3: best; 4: first; 5: last
+  
+  int     iNumOfFBlockFiles;                                            // Total number of fblock files
   
   int     iAVGFILEOptFlag = 0;
   int     iMININTFREQOptFlag = 0;
@@ -4192,10 +4208,12 @@ int PSNPATH(char **ppcInput, int iInputLineNum)
   char    cTmpRes1[10240], cTmpRes2[10240];                             // Used to get --PAIR options
   char    cMatchMode[10];                                               // Used to get --MATCH mode
   char    cTemp[80];                                                    // misc temp char
+  char    cInfoFileName[80];                                            // info file name
   char    cLine[10240];                                                 // Residue file lines
   
   float   fBadFramesVal=0.0;                                            // Temp Bad frames freq value
   
+  FILE   *FPathInfoFile;                                                // Info file handler
   FILE   *FResFileHandler;                                              // Used to handle residue files
 
   strcpy(cPathTitle, "-");
@@ -4864,6 +4882,188 @@ int PSNPATH(char **ppcInput, int iInputLineNum)
     }
   }
   // *******************
+  
+  // === info file ========================================================== //
+  sprintf(cInfoFileName, "PSNPath-%s.info", cPathTitle);
+  FPathInfoFile = fopen(cInfoFileName, "w");
+  if(FPathInfoFile == NULL)
+  {
+    fprintf(stderr, "PSNPATH module: Unable to open file: %s\n", cInfoFileName);
+    return 1;
+  }
+  
+  fprintf(FPathInfoFile, "# =========================================\n");
+  fprintf(FPathInfoFile, "#       *** WORDOM PSNPATH MODULE ***      \n");
+  fprintf(FPathInfoFile, "# =========================================\n");
+  fprintf(FPathInfoFile, "#\n");
+  fprintf(FPathInfoFile, "# Version          : %s\n",       PSNPATHVERSTRING);
+  fprintf(FPathInfoFile, "# License          : GPL 3\n");
+  fprintf(FPathInfoFile, "# Copyright        : Fanelli, Felline\n");
+  fprintf(FPathInfoFile, "#                    University of Modena\n");
+  fprintf(FPathInfoFile, "#                    Modena - Italy\n");
+  fprintf(FPathInfoFile, "#\n");
+  fprintf(FPathInfoFile, "# Date             : %s",         asctime(localtime(&time_Finish)));
+  fprintf(FPathInfoFile, "#\n");
+  
+  if(iPSNTypeFlag == 0)
+    fprintf(FPathInfoFile, "# PSN Type         : RAW\n");
+  if(iPSNTypeFlag == 1)
+    fprintf(FPathInfoFile, "# PSN Type         : AVG\n");
+  if(iPSNTypeFlag == 2)
+    fprintf(FPathInfoFile, "# PSN Type         : MIX\n");
+  
+  fprintf(FPathInfoFile, "# Raw File         : %s\n", cRawPSNFileName);
+  fprintf(FPathInfoFile, "# Avg File         : %s\n", cAvgPSNFileName);
+  fprintf(FPathInfoFile, "# Num Of Frames    : %d\n", iNumOfFrames);
+  
+  if(iGetIcriticFlag == 0)
+    fprintf(FPathInfoFile, "# Imin Flag        : VALUE\n");
+  if(iGetIcriticFlag == 1)
+    fprintf(FPathInfoFile, "# Imin Flag        : PRE\n");
+  if(iGetIcriticFlag == 2)
+    fprintf(FPathInfoFile, "# Imin Flag        : POST\n");
+  if(iGetIcriticFlag == 3)
+    fprintf(FPathInfoFile, "# Imin Flag        : BEST\n");
+  if(iGetIcriticFlag == 4)
+    fprintf(FPathInfoFile, "# Imin Flag        : FIRST\n");
+  if(iGetIcriticFlag == 5)
+    fprintf(FPathInfoFile, "# Imin Flag        : LAST\n");
+  fprintf(FPathInfoFile, "# Imin Value       : %f\n", fIntMinCutOff);
+  fprintf(FPathInfoFile, "# Min Int Freq     : %f\n", fIntMinFreq);
+  fprintf(FPathInfoFile, "# Max Bad Freq     : %f\n", fFreqCutOff);
+
+  if(iMergeClustFlag == 0)
+    fprintf(FPathInfoFile, "# Merged Clust     : No\n");
+  else
+    fprintf(FPathInfoFile, "# Merged Clust     : Yes\n");
+
+  fprintf(FPathInfoFile, "# Corr File        : %s\n", cCorrFileName);
+  fprintf(FPathInfoFile, "# Corr Value       : %f\n", fCorrCutOff);
+
+  if(iAbsCorrFlag == 0)
+    fprintf(FPathInfoFile, "# Abs Corr Flag    : No\n");
+  else
+    fprintf(FPathInfoFile, "# Abs Corr Flag    : Yes\n");
+
+  fprintf(FPathInfoFile, "# Weight Eq        : %d\n", iWeightFlag);
+  fprintf(FPathInfoFile, "# Min Path Len     : %d\n", iMinLen);
+  fprintf(FPathInfoFile, "# Min Path Freq    : %f\n", fMinFreq);
+  
+  fprintf(FPathInfoFile, "# Res/File 1       : %s\n", cTmpRes1);
+  fprintf(FPathInfoFile, "# Res Num  1       : %d\n", iNumOfRes1);
+  
+  fprintf(FPathInfoFile, "# Res/File 2       : %s\n", cTmpRes2);
+  fprintf(FPathInfoFile, "# Res Num  2       : %d\n", iNumOfRes2);
+  
+  if(iMatchMode == 0)
+    fprintf(FPathInfoFile, "# Tot Pairs        : %d\n", iNumOfRes1 * iNumOfRes2);
+  else
+    fprintf(FPathInfoFile, "# Tot Pairs        : %d\n", iNumOfRes1);
+
+  if(iModeFlag == 0)
+    fprintf(FPathInfoFile, "# Mode Flag        : FULL\n");
+  else
+    fprintf(FPathInfoFile, "# Mode Flag        : LITE\n");
+  
+  if(iMatchMode == 0)
+    fprintf(FPathInfoFile, "# Match Mode       : CROSS\n");
+  else
+    fprintf(FPathInfoFile, "# Match Mode       : LINEAR\n");
+    
+  if(iLogFlag == 0)
+    fprintf(FPathInfoFile, "# Log File         : No\n");
+  else
+    fprintf(FPathInfoFile, "# Log File         : Yes\n");
+  
+  if(iFrameFlag == 0)
+    fprintf(FPathInfoFile, "# Frame File       : No\n");
+  else
+    fprintf(FPathInfoFile, "# Frame File       : Yes\n");
+  
+  if(iStatFlag == 0)
+    fprintf(FPathInfoFile, "# Stat File        : No\n");
+  else
+    fprintf(FPathInfoFile, "# Stat File        : Yes\n");
+  
+  if(iCheckClustFlag == 0)
+    fprintf(FPathInfoFile, "# Check Clust      : No\n");
+  else
+    fprintf(FPathInfoFile, "# Check Clust      : Yes\n");
+  
+  fprintf(FPathInfoFile, "# Start Frame      : %d\n", iStartFrame);
+  fprintf(FPathInfoFile, "# Start Pair       : %d\n", iStartPair);
+  fprintf(FPathInfoFile, "# Frames Per Block : %d\n", iFramePerBlock);
+  
+  iNumOfFBlockFiles = 1;
+  iTemp = 0;
+  for(ii=0; ii<iNumOfFrames; ++ii)
+  {
+    iTemp++;
+    if(iTemp > iFramePerBlock)
+    {
+      iTemp = 1;
+      iNumOfFBlockFiles++;
+    }
+  }
+  fprintf(FPathInfoFile, "# Tot FBlock Files : %d\n", iNumOfFBlockFiles);
+  fprintf(FPathInfoFile, "#\n");
+  fprintf(FPathInfoFile, "# MEMPATH          : %d\n", MAXNUMOFPATHS);
+  fprintf(FPathInfoFile, "# MEMGAIN          : %d\n", GAIN);
+
+  fprintf(FPathInfoFile, "#\n");
+  fprintf(FPathInfoFile, "# =========================================\n");
+  fprintf(FPathInfoFile, "\n\n\n");
+  
+  if(iMatchMode == 0)
+  {
+    // CROSS
+    iPairCont = 0;
+    for(ii=0; ii<iNumOfRes1; ii++)
+    {
+      iRes1 = piRes1List[ii];
+      for(jj=0; jj<iNumOfRes2; jj++)
+      {
+        iRes2 = piRes2List[jj];
+        iPairCont++;
+        fprintf(FPathInfoFile, "PAIR   %9d   %-9s   %-9s\n", iPairCont, pcSequence[iRes1], pcSequence[iRes2]);
+      }
+    }
+  }
+  
+  else
+  {
+    // LINEAR
+    iPairCont = 0;
+    for(ii=0; ii<iNumOfRes1; ii++)
+    {
+      iRes1 = piRes1List[ii];
+      iRes2 = piRes2List[ii];
+      iPairCont++;
+      fprintf(FPathInfoFile, "PAIR   %9d   %-9s   %-9s\n", iPairCont, pcSequence[iRes1], pcSequence[iRes2]);
+    }
+  }
+  
+  fprintf(FPathInfoFile, "\n\n");
+  
+  iNumOfFBlockFiles = 1;
+  sprintf(cFrameFileName, "PSNPath-%s_fb-%d.fblock", cPathTitle , iNumOfFBlockFiles);
+  fprintf(FPathInfoFile, "FBLOCK   %9d   %-9s\n", iNumOfFBlockFiles, cFrameFileName);
+  iTemp = 0;
+  for(ii=0; ii<iNumOfFrames; ++ii)
+  {
+    iTemp++;
+    if(iTemp > iFramePerBlock)
+    {
+      iTemp = 1;
+      iNumOfFBlockFiles++;
+      sprintf(cFrameFileName, "PSNPath-%s_fb-%d.fblock", cPathTitle , iNumOfFBlockFiles);
+      fprintf(FPathInfoFile, "FBLOCK   %9d   %-9s\n", iNumOfFBlockFiles, cFrameFileName);
+    }
+  }
+  
+  fclose(FPathInfoFile);
+  
+  // ======================================================================== //
   
   if(iMatchMode == 1)
   {
@@ -5679,7 +5879,8 @@ int GetPSNParam(char **ppcInput, int iInputLineNum)
       return 1;
     }
 
-    if(strcmp(cLine, "Id           Res               NormFact\n")==0)
+    
+    if(strcmp(cLine, "Id           Res               Atm     NormFact\n")==0)
       break;
   }
   
@@ -6060,7 +6261,7 @@ void LoadAvgLabIdx()
       exit(1);
     }
     
-    if(strncmp(cLine, "Id           Res               NormFact", 39) == 0)
+    if(strncmp(cLine, "Id           Res               Atm     NormFact", 47) == 0)
       break;
   }
   

@@ -188,6 +188,18 @@ void superimpose ( int n_ato,                   /*!< number of atoms for both se
                    float vector[3]              /*!< traslation vector */
                  );
 // ------------------------------------------------------------------
+//! Superposition function
+/*!
+ This returns a new molecule, mol3, which is mol2 superimposed on mol1
+ Selection must refer to the same number of atom in both input molecules
+ (mol1 and mol2), or NULL is returned
+*/
+Molecule * molSuperimpose(  Molecule *mol1,     /*!< reference molecule */
+                            Molecule *mol2,     /*!< moving molecule */
+                            Selection *sele1,   /*!< selection on mol1 */
+                            Selection *sele2    /*!< selection on mol2 */
+                         );
+// ------------------------------------------------------------------
 //! Computes Distance Matrix for DRMS calculations
 /*!
  

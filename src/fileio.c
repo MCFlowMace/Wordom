@@ -1691,7 +1691,7 @@ void Raw2Struct(Molecule *molecule)
   for( ii=0; ii<molecule->nSeg; ii++)
     molecule->nRes += molecule->nRpS[ii];
   
-  molecule->seq1 = (char * )calloc(molecule->nRes, sizeof(char  ));
+  molecule->seq1 = (char * )calloc(molecule->nRes+1, sizeof(char  ));
   molecule->seq3 = (char **)calloc(molecule->nRes, sizeof(char *));
   for( ii=0; ii<molecule->nRes; ii++ )
     molecule->seq3[ii] = (char *)calloc( 3, sizeof(char));
@@ -3580,11 +3580,17 @@ Molecule * CopyMol( Molecule *mol1 )
    
    mol2->nato = mol1->nato;
 
+   mol2->coor.nato = mol1->nato;
    mol2->coor.cords = calloc ( mol2->nato*3, sizeof(float) );
    
    mol2->coor.xcoor = mol2->coor.cords;
    mol2->coor.ycoor = &mol2->coor.cords[mol2->nato];
    mol2->coor.zcoor = &mol2->coor.cords[mol2->nato * 2];
+   
+   mol2->coor.coors = (float **) calloc( 3, sizeof(float));
+   mol2->coor.coors[0] = mol2->coor.xcoor;
+   mol2->coor.coors[1] = mol2->coor.ycoor;
+   mol2->coor.coors[2] = mol2->coor.zcoor;
    
    mol2->rawmol.atomn   = calloc ( mol2->nato, sizeof( int ) );
    mol2->rawmol.chainId = calloc ( mol2->nato, sizeof( char) );
