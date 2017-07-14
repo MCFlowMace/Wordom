@@ -3957,6 +3957,8 @@ char  **ppcRes2;                                                        // Last 
 char    cPathTitle[512];                                                // Used only as log file name
 char   *pcPath;                                                         // Temp path
 char  **ppcNodeLabel;                                                   // List of node labels, used with piNodeIndex
+char    cPSNMolFileName[512];                                           // Molecule file used for PSN analysis
+char    cPSNTrjFileName[512];                                           // Trj file used for PSN analysis
 
 int     MAXNUMOFPATHS=5000;                                             // Max num of paths
 int     GAIN=10;                                                        // Multiplier
@@ -4891,7 +4893,7 @@ int PSNPATH(char **ppcInput, int iInputLineNum)
     fprintf(stderr, "PSNPATH module: Unable to open file: %s\n", cInfoFileName);
     return 1;
   }
-  
+
   fprintf(FPathInfoFile, "# =========================================\n");
   fprintf(FPathInfoFile, "#       *** WORDOM PSNPATH MODULE ***      \n");
   fprintf(FPathInfoFile, "# =========================================\n");
@@ -4904,6 +4906,9 @@ int PSNPATH(char **ppcInput, int iInputLineNum)
   fprintf(FPathInfoFile, "#\n");
   fprintf(FPathInfoFile, "# Date             : %s",         asctime(localtime(&time_Finish)));
   fprintf(FPathInfoFile, "#\n");
+  
+  fprintf(FPathInfoFile, "# Mol Name         : %s\n", cPSNMolFileName);
+  fprintf(FPathInfoFile, "# Trj Name         : %s\n", cPSNTrjFileName);
   
   if(iPSNTypeFlag == 0)
     fprintf(FPathInfoFile, "# PSN Type         : RAW\n");
@@ -5014,6 +5019,35 @@ int PSNPATH(char **ppcInput, int iInputLineNum)
   fprintf(FPathInfoFile, "# =========================================\n");
   fprintf(FPathInfoFile, "\n\n\n");
   
+  // copy SEQ data section //
+  rewind(FRawFile);
+  while(1)
+  {
+    if(fgets(cLine, 100, FRawFile)==NULL)
+    {
+      fprintf( stderr, "PSNPATH module: Unable to laod sequence from file: %s\n", cRawPSNFileName);
+      return 1;
+    }
+    if(strcmp(cLine, "Id           Res               Atm     NormFact\n")==0)
+      break;
+  }
+  
+  while(1)
+  {
+    if(fgets(cLine, 100, FRawFile)==NULL && ( !feof(FRawFile) || ferror(FRawFile) ))
+    {
+      fprintf(stderr, "PSN Error: found corrupted file while reading psn params\n");
+      exit(1);
+    }
+    
+    if(strcmp(cLine, "========================\n")==0)
+      break;
+    
+    fprintf(FPathInfoFile, "SEQ %s", cLine);
+  }
+  fprintf(FPathInfoFile, "\n\n\n");
+  rewind(FRawFile);
+
   if(iMatchMode == 0)
   {
     // CROSS
@@ -5043,7 +5077,7 @@ int PSNPATH(char **ppcInput, int iInputLineNum)
     }
   }
   
-  fprintf(FPathInfoFile, "\n\n");
+  fprintf(FPathInfoFile, "\n\n\n");
   
   iNumOfFBlockFiles = 1;
   sprintf(cFrameFileName, "PSNPath-%s_fb-%d.fblock", cPathTitle , iNumOfFBlockFiles);
@@ -5678,7 +5712,7 @@ int GetPSNParam(char **ppcInput, int iInputLineNum)
   float   fNormFact;
   
   char    cTmpSegName[10], cTmpResType[5];                              // Res seg and type used to add offest using -o option
-  char    cResCode[15];                                                 // used to read sequence in the form segname:resname+resnum
+  char    cResCode[15], cAtmName[15];                                   // used to read sequence in the form segname:resname+resnum
   char    cSeleSeg1[10], cSeleSeg2[10];                                 // selected segnames
   char    cLine[1000], cJunk[10], cSeg[10];                             // string buffers
   
@@ -5757,6 +5791,16 @@ int GetPSNParam(char **ppcInput, int iInputLineNum)
     {
       fprintf(stderr, "PSNPATH Error: found corrupted file while reading psn params\n");
       exit(1);
+    }
+  
+    if(strncmp(cLine, "# Mol Name      : ", 18) == 0)
+    {
+      sscanf(cLine, "%s %s %s %s %s", cJunk, cJunk, cJunk, cJunk, cPSNMolFileName);
+    }
+  
+    if(strncmp(cLine, "# Trj Name      : ", 18) == 0)
+    {
+      sscanf(cLine, "%s %s %s %s %s", cJunk, cJunk, cJunk, cJunk, cPSNTrjFileName);
     }
   
     if(strncmp(cLine, "# Seg Num       : ", 18) == 0)
@@ -5891,8 +5935,8 @@ int GetPSNParam(char **ppcInput, int iInputLineNum)
       fprintf(stderr, "PSN Error: found corrupted file while reading psn params\n");
       exit(1);
     }
-
-    sscanf(cLine, "%d %s %f", &iProgResNum, cResCode, &fNormFact);
+  
+    sscanf(cLine, "%d %s %s %f", &iProgResNum, cResCode, cAtmName, &fNormFact);
     strcpy(pcRawSequence[iProgResNum-1], cResCode);
     sscanf(cResCode, "%[^:]:%1s%d", cTmpSegName, cTmpResType, &iTmpResNum);
     

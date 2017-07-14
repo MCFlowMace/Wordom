@@ -270,14 +270,14 @@ void GaussCorrMatrix(struct inp_corr *inp_corr)
 
 int Read_CORR(char **input, int input_index, struct inp_corr *inp_corr, Molecule *molecule, char *outstring, int iNumOfFrames)
 {
-  int     ii, jj, kk, mm;
+  int     ii, jj, kk, mm, xx, yy;
   int     iWinpOptFlag=0;
   int     iResNum, iResCont, iVirtAtom;
   int     iInputBegIndex;
   int     iSeleIdx;
   int     iMoleculeItems;
   
-  char    cWordomInpBuffer[1024], cTmpString[10];
+  char    cWordomInpBuffer[1024], cTmpString[99];
   char    cLastRes[50], cOutPutFileName[512];
   char    cResCode1[3];
   
@@ -311,6 +311,7 @@ int Read_CORR(char **input, int input_index, struct inp_corr *inp_corr, Molecule
   inp_corr->iMatchSubSele    =  0;
   inp_corr->iNumOfSubMatch   =  0;
   inp_corr->iStdDevFlag      =  0;
+  inp_corr->iGetFramesFlag   = -1;
   // ===================================================================
   
   iInputBegIndex = input_index;
@@ -401,6 +402,33 @@ int Read_CORR(char **input, int input_index, struct inp_corr *inp_corr, Molecule
     else if ( !strncmp(cWordomInpBuffer, "--SUBSELE", 9))
     {
       inp_corr->iNumOFSubSele+=1;
+      iWinpOptFlag = 1;
+    }
+    else if ( !strncmp(cWordomInpBuffer, "--GETFRAMES ", 12))
+    {
+      sscanf( cWordomInpBuffer, "--GETFRAMES %s", cTmpString);
+      
+      if(strcmp(cTmpString, "YES")==0)
+        inp_corr->iGetFramesFlag = 1;
+      else if(strcmp(cTmpString, "Yes")==0)
+        inp_corr->iGetFramesFlag = 1;
+      else if(strcmp(cTmpString, "yes")==0)
+        inp_corr->iGetFramesFlag = 1;
+      else if(strcmp(cTmpString, "1")==0)
+        inp_corr->iGetFramesFlag = 1;
+      else if(strcmp(cTmpString, "NO")==0)
+        inp_corr->iGetFramesFlag = 0;
+      else if(strcmp(cTmpString, "No")==0)
+        inp_corr->iGetFramesFlag = 0;
+      else if(strcmp(cTmpString, "no")==0)
+        inp_corr->iGetFramesFlag = 0;
+      else if(strcmp(cTmpString, "0")==0)
+        inp_corr->iGetFramesFlag = 0;
+      else
+      {
+        fprintf( stderr, "CORR module: invalid value passed to --GETFRAMES option: %s\n", cTmpString);
+        exit(5);
+      }
       iWinpOptFlag = 1;
     }
     if( iWinpOptFlag==0 )
@@ -630,6 +658,12 @@ int Read_CORR(char **input, int input_index, struct inp_corr *inp_corr, Molecule
   if(inp_corr->iNumOfThreads == 0 && inp_corr->iCorrType)
     inp_corr->iNumOfThreads = 1;
   
+  if(inp_corr->iCorrType != 3 && inp_corr->iGetFramesFlag != -1)
+    fprintf( stderr, "CORR module: --GETFRAMES option is aveilable only when --TYPE is FLUCT, it will be ignored\n");
+  
+  if(inp_corr->iCorrType == 3 && inp_corr->iGetFramesFlag == -1)
+    inp_corr->iGetFramesFlag = 0;
+  
   if(inp_corr->iCorrType == 0)
   {
     // --TYPE DCC
@@ -813,16 +847,23 @@ int Read_CORR(char **input, int input_index, struct inp_corr *inp_corr, Molecule
     inp_corr->iFirstRoundFlag = 1; 
     inp_corr->iFirstFrame     = 1;
 
-    inp_corr->ppfMeanDistance = (double **) calloc(inp_corr->iMatrixDim, sizeof(double *));
-    inp_corr->ppfFluctMatrix  = (double **) calloc(inp_corr->iMatrixDim, sizeof(double *));
-    inp_corr->ppfMinDistances = (double **) calloc(inp_corr->iMatrixDim, sizeof(double *));
-    inp_corr->ppfMaxDistances = (double **) calloc(inp_corr->iMatrixDim, sizeof(double *));
+    inp_corr->ppfMeanDistance  = (double **) calloc(inp_corr->iMatrixDim, sizeof(double *));
+    inp_corr->ppfFluctMatrix   = (double **) calloc(inp_corr->iMatrixDim, sizeof(double *));
+    inp_corr->ppfMinDistances  = (double **) calloc(inp_corr->iMatrixDim, sizeof(double *));
+    inp_corr->ppfMaxDistances  = (double **) calloc(inp_corr->iMatrixDim, sizeof(double *));
     for(ii=0; ii<inp_corr->iMatrixDim; ++ii)
     {
       inp_corr->ppfMeanDistance[ii] = (double  *) calloc(inp_corr->iMatrixDim, sizeof(double));
       inp_corr->ppfFluctMatrix[ii]  = (double  *) calloc(inp_corr->iMatrixDim, sizeof(double));
       inp_corr->ppfMinDistances[ii] = (double  *) calloc(inp_corr->iMatrixDim, sizeof(double));
       inp_corr->ppfMaxDistances[ii] = (double  *) calloc(inp_corr->iMatrixDim, sizeof(double));
+    }
+
+    if(inp_corr->iGetFramesFlag == 1)
+    {
+      inp_corr->ppfFrameMatrix  = (double **) calloc(inp_corr->iMatrixDim, sizeof(double *));
+      for(ii=0; ii<inp_corr->iMatrixDim; ++ii)
+        inp_corr->ppfFrameMatrix[ii]  = (double  *) calloc(inp_corr->iMatrixDim, sizeof(double));
     }
 
     if(inp_corr->iNumOFSubSele > 0)
@@ -866,8 +907,9 @@ int Read_CORR(char **input, int input_index, struct inp_corr *inp_corr, Molecule
         inp_corr->piMasterSeleIndexes[iSeleIdx] = ii;
       }
 
-      inp_corr->pSubSele       = (Selection *) calloc(inp_corr->iNumOFSubSele, sizeof(Selection));
-      inp_corr->pfSubSeleFluct = (double    *) calloc(inp_corr->iNumOFSubSele, sizeof(double));
+      inp_corr->pSubSele         = (Selection *) calloc(inp_corr->iNumOFSubSele, sizeof(Selection));
+      inp_corr->pfSubSeleFluct   = (double    *) calloc(inp_corr->iNumOFSubSele, sizeof(double));
+      inp_corr->pfSubSeleAvgDist = (double    *) calloc(inp_corr->iNumOFSubSele, sizeof(double));
       kk = -1;
       input_index = iInputBegIndex;
       memset(cWordomInpBuffer, '\0', sizeof(cWordomInpBuffer));
@@ -920,8 +962,9 @@ int Read_CORR(char **input, int input_index, struct inp_corr *inp_corr, Molecule
         input_index++;
       }
       
-      inp_corr->iNumOfSubMatch      = (int) ((inp_corr->iNumOFSubSele * inp_corr->iNumOFSubSele) - inp_corr->iNumOFSubSele) / 2.0;
-      inp_corr->pfMatchSubSeleFluct = (double *) calloc(inp_corr->iNumOfSubMatch, sizeof(double));
+      inp_corr->iNumOfSubMatch        = (int) ((inp_corr->iNumOFSubSele * inp_corr->iNumOFSubSele) - inp_corr->iNumOFSubSele) / 2.0;
+      inp_corr->pfMatchSubSeleFluct   = (double *) calloc(inp_corr->iNumOfSubMatch, sizeof(double));
+      inp_corr->pfMatchSubSeleAvgDist = (double *) calloc(inp_corr->iNumOfSubMatch, sizeof(double));
     }
     
     if(inp_corr->iVerboseFlag == 1)
@@ -929,16 +972,52 @@ int Read_CORR(char **input, int input_index, struct inp_corr *inp_corr, Molecule
       
   }
 
+  if(inp_corr->iGetFramesFlag == 1)
+  {
+    
+    sprintf(cOutPutFileName, "%s_frames.dat", inp_corr->cTitle);
+    inp_corr->FVerbOutFile=fopen(cOutPutFileName, "w");
+    
+    fprintf(inp_corr->FVerbOutFile, "%12s   ", "nFr");
+    fprintf(inp_corr->FVerbOutFile, "%12s   ", "MasterSele");
+    if(inp_corr->iNumOFSubSele > 0)
+    {
+      for(xx=0; xx<inp_corr->iNumOFSubSele; ++xx)
+      {
+        sprintf(cTmpString, "Sele%d", xx+1);
+        fprintf(inp_corr->FVerbOutFile, "%12s   ", cTmpString);
+      }
+    }
+    
+    if(inp_corr->iNumOfSubMatch > 0)
+    {
+      mm = 0;
+      for(xx=0; xx<inp_corr->iNumOFSubSele; ++xx)
+      {
+        for(yy=xx+1; yy<inp_corr->iNumOFSubSele; ++yy)
+        {
+          mm += 1;
+          sprintf(cTmpString, "Match%d", mm);
+          fprintf(inp_corr->FVerbOutFile, "%12s   ", cTmpString);
+          
+        }
+      }
+    }
+    fprintf(inp_corr->FVerbOutFile, "\n");
+  }
+
+  inp_corr->iFrameNum = 0;
   sprintf( outstring, " %10s ", inp_corr->cTitle);
   return 12;
 }
 
 int Compute_CORR(struct inp_corr *inp_corr, Molecule *molecule, CoorSet *trj_crd, char *outstring)
 {
-  int     ii, jj;
+  int     ii, jj, mm, xx, yy;
   int     iAtomNumA, iAtomNumB;
   int     iResNum, iResCont, iVirtAtom;
   int     iAtomNum;
+  int     iTotPairs, iIndexA, iIndexB, iProgNumA, iProgNumB;
   
   float   fXDiffA, fYDiffA, fZDiffA;
   float   fXDiffB, fYDiffB, fZDiffB;
@@ -1034,7 +1113,7 @@ int Compute_CORR(struct inp_corr *inp_corr, Molecule *molecule, CoorSet *trj_crd
       
       fTotalWeight = 0.0;
     }
-        
+
     iVirtAtom++;
     inp_corr->ppfVirtAtomCoord[iVirtAtom][0]=fVirtAtomXCoord;
     inp_corr->ppfVirtAtomCoord[iVirtAtom][1]=fVirtAtomYCoord;
@@ -1299,6 +1378,20 @@ int Compute_CORR(struct inp_corr *inp_corr, Molecule *molecule, CoorSet *trj_crd
   {
     // --TYPE FLUCT @@@
     
+    if(inp_corr->iGetFramesFlag == 1 && inp_corr->iFirstRoundFlag == 0)
+    {
+      // initializes inp_corr->ppfFrameMatrix
+      for(ii=0; ii<inp_corr->iMatrixDim; ++ii)
+      {
+        inp_corr->ppfFrameMatrix[ii][ii] = 0.0;
+        for(jj=ii+1; jj<inp_corr->iMatrixDim; ++jj)
+        {
+          inp_corr->ppfFrameMatrix[ii][jj] = 0.0;
+          inp_corr->ppfFrameMatrix[jj][ii] = 0.0;
+        }
+      }
+    }
+    
     for(ii=0; ii<inp_corr->sele.nselatm; ++ii)
     {
       for(jj=ii+1; jj<inp_corr->sele.nselatm; ++jj)
@@ -1350,10 +1443,112 @@ int Compute_CORR(struct inp_corr *inp_corr, Molecule *molecule, CoorSet *trj_crd
 
         else
         {
+          if(inp_corr->iGetFramesFlag == 1)
+            inp_corr->ppfFrameMatrix[ii][jj] = fThisDist;
+
           fThisDist = (fThisDist - inp_corr->ppfMeanDistance[ii][jj]);
           fThisDist = fThisDist * fThisDist;
           inp_corr->ppfFluctMatrix[ii][jj] += fThisDist;
+
         }
+      }
+    }
+    
+    if(inp_corr->iGetFramesFlag == 1 && inp_corr->iFirstRoundFlag == 0)
+    {
+      // calculates the overall fluctuation over master selection
+      fprintf(inp_corr->FVerbOutFile, "%12d   ", inp_corr->iFrameNum);
+      fThisDist = 0.0;
+      iTotPairs = 0;
+      for(ii=0; ii<inp_corr->iMatrixDim; ++ii)
+      {
+        for(jj=ii+1; jj<inp_corr->iMatrixDim; ++jj)
+        {
+          iTotPairs += 1;
+          fThisDist += inp_corr->ppfFrameMatrix[ii][jj];
+        }
+      }
+      fThisDist = fThisDist / (float) iTotPairs;
+      fprintf(inp_corr->FVerbOutFile, "%12.3f   ", fThisDist);
+      
+      if(inp_corr->iNumOFSubSele > 0)
+      {
+        // calculates the sub-sele fluctuations
+        for(xx=0; xx<inp_corr->iNumOFSubSele; ++xx)
+        {
+          iTotPairs = 0;
+          fThisDist = 0.0;
+          for(ii=0; ii<inp_corr->pSubSele[xx].nselatm; ++ii)
+          {
+            for(jj=ii+1; jj<inp_corr->pSubSele[xx].nselatm; ++jj)
+            {
+              if(inp_corr->iResFlag==1)
+              {
+                iIndexA = molecule->rawmol.presn[inp_corr->pSubSele[xx].selatm[ii]-1];
+                iIndexB = molecule->rawmol.presn[inp_corr->pSubSele[xx].selatm[jj]-1];
+              }
+              
+              else
+              {
+                iIndexA = atoi(molecule->rawmol.atmId[inp_corr->pSubSele[xx].selatm[ii]-1]);
+                iIndexB = atoi(molecule->rawmol.atmId[inp_corr->pSubSele[xx].selatm[jj]-1]);
+              }
+              
+              iProgNumA = inp_corr->piMasterSeleIndexes[iIndexA];
+              iProgNumB = inp_corr->piMasterSeleIndexes[iIndexB];
+              
+              fThisDist += inp_corr->ppfFrameMatrix[iProgNumA][iProgNumB];
+              iTotPairs += 1;
+            }
+          }
+          
+          fThisDist = fThisDist / (float) iTotPairs;
+          fprintf(inp_corr->FVerbOutFile, "%12.3f   ", fThisDist);
+        }
+        
+        
+        if(inp_corr->iNumOfSubMatch > 0)
+        {
+          // calculates matcthed sub-sele fluctuations
+          // i.e. the overall-fluctuations between all res/atm of one sub-sele vs the res/atm of onother sele
+          mm = -1;
+          for(xx=0; xx<inp_corr->iNumOFSubSele; ++xx)
+          {
+            for(yy=xx+1; yy<inp_corr->iNumOFSubSele; ++yy)
+            {
+              mm += 1;
+              fThisDist = 0.0;
+              iTotPairs = 0;
+      
+              for(ii=0; ii<inp_corr->pSubSele[xx].nselatm; ++ii)
+              {
+                for(jj=0; jj<inp_corr->pSubSele[yy].nselatm; ++jj)
+                {
+                  if(inp_corr->iResFlag==1)
+                  {
+                    iIndexA = molecule->rawmol.presn[inp_corr->pSubSele[xx].selatm[ii]-1];
+                    iIndexB = molecule->rawmol.presn[inp_corr->pSubSele[yy].selatm[jj]-1];
+                  }
+                  
+                  else
+                  {
+                    iIndexA = atoi(molecule->rawmol.atmId[inp_corr->pSubSele[xx].selatm[ii]-1]);
+                    iIndexB = atoi(molecule->rawmol.atmId[inp_corr->pSubSele[yy].selatm[jj]-1]);
+                  }
+                  
+                  iProgNumA = inp_corr->piMasterSeleIndexes[iIndexA];
+                  iProgNumB = inp_corr->piMasterSeleIndexes[iIndexB];
+                  
+                  fThisDist += inp_corr->ppfFrameMatrix[iProgNumA][iProgNumB];
+                  iTotPairs += 1;
+                }
+              }
+              fThisDist = fThisDist / (float) iTotPairs;
+              fprintf(inp_corr->FVerbOutFile, "%12.3f   ", fThisDist);
+            }
+          }
+        }
+        fprintf(inp_corr->FVerbOutFile, "\n");
       }
     }
   }
@@ -1487,14 +1682,14 @@ int Post_CORR(struct inp_corr *inp_corr, Molecule *molecule, struct sopt *OPT, C
   int           iMatrixSize, iVectorSize;
   int           iRunningThreads, iRunnedThreads, iExitStatus;
 
-  float         fThisDist=0.0, fThisFluct, fThisFlex;
+  float         fThisDist, fThisFluct, fThisFlex;
   float         fTempValA=0.0, fTempValB=0.0;
   double        fSqrNumOfFrames;
   
   double        dCorrValue=0.0;
   double      **ppdMatrix;
   
-  char          cLabelA[20], cLabelB[20], cResCode1[3];
+  char          cLabelA[20], cLabelB[20], cResCode1[3], cTemp[150];
   
   time_t        time_Today;
   
@@ -1507,6 +1702,7 @@ int Post_CORR(struct inp_corr *inp_corr, Molecule *molecule, struct sopt *OPT, C
       printf("{Corr::Fluct} End of first run; calculating average distances and rewind trj\n");
     
     inp_corr->iFirstRoundFlag = 0;
+    inp_corr->iFrameNum = 0;
     
     for(ii=0; ii<inp_corr->iMatrixDim; ++ii)
       for(jj=ii+1; jj<inp_corr->iMatrixDim; ++jj)
@@ -1666,32 +1862,34 @@ int Post_CORR(struct inp_corr *inp_corr, Molecule *molecule, struct sopt *OPT, C
       for(jj=ii+1; jj<inp_corr->iMatrixDim; ++jj)
       {
         inp_corr->ppfFluctMatrix[ii][jj] = inp_corr->ppfFluctMatrix[ii][jj] / (float) inp_corr->iNumOfFrames;
-        
+
         // calculates standard deviation
         if(inp_corr->iStdDevFlag == 1)
           inp_corr->ppfFluctMatrix[ii][jj] = sqrt(inp_corr->ppfFluctMatrix[ii][jj]);
       }
     }
-        
-    
+
     // calculates the overall fluctuation over master selection
-    inp_corr->fOverallFluct = 0.0;
+    inp_corr->fOverallFluct   = 0.0;
+    inp_corr->fOverallAvgDist = 0.0;
     for(ii=0; ii<inp_corr->iMatrixDim; ++ii)
     {
       for(jj=0; jj<inp_corr->iMatrixDim; ++jj)
       {
-        if(ii != jj)
+        if(ii < jj)
         {
-          if(ii < jj)
-            fThisDist = inp_corr->ppfFluctMatrix[ii][jj];
-          if(ii > jj)
-            fThisDist = inp_corr->ppfFluctMatrix[jj][ii];
-
-          inp_corr->fOverallFluct += fThisDist;
+          inp_corr->fOverallFluct   += inp_corr->ppfFluctMatrix[ii][jj];
+          inp_corr->fOverallAvgDist += inp_corr->ppfMeanDistance[ii][jj];
+        }
+        if(ii > jj)
+        {
+          inp_corr->fOverallFluct   += inp_corr->ppfFluctMatrix[jj][ii];
+          inp_corr->fOverallAvgDist += inp_corr->ppfMeanDistance[jj][ii];
         }
       }
     }
-    inp_corr->fOverallFluct = sqrt(inp_corr->fOverallFluct / (float) (inp_corr->iMatrixDim*inp_corr->iMatrixDim));
+    inp_corr->fOverallFluct   = sqrt(inp_corr->fOverallFluct / (float) (inp_corr->iMatrixDim*inp_corr->iMatrixDim));
+    inp_corr->fOverallAvgDist = inp_corr->fOverallAvgDist / (float) (inp_corr->iMatrixDim*inp_corr->iMatrixDim);
     
     
     if(inp_corr->iNumOFSubSele > 0)
@@ -1700,7 +1898,8 @@ int Post_CORR(struct inp_corr *inp_corr, Molecule *molecule, struct sopt *OPT, C
       for(xx=0; xx<inp_corr->iNumOFSubSele; ++xx)
       {
         iTotPairs = 0;
-        inp_corr->pfSubSeleFluct[xx] = 0.0;
+        inp_corr->pfSubSeleFluct[xx]   = 0.0;
+        inp_corr->pfSubSeleAvgDist[xx] = 0.0;
         for(ii=0; ii<inp_corr->pSubSele[xx].nselatm; ++ii)
         {
           for(jj=0; jj<inp_corr->pSubSele[xx].nselatm; ++jj)
@@ -1721,18 +1920,24 @@ int Post_CORR(struct inp_corr *inp_corr, Molecule *molecule, struct sopt *OPT, C
             iProgNumB = inp_corr->piMasterSeleIndexes[iIndexB];
             
             if(iProgNumA < iProgNumB)
-              fThisDist = inp_corr->ppfFluctMatrix[iProgNumA][iProgNumB];
-            if(iProgNumA == iProgNumB)
-              fThisDist = 0.0;
+            {
+              inp_corr->pfSubSeleFluct[xx]   += inp_corr->ppfFluctMatrix[iProgNumA][iProgNumB];
+              inp_corr->pfSubSeleAvgDist[xx] += inp_corr->ppfMeanDistance[iProgNumA][iProgNumB];
+              
+            }
+            
             if(iProgNumB < iProgNumA)
-              fThisDist = inp_corr->ppfFluctMatrix[iProgNumB][iProgNumA];
+            {
+              inp_corr->pfSubSeleFluct[xx]   += inp_corr->ppfFluctMatrix[iProgNumB][iProgNumA];
+              inp_corr->pfSubSeleAvgDist[xx] += inp_corr->ppfMeanDistance[iProgNumB][iProgNumA];
+            }
             
             iTotPairs += 1;
-            inp_corr->pfSubSeleFluct[xx] += fThisDist;
           }
         }
         
-        inp_corr->pfSubSeleFluct[xx] = sqrt(inp_corr->pfSubSeleFluct[xx] / (float) iTotPairs);
+        inp_corr->pfSubSeleFluct[xx]   = sqrt(inp_corr->pfSubSeleFluct[xx] / (float) iTotPairs);
+        inp_corr->pfSubSeleAvgDist[xx] = inp_corr->pfSubSeleAvgDist[xx] / (float) iTotPairs;
       }
       
       
@@ -1769,17 +1974,21 @@ int Post_CORR(struct inp_corr *inp_corr, Molecule *molecule, struct sopt *OPT, C
                 iProgNumB = inp_corr->piMasterSeleIndexes[iIndexB];
                 
                 if(iProgNumA < iProgNumB)
-                  fThisDist = inp_corr->ppfFluctMatrix[iProgNumA][iProgNumB];
-                if(iProgNumA == iProgNumB)
-                  fThisDist = 0.0;
+                {
+                  inp_corr->pfMatchSubSeleFluct[mm]   += inp_corr->ppfFluctMatrix[iProgNumA][iProgNumB];
+                  inp_corr->pfMatchSubSeleAvgDist[mm] += inp_corr->ppfMeanDistance[iProgNumA][iProgNumB];
+                }
                 if(iProgNumB < iProgNumA)
-                  fThisDist = inp_corr->ppfFluctMatrix[iProgNumB][iProgNumA];
+                {
+                  inp_corr->pfMatchSubSeleFluct[mm]   += inp_corr->ppfFluctMatrix[iProgNumB][iProgNumA];
+                  inp_corr->pfMatchSubSeleAvgDist[mm] += inp_corr->ppfMeanDistance[iProgNumB][iProgNumA];
+                }
                 
                 iTotPairs += 1;
-                inp_corr->pfMatchSubSeleFluct[mm] += fThisDist;
               }
             }
-            inp_corr->pfMatchSubSeleFluct[mm] = sqrt(inp_corr->pfMatchSubSeleFluct[mm] / (float) iTotPairs);
+            inp_corr->pfMatchSubSeleFluct[mm]   = sqrt(inp_corr->pfMatchSubSeleFluct[mm] / (float) iTotPairs);
+            inp_corr->pfMatchSubSeleAvgDist[mm] = inp_corr->pfMatchSubSeleAvgDist[mm] / (float) iTotPairs;
           }
         }
       }
@@ -1859,22 +2068,30 @@ int Post_CORR(struct inp_corr *inp_corr, Molecule *molecule, struct sopt *OPT, C
     fprintf(inp_corr->FOutFile, "# Warning!     : Atom(s) with zero mass\n#\n");
   
   if(inp_corr->iCorrType == 3)
-    fprintf(inp_corr->FOutFile, "# Overall Fluct  : %s, %.2f\n", inp_corr->sele.selestring, inp_corr->fOverallFluct);
+  {
+    fprintf(inp_corr->FOutFile, "# Overall Fluct  : %s %.3f\n", inp_corr->sele.selestring, inp_corr->fOverallFluct);
+    fprintf(inp_corr->FOutFile, "# Overall Dist   : %s %.3f\n", inp_corr->sele.selestring, inp_corr->fOverallAvgDist);
+  }
   
   if(inp_corr->iNumOFSubSele > 0)
+  {
+    fprintf(inp_corr->FOutFile, "#\n");
+    fprintf(inp_corr->FOutFile, "# %3s   %-50s   %8s   %8s\n", "Num", "SubSele", "Fluct", "Dist");
     for(xx=0; xx<inp_corr->iNumOFSubSele; ++xx)
-      fprintf(inp_corr->FOutFile, "# SubSele Fluct  : %s, %.2f\n", inp_corr->pSubSele[xx].selestring, inp_corr->pfSubSeleFluct[xx]);
+      fprintf(inp_corr->FOutFile, "# %3d   %-50s   %8.3f   %8.3f\n", xx+1, inp_corr->pSubSele[xx].selestring, inp_corr->pfSubSeleFluct[xx], inp_corr->pfSubSeleAvgDist[xx]);
+  }
   
   if(inp_corr->iNumOfSubMatch > 0)
   {
     fprintf(inp_corr->FOutFile, "#\n");
+    fprintf(inp_corr->FOutFile, "# %3s   %-50s   %-50s   %8s   %8s\n", "Num", "SubSele1", "SubSele2", "Fluct", "Dist");
     mm = -1;
     for(xx=0; xx<inp_corr->iNumOFSubSele; ++xx)
     {
       for(yy=xx+1; yy<inp_corr->iNumOFSubSele; ++yy)
       {
         mm += 1;
-        fprintf(inp_corr->FOutFile, "# MatchSele Fluct: %s vs %s, %.2f\n", inp_corr->pSubSele[xx].selestring, inp_corr->pSubSele[yy].selestring, inp_corr->pfMatchSubSeleFluct[mm]);
+        fprintf(inp_corr->FOutFile, "# %3d   %-50s   %-50s   %8.3f   %8.3f\n", mm+1, inp_corr->pSubSele[xx].selestring, inp_corr->pSubSele[yy].selestring, inp_corr->pfMatchSubSeleFluct[mm], inp_corr->pfMatchSubSeleAvgDist[mm]);
       }
     }
   }
@@ -1885,8 +2102,9 @@ int Post_CORR(struct inp_corr *inp_corr, Molecule *molecule, struct sopt *OPT, C
     fprintf(inp_corr->FOutFile, "#\n");
     fprintf(inp_corr->FOutFile, "# Info: Fluct describes the extent of the pairwise fluctations\n");
     fprintf(inp_corr->FOutFile, "# Info: Flex is the difference between the largest and the smallest dist\n");
-    fprintf(inp_corr->FOutFile, "# ======================================================================\n");
-    fprintf(inp_corr->FOutFile, "#%8s   %8s   %15s   %15s   %5s   %5s\n", "ProgNumA", "ProgNumB", "LabelA", "LabelB", "Fluct", "Flex");
+    fprintf(inp_corr->FOutFile, "# Info: AvgDist is the average distance\n");
+    fprintf(inp_corr->FOutFile, "# ====================================================================================\n");
+    fprintf(inp_corr->FOutFile, "#%8s   %8s   %15s   %15s   %7s   %7s   %7s\n", "ProgNumA", "ProgNumB", "LabelA", "LabelB", "Fluct", "Flex", "AvgDist");
   }
   
   else
@@ -1963,24 +2181,27 @@ int Post_CORR(struct inp_corr *inp_corr, Molecule *molecule, struct sopt *OPT, C
         {
           fThisFluct = 0.0;
           fThisFlex  = 0.0;
+          fThisDist  = 0.0;
         }
         
         else if(ii < jj)
         {
           fThisFluct = inp_corr->ppfFluctMatrix[ii][jj];
           fThisFlex  = inp_corr->ppfMaxDistances[ii][jj] - inp_corr->ppfMinDistances[ii][jj];
+          fThisDist  = inp_corr->ppfMeanDistance[ii][jj];
         }
         
         else if(ii > jj)
         {
           fThisFluct = inp_corr->ppfFluctMatrix[jj][ii];
           fThisFlex  = inp_corr->ppfMaxDistances[jj][ii] - inp_corr->ppfMinDistances[jj][ii];
+          fThisDist  = inp_corr->ppfMeanDistance[jj][ii];
         }
 
       }
       
       if(inp_corr->iCorrType == 3)
-        fprintf(inp_corr->FOutFile, " %8d   %8d   %15s   %15s   %5.3f   %5.3f\n", iProgNumA, iProgNumB, cLabelA, cLabelB, fThisFluct, fThisFlex);
+        fprintf(inp_corr->FOutFile, " %8d   %8d   %15s   %15s   %7.3f   %7.3f   %7.3f\n", iProgNumA, iProgNumB, cLabelA, cLabelB, fThisFluct, fThisFlex, fThisDist);
       else
         fprintf(inp_corr->FOutFile, " %8d   %8d   %15s   %15s   %5.3f\n", iProgNumA, iProgNumB, cLabelA, cLabelB, dCorrValue);
     }

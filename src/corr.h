@@ -67,6 +67,7 @@ struct inp_corr
   float     **ppfVirtRefAtomCoord;                                      // Reference Virtual Atom Coordinates, used if iMultiAtomFlag == 1
   
   FILE       *FOutFile;                                                 // Output File Handler
+  FILE       *FVerbOutFile;                                             // Verbose Output File Handler
   
   Selection   sele;                                                     // Selection Structure
   
@@ -101,14 +102,19 @@ struct inp_corr
   int        iMatchSubSele;                                             // If 1, all sub-seles will be pairwise matched to calculated cross-sub-sele-fluct
   int        iNumOfSubMatch;                                            // Number of sub-sale matches
   int        iStdDevFlag;                                               // If 1, ppfFluctMatrix will be filled with standard-dev instead of variance
+  int        iGetFramesFlag;                                            // If 1 print the avg distances of each [sub]seles and matches
   int       *piMasterSeleIndexes;                                       // Used to map master-sele to molecule's residues/atoms
   double   **ppfMeanDistance;                                           // Stores the mean dist between two residues
   double   **ppfFluctMatrix;                                            // Fluctuation matrix
+  double   **ppfFrameMatrix;                                            // Fluctuation matrix of a single frame
   double   **ppfMinDistances;                                           // Stores the min dist between two residues
   double   **ppfMaxDistances;                                           // Stores the max dist between two residues
   double     fOverallFluct;                                             // Overall fluctation calculated over the main selection
+  double     fOverallAvgDist;                                           // Average Overall distance over the main selection
   double    *pfSubSeleFluct;                                            // Overall fluctation calculated over sub-selection
+  double    *pfSubSeleAvgDist;                                          // Overall fluctation calculated over sub-selection
   double    *pfMatchSubSeleFluct;                                       // Pairwise sub-sele Overall fluctations
+  double    *pfMatchSubSeleAvgDist;                                     // Pairwise sub-sele Overall fluctations
   Selection *pSubSele;
   
   // LMI & DCOR                                                         
