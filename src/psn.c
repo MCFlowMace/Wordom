@@ -3957,6 +3957,7 @@ char  **ppcRes2;                                                        // Last 
 char    cPathTitle[512];                                                // Used only as log file name
 char   *pcPath;                                                         // Temp path
 char  **ppcNodeLabel;                                                   // List of node labels, used with piNodeIndex
+char    cPSNTitle[512];                                                 // PSN Title
 char    cPSNMolFileName[512];                                           // Molecule file used for PSN analysis
 char    cPSNTrjFileName[512];                                           // Trj file used for PSN analysis
 
@@ -4907,6 +4908,7 @@ int PSNPATH(char **ppcInput, int iInputLineNum)
   fprintf(FPathInfoFile, "# Date             : %s",         asctime(localtime(&time_Finish)));
   fprintf(FPathInfoFile, "#\n");
   
+  fprintf(FPathInfoFile, "# PSN Title        : %s\n", cPSNTitle);
   fprintf(FPathInfoFile, "# Mol Name         : %s\n", cPSNMolFileName);
   fprintf(FPathInfoFile, "# Trj Name         : %s\n", cPSNTrjFileName);
   
@@ -5792,7 +5794,7 @@ int GetPSNParam(char **ppcInput, int iInputLineNum)
       fprintf(stderr, "PSNPATH Error: found corrupted file while reading psn params\n");
       exit(1);
     }
-  
+
     if(strncmp(cLine, "# Mol Name      : ", 18) == 0)
     {
       sscanf(cLine, "%s %s %s %s %s", cJunk, cJunk, cJunk, cJunk, cPSNMolFileName);
@@ -5816,6 +5818,11 @@ int GetPSNParam(char **ppcInput, int iInputLineNum)
     if(strncmp(cLine, "# Frame Num     : ", 18) == 0)
     {
       sscanf(cLine, "%s %s %s %s %d", cJunk, cJunk, cJunk, cJunk, &iNumOfFrames);
+    }
+    
+    if(strncmp(cLine, "# Title         : ", 18) == 0)
+    {
+      sscanf(cLine, "%s %s %s %s", cJunk, cJunk, cJunk, cPSNTitle);
       break;
     }
   }

@@ -1006,7 +1006,9 @@ int Read_CORR(char **input, int input_index, struct inp_corr *inp_corr, Molecule
     fprintf(inp_corr->FVerbOutFile, "\n");
   }
 
-  inp_corr->iFrameNum = 0;
+  if(inp_corr->iCorrType == 3)
+    inp_corr->iFrameNum = 0;
+  
   sprintf( outstring, " %10s ", inp_corr->cTitle);
   return 12;
 }
@@ -1278,6 +1280,7 @@ int Compute_CORR(struct inp_corr *inp_corr, Molecule *molecule, CoorSet *trj_crd
           iAtomNum = inp_corr->sele.selatm[ii] - 1;
           
           // Set X, Y & Z coordinates for all selected atoms for all processed frames
+          
           inp_corr->pppdCoord[ii][inp_corr->iFrameNum][0] = (trj_crd->xcoor[iAtomNum]-molecule->coor.xcoor[iAtomNum]) / 10.0;
           inp_corr->pppdCoord[ii][inp_corr->iFrameNum][1] = (trj_crd->ycoor[iAtomNum]-molecule->coor.ycoor[iAtomNum]) / 10.0;
           inp_corr->pppdCoord[ii][inp_corr->iFrameNum][2] = (trj_crd->zcoor[iAtomNum]-molecule->coor.zcoor[iAtomNum]) / 10.0;
@@ -1443,11 +1446,17 @@ int Compute_CORR(struct inp_corr *inp_corr, Molecule *molecule, CoorSet *trj_crd
 
         else
         {
-          if(inp_corr->iGetFramesFlag == 1)
-            inp_corr->ppfFrameMatrix[ii][jj] = fThisDist;
+          // normal dist
+          //if(inp_corr->iGetFramesFlag == 1)
+          //  inp_corr->ppfFrameMatrix[ii][jj] = fThisDist;
 
           fThisDist = (fThisDist - inp_corr->ppfMeanDistance[ii][jj]);
           fThisDist = fThisDist * fThisDist;
+          
+          // dist from avg
+          if(inp_corr->iGetFramesFlag == 1)
+            inp_corr->ppfFrameMatrix[ii][jj] = fabs(fThisDist - inp_corr->ppfMeanDistance[ii][jj]);
+          
           inp_corr->ppfFluctMatrix[ii][jj] += fThisDist;
 
         }
@@ -1548,8 +1557,8 @@ int Compute_CORR(struct inp_corr *inp_corr, Molecule *molecule, CoorSet *trj_crd
             }
           }
         }
-        fprintf(inp_corr->FVerbOutFile, "\n");
       }
+      fprintf(inp_corr->FVerbOutFile, "\n");
     }
   }
   
