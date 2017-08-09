@@ -107,6 +107,10 @@ struct inp_Cluster
   int            nato;          // equal to sele.nselatm
   int            step;
   float          threshold;
+  float			 threshold_bh;	//threshold for the Barnes-Hut approximation in tsne
+  float			 perplexity;	//for probability distribution in tsne
+  int			 max_iter;		//max iterations for tsne
+  int			 dimension;		//reduced dimension for tsne
   int            method;
   int            distance;
   int            totframe;
