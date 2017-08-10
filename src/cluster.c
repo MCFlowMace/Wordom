@@ -28,6 +28,9 @@
 #include "cluster.h"
 #include "gCluster.h"
 
+#define C_LINKING
+#include "tsne.h"
+
 //---------------------------------------------------------------------
 // Clustering module - work in progress...
 // ------------------------------------------------------------------
@@ -293,7 +296,7 @@ int Read_iCluster ( char **input, int inp_index, struct inp_Cluster *inp_cluster
 	   
    } else {
 	   
-		if( (inp_cluster->max_iter != 0 || inp_cluster->threshold_bh != -1.0 || inp_cluster->perplexity != 0.0 || inp_cluster->dimension != 0)
+		if(inp_cluster->max_iter != 0 || inp_cluster->threshold_bh != -1.0 || inp_cluster->perplexity != 0.0 || inp_cluster->dimension != 0)
 		{
 			fprintf( stderr, "IMAX, THETABH, DIM and PERPLEXITY options are only for T-SNE clustering!\n");
 			exit(12);
@@ -1330,6 +1333,7 @@ int GclusterLeaderDrms( struct inp_Cluster *inp_cluster, CoorSet *trj_crd, int f
 	
       for ( ii=0; ii<inp_cluster->dist_mtx_size; ii++)
 		inp_cluster->gclust_dmtx[(size_t)lframe*(size_t)inp_cluster->dist_mtx_size+(size_t)ii]=inp_cluster->dist_mtx[ii];
+
    
    return lframe ;
 
@@ -2127,7 +2131,40 @@ int Post_Cluster ( struct inp_Cluster *inp_cluster )
        for( jj=0; jj<inp_cluster->cluster[ii].cluspop; jj++)
          fprintf(inp_cluster->output, "%5d\n", inp_cluster->cluster[ii].clusstrs[jj]);
      }*/
-     setup_tsne(inp_cluster);
+     
+     fprintf(stderr,"reached post_cluster\n");
+     
+    int frames = inp_cluster->totframe/inp_cluster->step+(inp_cluster->totframe%inp_cluster->step == 0 ? 0 : 1)+1; //number of datapoints
+	int msize = inp_cluster->msize; //original dimension
+	int no_dims = inp_cluster->dimension; //output dim 
+	int max_iter = inp_cluster->max_iter; 
+	double perplexity = inp_cluster->perplexity;
+	double theta = inp_cluster->threshold_bh;
+	 
+    int rand_seed = 42;
+    
+
+	// Now fire up the SNE implementation
+	double* Y = (double*) malloc(frames * no_dims * sizeof(double));
+    if(Y == NULL) { printf("Memory allocation failed!\n"); exit(1); }
+    
+    fprintf(stderr,"start tsne\n");
+    setup_tsne(inp_cluster->gclust_dmtx, frames, msize, Y, no_dims, perplexity, theta, rand_seed, max_iter);
+    
+    //output
+    fprintf(inp_cluster->output, " Result T-Sne, #frames: %d, dimension: %d\n",frames, no_dims);
+    fprintf(inp_cluster->output, " frame coords\n");
+    
+    for (ii=0; ii<frames; ii++) {
+		fprintf(inp_cluster->output, " %10d ",ii);
+		for (jj=0; jj<no_dims; jj++) {
+			fprintf(inp_cluster->output, "%10.10f ",Y[jj+no_dims*ii]);
+		}
+		fprintf(inp_cluster->output, "\n");
+	}
+
+    // Clean up the memory
+	free(Y); Y = NULL;
      
    }
 

@@ -183,7 +183,7 @@ struct inp_Cluster
   struct ll_conf_neig  **llconfneig;
   int                   *conf_nneig;
   // for Gcluster array of distance matrices or array of all coords
-  float 		*gclust_dmtx;
+  double 		*gclust_dmtx;
   float			*gclust_coords;
   int			 device; //number of device to run on for multi GPU systems
 };

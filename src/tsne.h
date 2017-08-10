@@ -34,10 +34,12 @@
 #ifndef TSNE_H
 #define TSNE_H
 
+#ifdef C_LINKING
+void setup_tsne(double* X, int N, int D, double* Y, int no_dims, double perplexity, double theta, int rand_seed, int max_iter);
 
+#else
 static inline double sign(double x) { return (x == .0 ? .0 : (x < .0 ? -1.0 : 1.0)); }
 
-void setup_tsne(struct inp_Cluster *inp_cluster);
 
 class TSNE
 {
@@ -60,5 +62,5 @@ private:
     void computeSquaredEuclideanDistance(double* X, int N, int D, double* DD);
     double randn();
 };
-
+#endif
 #endif

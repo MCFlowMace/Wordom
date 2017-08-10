@@ -39,43 +39,15 @@
 #include "vptree.h"
 #include "sptree.h"
 #include "tsne.h"
-#include "cluster.h"
 
 using namespace std;
 
-extern "C" void setup_tsne(struct inp_Cluster *inp_cluster) {
-	
-	    // Define some variables
-	int origN, N, D, no_dims, max_iter, *landmarks;
-	double perc_landmarks;
-	double perplexity, theta, *data;
-    int rand_seed = -1;
+
+//just a C wrapper
+extern "C" void setup_tsne(double* X, int N, int D, double* Y, int no_dims, double perplexity, double theta, int rand_seed, int max_iter) {
+
     TSNE* tsne = new TSNE();
-
-    // Read the parameters and the dataset
-	if(tsne->load_data(&data, &origN, &D, &no_dims, &theta, &perplexity, &rand_seed, &max_iter)) {
-
-		// Make dummy landmarks
-        N = origN;
-        int* landmarks = (int*) malloc(N * sizeof(int));
-        if(landmarks == NULL) { printf("Memory allocation failed!\n"); exit(1); }
-        for(int n = 0; n < N; n++) landmarks[n] = n;
-
-		// Now fire up the SNE implementation
-		double* Y = (double*) malloc(N * no_dims * sizeof(double));
-		double* costs = (double*) calloc(N, sizeof(double));
-        if(Y == NULL || costs == NULL) { printf("Memory allocation failed!\n"); exit(1); }
-		tsne->run(data, N, D, Y, no_dims, perplexity, theta, rand_seed, false, max_iter);
-
-		// Save the results
-		tsne->save_data(Y, landmarks, costs, N, no_dims);
-
-        // Clean up the memory
-		free(data); data = NULL;
-		free(Y); Y = NULL;
-		free(costs); costs = NULL;
-		free(landmarks); landmarks = NULL;
-    }
+	tsne->run(X, N, D, Y, no_dims, perplexity, theta, rand_seed, false, max_iter);
     delete(tsne);
 }
 
@@ -696,30 +668,6 @@ double TSNE::randn() {
 	return x;
 }
 
-// Function that loads data from a t-SNE file
-// Note: this function does a malloc that should be freed elsewhere
-bool TSNE::load_data(double** data, int* n, int* d, int* no_dims, double* theta, double* perplexity, int* rand_seed, int* max_iter) {
-
-	// Open file, read first 2 integers, allocate memory, and read the data
-    FILE *h;
-	if((h = fopen("data.dat", "r+b")) == NULL) {
-		printf("Error: could not open data file.\n");
-		return false;
-	}
-	fread(n, sizeof(int), 1, h);											// number of datapoints
-	fread(d, sizeof(int), 1, h);											// original dimensionality
-    fread(theta, sizeof(double), 1, h);										// gradient accuracy
-	fread(perplexity, sizeof(double), 1, h);								// perplexity
-	fread(no_dims, sizeof(int), 1, h);                                      // output dimensionality
-    fread(max_iter, sizeof(int),1,h);                                       // maximum number of iterations
-	*data = (double*) malloc(*d * *n * sizeof(double));
-    if(*data == NULL) { printf("Memory allocation failed!\n"); exit(1); }
-    fread(*data, sizeof(double), *n * *d, h);                               // the data
-    if(!feof(h)) fread(rand_seed, sizeof(int), 1, h);                       // random seed
-	fclose(h);
-	printf("Read the %i x %i data matrix successfully!\n", *n, *d);
-	return true;
-}
 
 // Function that saves map to a t-SNE file
 void TSNE::save_data(double* data, int* landmarks, double* costs, int n, int d) {
