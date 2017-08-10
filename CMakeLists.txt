@@ -7,7 +7,7 @@
 project(WORDOM)
 cmake_minimum_required(VERSION 2.6.2)
 
- CUDA for clustering with leader
+ #CUDA for clustering with leader
 find_package(CUDA)
 if (CUDA_FOUND)
 
