@@ -555,7 +555,7 @@ int Read_iCluster ( char **input, int inp_index, struct inp_Cluster *inp_cluster
       }
       
       inp_cluster->dist_mtx_size = inp_cluster->msize ;
-      inp_cluster->gclust_dmtx = calloc ( (size_t)inp_cluster->msize * (size_t)(inp_cluster->totframe/inp_cluster->step+ (inp_cluster->totframe%inp_cluster->step == 0 ? 0 : 1) +1), sizeof (float));
+      inp_cluster->gclust_dmtx = calloc ( (size_t)inp_cluster->msize * (size_t)(inp_cluster->totframe/inp_cluster->step+ (inp_cluster->totframe%inp_cluster->step == 0 ? 0 : 1) +1), sizeof (double));
        
       //gclust_dmtx can get very big and thus the allocation can fail, if there is not enough memory
       if(!inp_cluster->gclust_dmtx) {
@@ -1567,7 +1567,7 @@ int Compute_Cluster ( struct inp_Cluster *inp_cluster, struct sopt *OPT, CoorSet
 	    }
 	    if( inp_cluster->distance == 2 )
 	    {
-	       GclusterLeaderDrms( inp_cluster, trj_crd, frame);
+	       //GclusterLeaderDrms( inp_cluster, trj_crd, frame);
 	       //sprintf( outprint, " %10d %8d %8.3f ", clusterapp, inp_cluster->frameapp[lframe]+1, distance);
 	       return 25;
 	    }
@@ -2149,7 +2149,7 @@ int Post_Cluster ( struct inp_Cluster *inp_cluster )
     if(Y == NULL) { printf("Memory allocation failed!\n"); exit(1); }
     
     fprintf(stderr,"start tsne\n");
-    setup_tsne(inp_cluster->gclust_dmtx, frames, msize, Y, no_dims, perplexity, theta, rand_seed, max_iter);
+    setup_tsne(inp_cluster->tsne_arr, frames, msize, Y, no_dims, perplexity, theta, rand_seed, max_iter);
     
     //output
     fprintf(inp_cluster->output, " Result T-Sne, #frames: %d, dimension: %d\n",frames, no_dims);
