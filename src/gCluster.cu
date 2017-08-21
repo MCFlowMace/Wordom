@@ -991,7 +991,7 @@ extern "C" int gClusterDrms (struct inp_Cluster *inp_cluster,float *distance)
     float cutoff = inp_cluster->threshold;
    	int msize = inp_cluster->msize;
 	int totframe = inp_cluster->totframe;
-	float *gclust_dmtx = inp_cluster->gclust_dmtx;
+	float *gclust_dmtx = inp_cluster->gclust_coords;
     float nointrasegm_corr_fact = 1.0;
     int *frameapp = inp_cluster->frameapp;
     int step = inp_cluster->step;

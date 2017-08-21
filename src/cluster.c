@@ -555,10 +555,9 @@ int Read_iCluster ( char **input, int inp_index, struct inp_Cluster *inp_cluster
       }
       
       inp_cluster->dist_mtx_size = inp_cluster->msize ;
-      inp_cluster->gclust_dmtx = calloc ( (size_t)inp_cluster->msize * (size_t)(inp_cluster->totframe/inp_cluster->step+ (inp_cluster->totframe%inp_cluster->step == 0 ? 0 : 1) +1), sizeof (double));
+      inp_cluster->tsne_coords = calloc ( (size_t)inp_cluster->msize * (size_t)(inp_cluster->totframe/inp_cluster->step+ (inp_cluster->totframe%inp_cluster->step == 0 ? 0 : 1) +1), sizeof (double));
        
-      //gclust_dmtx can get very big and thus the allocation can fail, if there is not enough memory
-      if(!inp_cluster->gclust_dmtx) {
+      if(!inp_cluster->tsne_coords) {
 		  fprintf(stderr,"Not enough memory!\n");
 		  exit(-1);
 	  }
@@ -949,10 +948,10 @@ int Read_iGcluster ( char **input, int inp_index, struct inp_Cluster *inp_cluste
          
 
       inp_cluster->dist_mtx_size = inp_cluster->msize ;
-      inp_cluster->gclust_dmtx = calloc ( (size_t)inp_cluster->msize * (size_t)(inp_cluster->totframe/inp_cluster->step+ (inp_cluster->totframe%inp_cluster->step == 0 ? 0 : 1) +1), sizeof (float));
+      inp_cluster->gclust_coords = calloc ( (size_t)inp_cluster->msize * (size_t)(inp_cluster->totframe/inp_cluster->step+ (inp_cluster->totframe%inp_cluster->step == 0 ? 0 : 1) +1), sizeof (float));
        
       //gclust_dmtx can get very big and thus the allocation can fail, if there is not enough memory
-      if(!inp_cluster->gclust_dmtx) {
+      if(!inp_cluster->gclust_coords) {
 		  fprintf(stderr,"Not enough memory!\n");
 		  exit(-1);
 	  }
@@ -1133,19 +1132,14 @@ int ClusterLeaderRmsd( struct inp_Cluster *inp_cluster, CoorSet *trj_crd, int fr
    return inp_cluster->clusterlist[inp_cluster->frameapp[lframe]][0].center;
 }
 
-#ifdef CUDA
 // ------------------------------------------------------------------
-int GclusterLeaderRmsd( struct inp_Cluster *inp_cluster, CoorSet *trj_crd, int frame, float *finalrmsd )
+//this method only stores the coordinates of the current frame in an array the clustering takes place later
+void saveCoords( struct inp_Cluster *inp_cluster, CoorSet *trj_crd, int frame )
 {
-   int          ii, index;
-   float      **framecoor;
-   int          lframe;
-   
+   int          ii, lframe;
 
-   //lframe = (frame)/inp_cluster->step;
    lframe = (frame-1)/inp_cluster->step+1;
    
-   // if we really have to deal with the frame, let's copy the coordinates
    // trj_crd contains coords of current frame
    for( ii=0; ii<inp_cluster->nato; ii++ )
    {
@@ -1154,15 +1148,8 @@ int GclusterLeaderRmsd( struct inp_Cluster *inp_cluster, CoorSet *trj_crd, int f
      inp_cluster->gclust_coords[(size_t)lframe*(size_t)inp_cluster->nato*3+(size_t)ii*3+2] = trj_crd->zcoor[inp_cluster->sele.selatm[ii]-1];
    }
    
-   /*for( ii=0; ii<inp_cluster->nato; ii++ ) {
-     inp_cluster->gclust_coords[0][(size_t)lframe*(size_t)inp_cluster->nato+(size_t)ii] = trj_crd->xcoor[inp_cluster->sele.selatm[ii]-1];
-     inp_cluster->gclust_coords[1][(size_t)lframe*(size_t)inp_cluster->nato+(size_t)ii] = trj_crd->ycoor[inp_cluster->sele.selatm[ii]-1];
-     inp_cluster->gclust_coords[2][(size_t)lframe*(size_t)inp_cluster->nato+(size_t)ii] = trj_crd->zcoor[inp_cluster->sele.selatm[ii]-1];
-   }*/
-   
-   return lframe;
 }
-#endif
+
 
 // ------------------------------------------------------------------
 int ClusterLeaderDrms( struct inp_Cluster *inp_cluster, CoorSet *trj_crd, int frame, float *finaldrms )
@@ -1305,37 +1292,40 @@ int ClusterLeaderDrms( struct inp_Cluster *inp_cluster, CoorSet *trj_crd, int fr
 
 }
 
-//for the GPU clustering this method has been changed to reading only the distance matrix of a frame and storing it
+//for the GPU clustering this method has been changed to reading only the distance matrix of a frame and storing it in an array
 //the real clustering takes place later in the Post_Gcluster part
-int GclusterLeaderDrms( struct inp_Cluster *inp_cluster, CoorSet *trj_crd, int frame )
+void saveDistMtx( struct inp_Cluster *inp_cluster, CoorSet *trj_crd, int frame )
 {
-   int          ii;
-   int          lframe;
+   int          ii,lframe;
    
-   //lframe = (frame)/inp_cluster->step;
    lframe = (frame-1)/inp_cluster->step+1;
 
-/* GetCoor( trj_crd, inp_cluster->tmpcoor[0], inp_cluster->tmpcoor[1], inp_cluster->tmpcoor[2], inp_cluster->sele );*/
    for ( ii=0; ii<inp_cluster->sele.nselatm; ii++)
    {
      inp_cluster->tmpcoor[0][ii] = trj_crd->xcoor[inp_cluster->sele.selatm[ii]-1];
      inp_cluster->tmpcoor[1][ii] = trj_crd->ycoor[inp_cluster->sele.selatm[ii]-1];
      inp_cluster->tmpcoor[2][ii] = trj_crd->zcoor[inp_cluster->sele.selatm[ii]-1];
    }
+   
    DistMtxCalc( inp_cluster->pbcflag , inp_cluster->pbcbox, inp_cluster->nato , inp_cluster->tmpcoor, inp_cluster->dist_mtx );
    if( inp_cluster->nointrasegm == 1)
      for ( ii=0; ii<inp_cluster->dist_mtx_size; ii++)
        inp_cluster->dist_mtx[ii] *= inp_cluster->nointrasegm_msk[ii];
    
-   if( inp_cluster->cmapd == 1)         //Compute the smoothed contact map instead of the distance matrix 
+   //Compute the smoothed contact map instead of the distance matrix 
+   if( inp_cluster->cmapd == 1)
      for ( ii=0; ii<inp_cluster->dist_mtx_size; ii++)
        inp_cluster->dist_mtx[ii] = fret( inp_cluster->dist_mtx[ii] , inp_cluster->cmapd_cutoff );
+       
+	if( inp_cluster->method==5) {
 	
-      for ( ii=0; ii<inp_cluster->dist_mtx_size; ii++)
-		inp_cluster->gclust_dmtx[(size_t)lframe*(size_t)inp_cluster->dist_mtx_size+(size_t)ii]=inp_cluster->dist_mtx[ii];
-
-   
-   return lframe ;
+		for ( ii=0; ii<inp_cluster->dist_mtx_size; ii++)
+			inp_cluster->tsne_coords[(size_t)lframe*(size_t)inp_cluster->dist_mtx_size+(size_t)ii]=inp_cluster->dist_mtx[ii];
+	} else {
+		
+		for ( ii=0; ii<inp_cluster->dist_mtx_size; ii++)
+			inp_cluster->gclust_coords[(size_t)lframe*(size_t)inp_cluster->dist_mtx_size+(size_t)ii]=inp_cluster->dist_mtx[ii];
+	}
 
 }
 
@@ -1567,8 +1557,8 @@ int Compute_Cluster ( struct inp_Cluster *inp_cluster, struct sopt *OPT, CoorSet
 	    }
 	    if( inp_cluster->distance == 2 )
 	    {
-	       //GclusterLeaderDrms( inp_cluster, trj_crd, frame);
-	       //sprintf( outprint, " %10d %8d %8.3f ", clusterapp, inp_cluster->frameapp[lframe]+1, distance);
+			//only saves distance matrix of current frame in inp_cluster->tsne_coords, the clustering takes place in Post_Cluster
+	       saveDistMtx( inp_cluster, trj_crd, frame);
 	       return 25;
 	    }
 	    
@@ -1584,10 +1574,7 @@ int Compute_Cluster ( struct inp_Cluster *inp_cluster, struct sopt *OPT, CoorSet
 #ifdef CUDA
 int Compute_Gcluster ( struct inp_Cluster *inp_cluster, struct sopt *OPT, CoorSet *trj_crd, char *outprint, int frame )
 {
-   int     ii;
-   int     lframe;
-   float   distance;
-   int     clusterapp;
+   int     ii, lframe;
    
    if( fmod( frame-1, inp_cluster->step) )
    { // if you are to skip some frames (--STEP option), do so
@@ -1596,58 +1583,32 @@ int Compute_Gcluster ( struct inp_Cluster *inp_cluster, struct sopt *OPT, CoorSe
      else
        return 21;
    }
-   /*if ( inp_cluster->method == 1 || inp_cluster->method == 2 )
+   
+   if ( inp_cluster->method == 1 || inp_cluster->method == 2 )
    { 
-     lframe = (frame-1)/inp_cluster->step; 
-     //fprintf( stdout, "DEBUG - lframe: %d\n", lframe); fflush(stdout);
-     // choosen method requires all-vs-all frame comparison: store coordinates for post-processing
-     if( inp_cluster->himem )
-     {
-       for( ii=0; ii < inp_cluster->sele.nselatm; ii++ )
-       {
-         inp_cluster->xcoor[lframe][ii] = trj_crd->xcoor[inp_cluster->sele.selatm[ii]-1];
-         inp_cluster->ycoor[lframe][ii] = trj_crd->ycoor[inp_cluster->sele.selatm[ii]-1];
-         inp_cluster->zcoor[lframe][ii] = trj_crd->zcoor[inp_cluster->sele.selatm[ii]-1];
-       }
-     }
-     else
-     {
-       GetSeleCoor( trj_crd, inp_cluster->tmpfilecoor, &inp_cluster->sele);
-       fwrite( inp_cluster->tmpfilecoor->cords, sizeof(float), 3*inp_cluster->sele.nselatm, inp_cluster->tmpfile );
-     }
-     
-     inp_cluster->nframe ++;
-     return 0;
-   }*/
+     //Not supported
+   }
  
    if ( inp_cluster->method == 3 )
    {
-     //lframe = (frame)/inp_cluster->step;
      lframe = (frame-1)/inp_cluster->step+1;
      if( inp_cluster->distance == 1 )
      {
-       clusterapp = -1;
-       distance   = -1;
-       clusterapp = GclusterLeaderRmsd( inp_cluster, trj_crd, frame, &distance);
-       //sprintf( outprint, " %10d %8d %8.3f", clusterapp, inp_cluster->frameapp[lframe]+1, distance);
+		//only saves coordinates of current frame in inp_cluster->gclust_coords, the clustering takes place in Post_Gcluster
+       saveCoords( inp_cluster, trj_crd, frame);
        return 25;
      }
      if( inp_cluster->distance == 2 )
      {
-       clusterapp = -1;
-       distance   = -1;
-       clusterapp = GclusterLeaderDrms( inp_cluster, trj_crd, frame);
-//       sprintf( outprint, " %10d %8d %8.3f ", clusterapp, inp_cluster->frameapp[lframe]+1, distance);
+		 //only saves distance matrix of current frame in inp_cluster->gclust_coords, the clustering takes place in Post_Gcluster
+       saveDistMtx( inp_cluster, trj_crd, frame);
        return 25;
      }
-     /*if( inp_cluster->distance == 3 )
+     
+     if( inp_cluster->distance == 3 )
      {
-       clusterapp = -1;
-       distance   = -1;
-       clusterapp = ClusterLeaderTanimoto( inp_cluster, trj_crd, frame, &distance);
-       sprintf( outprint, " %10d %8d %8.3f ", clusterapp, inp_cluster->frameapp[lframe]+1, distance);
-       return 25;
-     }*/
+		//Not supported
+     }
    }
    
    return 0;
@@ -2099,40 +2060,7 @@ int Post_Cluster ( struct inp_Cluster *inp_cluster )
    }
    else if (inp_cluster->method == 5)
    {
-     /*//fprintf( inp_cluster->output, "# Clustering run on %s and %s (%d frames)\n", inp_cluster->inmol, inp_cluster->intrj, inp_cluster->nframe );
-     fprintf( inp_cluster->output, "%s", inp_cluster->header);
-     inp_cluster->cluster = (_scluster *)calloc(inp_cluster->nclusters+1, sizeof(_scluster));
-     //ccenterindex = (int *)calloc(inp_cluster->nclusters, sizeof( int ));
-	 int frames = inp_cluster->totframe/inp_cluster->step+(inp_cluster->totframe%inp_cluster->step == 0 ? 0 : 1);
-   
-     for( ii=0; ii<inp_cluster->nclusters; ii++ )
-     {
-       inp_cluster->cluster[ii].cluspop = inp_cluster->clusterlist[ii][0].nelements;
-       inp_cluster->cluster[ii].clusstart = inp_cluster->cluster[ii].cluscenter = inp_cluster->clusterlist[ii][0].center;
-       inp_cluster->cluster[ii].clusstrs = calloc( inp_cluster->cluster[ii].cluspop+1, sizeof(int));
-       index = 0;  		
-       for( jj=0; jj<frames; jj++ )
-       {
-         if( inp_cluster->frameapp[jj+1] == ii )
-         {
-           //inp_cluster->cluster[ii].clusstrs[index] = (jj + 1) * inp_cluster->step; //seems to be wrong
-           inp_cluster->cluster[ii].clusstrs[index] = jj * inp_cluster->step + 1;
-           index++;
-         }
-       }
-     }
-
-     fprintf(inp_cluster->output, "# Nclusters (method %d): %d \n", inp_cluster->method, inp_cluster->nclusters);
-     fprintf(inp_cluster->output, "Cluster#    0 ; structures: 0 ; header: leader-like has no isolated structures\n" );
      
-     for( ii=0; ii<inp_cluster->nclusters; ii++)
-     {
-       fprintf(inp_cluster->output, "Cluster# %4d ; structures: %d ; header: %5d\n", ii+1, inp_cluster->cluster[ii].cluspop, inp_cluster->cluster[ii].cluscenter );
-       for( jj=0; jj<inp_cluster->cluster[ii].cluspop; jj++)
-         fprintf(inp_cluster->output, "%5d\n", inp_cluster->cluster[ii].clusstrs[jj]);
-     }*/
-     
-     fprintf(stderr,"reached post_cluster\n");
      
     int frames = inp_cluster->totframe/inp_cluster->step+(inp_cluster->totframe%inp_cluster->step == 0 ? 0 : 1)+1; //number of datapoints
 	int msize = inp_cluster->msize; //original dimension
@@ -2149,7 +2077,7 @@ int Post_Cluster ( struct inp_Cluster *inp_cluster )
     if(Y == NULL) { printf("Memory allocation failed!\n"); exit(1); }
     
     fprintf(stderr,"start tsne\n");
-    setup_tsne(inp_cluster->tsne_arr, frames, msize, Y, no_dims, perplexity, theta, rand_seed, max_iter);
+    setup_tsne(inp_cluster->tsne_coords, frames, msize, Y, no_dims, perplexity, theta, rand_seed, max_iter);
     
     //output
     fprintf(inp_cluster->output, " Result T-Sne, #frames: %d, dimension: %d\n",frames, no_dims);

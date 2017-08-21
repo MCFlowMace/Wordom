@@ -182,10 +182,9 @@ struct inp_Cluster
   struct ll_clus_neig  *tmp_llneig;
   struct ll_conf_neig  **llconfneig;
   int                   *conf_nneig;
-  // for Gcluster array of distance matrices or array of all coords
-  float 		*gclust_dmtx;
-  float			*gclust_coords;
-  double 		*tsne_arr;
+
+  float 		*gclust_coords; // for Gcluster array of distance matrices or array of all coords
+  double 		*tsne_coords; // same array for tsne but with double precision
   int			 device; //number of device to run on for multi GPU systems
 };
 
@@ -249,10 +248,16 @@ struct inp_CAssign
 #ifndef GCLUSTER_INCLUDES
 // ------------------------------------------------------------------
 int Read_iCluster(char **input, int inp_index, struct inp_Cluster * , char * , Molecule * , CoorSetData *coorsetdata, int nframe );
+// ------------------------------------------------------------------
+int Read_iGcluster ( char **input, int inp_index, struct inp_Cluster *inp_cluster, char *printout, Molecule *molecule, CoorSetData *coorsetdata,int nframe );
 //----------------------------------------------------------
 int Compute_Cluster ( struct inp_Cluster *, struct sopt *, CoorSet *, char *, int   );
 // ------------------------------------------------------------------
+int Compute_Gcluster ( struct inp_Cluster *inp_cluster, struct sopt *OPT, CoorSet *trj_crd, char *outprint, int frame );
+// ------------------------------------------------------------------
 int Post_Cluster (struct inp_Cluster * );
+// ------------------------------------------------------------------
+int Post_Gcluster(struct inp_Cluster *inp_cluster,FILE * oA_f);
 // ------------------------------------------------------------------
 int Read_iCAssign ( char **input, int inp_index, struct inp_CAssign *, char *, Molecule *, CoorSetData *, int nframe );
 int Compute_CAssign ( struct inp_CAssign *, struct sopt *, CoorSet *, char *, int  );
