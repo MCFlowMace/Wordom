@@ -907,6 +907,10 @@ extern "C" int gClusterRmsd (struct inp_Cluster *inp_cluster,float *distance) {
 	
 	//copy coords to gpu
 	errorHandler(cudaMemcpy(devPtr_gclust_coords, gclust_coords + 3*nato, frames*coords_size, cudaMemcpyHostToDevice),__LINE__);
+	
+	free(gclust_coords);
+	gclust_coords = NULL;
+	inp_cluster->gclust_coords = NULL;
 
 	//distances are set to the cutoff for the start
 	for(ii=0; ii<=frames;ii++) {
@@ -1210,7 +1214,14 @@ extern "C" int gClusterDrms (struct inp_Cluster *inp_cluster,float *distance)
 			errorHandler(cudaFree(devPtr_frameapp2),__LINE__);
 			errorHandler(cudaFree(devPtr_cluster),__LINE__);
 			errorHandler(cudaFree(devPtr_newClusters),__LINE__);			
-		}	
+		}
+		
+		free(cluster);
+		cluster = NULL;	
+		free(gclust_dmtx);
+		gclust_dmtx = NULL;
+		inp_cluster->gclust_coords = NULL;
+		
 		
 		errorHandler( cudaDeviceReset(),__LINE__);	
 		return 0;		
@@ -1225,6 +1236,9 @@ extern "C" int gClusterDrms (struct inp_Cluster *inp_cluster,float *distance)
 					
 			//copy distance matrices to gpu
 			errorHandler(cudaMemcpy(devPtr_gclust_dmtx, gclust_dmtx + msize, memsize, cudaMemcpyHostToDevice),__LINE__);
+			free(gclust_dmtx);
+			gclust_dmtx = NULL;
+			inp_cluster->gclust_coords = NULL;
 		
 			//Set all indices to -1
 			errorHandler(cudaMemset((void*)devPtr_frameapp1,-1,cmemsize),__LINE__);

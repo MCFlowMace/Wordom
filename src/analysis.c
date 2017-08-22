@@ -438,7 +438,7 @@ void superCalc ( struct sopt   *OPT  )
         break;
         #ifdef CUDA
        case  84 :
-        Post_Gcluster ( &T_data[0].iA_data.input[jj]->inp_cluster );
+        Post_Gcluster ( &T_data[0].iA_data.input[jj]->inp_cluster, oA_f );
         break;
         #endif
        case  15 :

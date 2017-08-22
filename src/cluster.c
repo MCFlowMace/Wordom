@@ -20,6 +20,7 @@
  
  Source code for all clustering procedures
 */
+
 #include "wordom.h"
 #include "tools.h"
 #include "fileio.h"
@@ -69,6 +70,7 @@ int Read_iCluster ( char **input, int inp_index, struct inp_Cluster *inp_cluster
    inp_cluster->max_iter = 0;
    inp_cluster->dimension = 0;
    inp_cluster->threshold_bh = -1.0;
+   inp_cluster->rand_seed = -1;
    
    
    strcpy( inp_cluster->inmol, molecule->rawmol.name );
@@ -102,11 +104,6 @@ int Read_iCluster ( char **input, int inp_index, struct inp_Cluster *inp_cluster
       sscanf (buffer, "--CUTOFF %f", &cutoff);
       gotit = 1;
     }
-    else if ( !strncmp(buffer, "--THETABH", 9))
-    {
-      sscanf (buffer, "--THETABH %f", &(inp_cluster->threshold_bh));
-      gotit = 1;
-    }
     else if ( !strncmp(buffer, "--TITLE", 7))
     {
       sscanf( buffer, "--TITLE %s", title);
@@ -126,9 +123,19 @@ int Read_iCluster ( char **input, int inp_index, struct inp_Cluster *inp_cluster
       sscanf( buffer, "--CMAPD %f", &(inp_cluster->cmapd_cutoff));
       gotit = 1;
     }
+    else if ( !strncmp(buffer, "--SEED", 6))
+    {
+      sscanf( buffer, "--SEED %d", &(inp_cluster->rand_seed));
+      gotit = 1;
+    }
     else if ( !strncmp(buffer, "--PERPLEXITY", 12))
     {
-      sscanf( buffer, "--PERPLEXITY %f", &(inp_cluster->perplexity));
+      sscanf( buffer, "--PERPLEXITY %lf", &(inp_cluster->perplexity));
+      gotit = 1;
+    }
+    else if ( !strncmp(buffer, "--THETABH", 9))
+    {
+      sscanf( buffer, "--THETABH %lf", &(inp_cluster->threshold_bh));
       gotit = 1;
     }
     else if ( !strncmp(buffer, "--DIM", 5))
@@ -270,15 +277,28 @@ int Read_iCluster ( char **input, int inp_index, struct inp_Cluster *inp_cluster
    
    if( inp_cluster->method == 5)
    {
+	   if(inp_cluster->distance != 2 || inp_cluster->distance != 1)
+	   {
+		   fprintf( stderr, "tsne only works with drms or rmsd\n");
+		   exit(0);
+	   }
+	   
 	   if( inp_cluster->max_iter <= 0)
 	   {
 		   fprintf( stderr, "Please supply a valid number of maximum iterations (use --IMAX)\n");
 		   exit(0);
 	   }
-	   
+
+	   if( inp_cluster->perplexity <= 0)
+	   {
+		   fprintf( stderr, "Please supply a valid perplexity (use --PERPLEXITY)\n");
+		   exit(0);
+	   }
+	   fprintf( stderr, "%f\n",inp_cluster->threshold_bh);
 	   if( inp_cluster->threshold_bh < 0)
 	   {
 		   fprintf( stderr, "Please supply a valid Barnes-Hut threshold (use --THETABH)\n");
+		   
 		   exit(0);
 	   }
 	   
@@ -288,11 +308,6 @@ int Read_iCluster ( char **input, int inp_index, struct inp_Cluster *inp_cluster
 		   exit(0);
 	   }
 	   
-	   if( inp_cluster->perplexity <= 0)
-	   {
-		   fprintf( stderr, "Please supply a valid perplexity (use --PERPLEXITY)\n");
-		   exit(0);
-	   }
 	   
    } else {
 	   
@@ -520,11 +535,21 @@ int Read_iCluster ( char **input, int inp_index, struct inp_Cluster *inp_cluster
   {
 	  inp_cluster->totframe = nframe;
     
-    inp_cluster->refcoor = calloc( 3, sizeof(float *));
+    /*inp_cluster->refcoor = calloc( 3, sizeof(float *));
     inp_cluster->refcoor[0] = calloc ( inp_cluster->nato*3, sizeof ( float  ));
     for ( ii =0; ii<3; ii++)
-      inp_cluster->refcoor[ii] = inp_cluster->refcoor[0] + inp_cluster->nato*ii;
+      inp_cluster->refcoor[ii] = inp_cluster->refcoor[0] + inp_cluster->nato*ii;*/
      
+     
+	if(inp_cluster->distance ==1) {
+		        
+			inp_cluster->tsne_coords = calloc ( (size_t)inp_cluster->nato *3*(size_t)(inp_cluster->totframe/inp_cluster->step+ (inp_cluster->totframe%inp_cluster->step == 0 ? 0 : 1) +1), sizeof (double));
+	         
+			if(!inp_cluster->tsne_coords) {
+				fprintf(stderr,"Not enough memory!\n");
+				exit(-1);
+			}
+	}
     
     if( inp_cluster->distance == 2 )
     {
@@ -556,6 +581,10 @@ int Read_iCluster ( char **input, int inp_index, struct inp_Cluster *inp_cluster
       
       inp_cluster->dist_mtx_size = inp_cluster->msize ;
       inp_cluster->tsne_coords = calloc ( (size_t)inp_cluster->msize * (size_t)(inp_cluster->totframe/inp_cluster->step+ (inp_cluster->totframe%inp_cluster->step == 0 ? 0 : 1) +1), sizeof (double));
+      //inp_cluster->tsne_coords = malloc ( (size_t)inp_cluster->msize * (size_t)(inp_cluster->totframe/inp_cluster->step+ (inp_cluster->totframe%inp_cluster->step == 0 ? 0 : 1) +1)* sizeof (double));
+      
+      //for(ii=0; ii < inp_cluster->totframe/inp_cluster->step+ (inp_cluster->totframe%inp_cluster->step == 0 ? 0 : 1) +1; ii++)
+		//inp_cluster->tsne_coords[ii]=-1.0;
        
       if(!inp_cluster->tsne_coords) {
 		  fprintf(stderr,"Not enough memory!\n");
@@ -868,108 +897,96 @@ int Read_iGcluster ( char **input, int inp_index, struct inp_Cluster *inp_cluste
      exit(0);
    }
 
-   fprintf(stderr,"# GPU Clustering using method %d , distance %d (cmapd_cutoff %f), cutoff %8.3f on %d selected atoms (%s) nointrasegm %d cmapd %d on device %d\n",inp_cluster->method,inp_cluster->distance,inp_cluster->cmapd_cutoff,cutoff,inp_cluster->sele.nselatm, inp_cluster->sele.selestring,inp_cluster->nointrasegm, inp_cluster->cmapd, inp_cluster->device);
-   sprintf( inp_cluster->header,"# Clustering using method %d , distance %d, cutoff %8.3f on %d selected atoms (%s)\n",inp_cluster->method,inp_cluster->distance,cutoff,inp_cluster->sele.nselatm, inp_cluster->sele.selestring);
-   if( inp_cluster->method == 3 && inp_cluster->maxspeed )
-     fprintf(stderr, "# Using maxspeed cluster search (default for GPU clustering)\n");
-   inp_cluster->nato = inp_cluster->sele.nselatm;
-   nsframe = (int) nframe/step;
-   fprintf( stdout, "DEBUG - numbers %d %d %d\n", nsframe, nframe, step); 
+	   fprintf(stderr,"# GPU Clustering using method %d , distance %d (cmapd_cutoff %f), cutoff %8.3f on %d selected atoms (%s) nointrasegm %d cmapd %d on device %d\n",inp_cluster->method,inp_cluster->distance,inp_cluster->cmapd_cutoff,cutoff,inp_cluster->sele.nselatm, inp_cluster->sele.selestring,inp_cluster->nointrasegm, inp_cluster->cmapd, inp_cluster->device);
+	   sprintf( inp_cluster->header,"# Clustering using method %d , distance %d, cutoff %8.3f on %d selected atoms (%s)\n",inp_cluster->method,inp_cluster->distance,cutoff,inp_cluster->sele.nselatm, inp_cluster->sele.selestring);
+	   if( inp_cluster->method == 3 && inp_cluster->maxspeed )
+	     fprintf(stderr, "# Using maxspeed cluster search (default for GPU clustering)\n");
+	   inp_cluster->nato = inp_cluster->sele.nselatm;
+	   nsframe = (int) nframe/step;
+	   fprintf( stdout, "DEBUG - numbers %d %d %d\n", nsframe, nframe, step); 
+	   
+	   inp_cluster->totframe = nsframe;
+	   inp_cluster->threshold = cutoff;
+	   inp_cluster->step = step;
+	   inp_cluster->nframe = 0;
    
-   inp_cluster->totframe = nsframe;
-   inp_cluster->threshold = cutoff;
-   inp_cluster->step = step;
-   inp_cluster->nframe = 0;
    
-
-
-	//always uses method 3, any other chosen method already exited at this point
-    inp_cluster->totframe = nframe;
-    //inp_cluster->frameapp = (int *)calloc( (inp_cluster->totframe/inp_cluster->step+1), sizeof( int)); // +1 is needed because we will use the real number of frame, not the index (maybe)
-    inp_cluster->frameapp = (int*) malloc((inp_cluster->totframe/inp_cluster->step+(inp_cluster->totframe%inp_cluster->step == 0 ? 0 : 1)+1)*sizeof(int));
-    memset(inp_cluster->frameapp,-1,(inp_cluster->totframe/inp_cluster->step+(inp_cluster->totframe%inp_cluster->step == 0 ? 0 : 1)+1)*sizeof(int));
-    
-    if(inp_cluster->distance ==1) {
-		
-	    //refcoor[0] are x coords of all atoms of reference frame, refcoor[1] y coords ...
-	    inp_cluster->refcoor = calloc( 3, sizeof(float *));
-	    inp_cluster->refcoor[0] = calloc ( inp_cluster->nato*3, sizeof ( float  ));
-	    for ( ii =0; ii<3; ii++)
-	      inp_cluster->refcoor[ii] = inp_cluster->refcoor[0] + inp_cluster->nato*ii;
-	      
-	      
+		//always uses method 3, any other chosen method already exited at this point
+	    inp_cluster->totframe = nframe;
+	    //inp_cluster->frameapp = (int *)calloc( (inp_cluster->totframe/inp_cluster->step+1), sizeof( int)); // +1 is needed because we will use the real number of frame, not the index (maybe)
+	    inp_cluster->frameapp = (int*) malloc((inp_cluster->totframe/inp_cluster->step+(inp_cluster->totframe%inp_cluster->step == 0 ? 0 : 1)+1)*sizeof(int));
+	    memset(inp_cluster->frameapp,-1,(inp_cluster->totframe/inp_cluster->step+(inp_cluster->totframe%inp_cluster->step == 0 ? 0 : 1)+1)*sizeof(int));
 	    
-	  inp_cluster->gclust_coords = calloc ( (size_t)inp_cluster->nato *3*(size_t)(inp_cluster->totframe/inp_cluster->step+ (inp_cluster->totframe%inp_cluster->step == 0 ? 0 : 1) +1), sizeof (float));
-       
-      //inp_cluster->gclust_coords = calloc( 3, sizeof(float *));
-	  //inp_cluster->gclust_coords[0] = calloc ( (size_t)inp_cluster->nato *3*(size_t)(inp_cluster->totframe/inp_cluster->step+ (inp_cluster->totframe%inp_cluster->step == 0 ? 0 : 1) +1), sizeof ( float  ));
-       
-      //gclust_coords can get quite large and thus the allocation can fail, if there is not enough memory
-      if(!inp_cluster->gclust_coords) {
-		  fprintf(stderr,"Not enough memory!\n");
-		  exit(-1);
-	  }
-	  
-	  //for ( ii =0; ii<3; ii++)
-		//inp_cluster->gclust_coords[ii] = inp_cluster->gclust_coords[0] + (size_t) inp_cluster->nato*ii*(inp_cluster->totframe/inp_cluster->step+ (inp_cluster->totframe%inp_cluster->step == 0 ? 0 : 1) +1);
-      
-     }
-  
-    inp_cluster->nclusters = 0;
-    inp_cluster->clusterlist = calloc( inp_cluster->totframe+1, sizeof(_clusters *));
-    
-    
-    if( inp_cluster->distance == 2 )
-    {
-      inp_cluster->msize = (int)(inp_cluster->nato*(inp_cluster->nato-1)/2);
-      inp_cluster->dist_mtx = calloc ( inp_cluster->msize , sizeof (float));
-      if(  inp_cluster->nointrasegm == 1 )
-      {
-        inp_cluster->nointrasegm_msk=calloc(inp_cluster->msize , sizeof (float));
-        kk=0;
-        inp_cluster->nointrasegm_corr_fact=0;
-        for ( ii=0; ii<inp_cluster->sele.nselatm; ii++)
-        {
-          for ( jj=0; jj<ii; jj++)
-          {
-            if(!strcmp(inp_cluster->mol->rawmol.segId[inp_cluster->sele.selatm[ii]-1], inp_cluster->mol->rawmol.segId[inp_cluster->sele.selatm[jj]-1]))
-              inp_cluster->nointrasegm_msk[kk] = 0.0;
-            else
-            {
-              inp_cluster->nointrasegm_msk[kk] = 1.0; 
-              inp_cluster->nointrasegm_corr_fact+=1.0;
-            } 
-            kk++;
-          }
-        }
-         
-        inp_cluster->nointrasegm_corr_fact = sqrt( kk/inp_cluster->nointrasegm_corr_fact );
-      }
-         
-
-      inp_cluster->dist_mtx_size = inp_cluster->msize ;
-      inp_cluster->gclust_coords = calloc ( (size_t)inp_cluster->msize * (size_t)(inp_cluster->totframe/inp_cluster->step+ (inp_cluster->totframe%inp_cluster->step == 0 ? 0 : 1) +1), sizeof (float));
-       
-      //gclust_dmtx can get very big and thus the allocation can fail, if there is not enough memory
-      if(!inp_cluster->gclust_coords) {
-		  fprintf(stderr,"Not enough memory!\n");
-		  exit(-1);
-	  }
-	  
-      inp_cluster->tmpcoor = (float **) walloc( 3, sizeof(float *));
-      inp_cluster->tmpcoor[0] = (float *) walloc( 3*inp_cluster->nato, sizeof(float ));
-      
-      for( ii=0; ii<3; ii++)
-        inp_cluster->tmpcoor[ii] = inp_cluster->tmpcoor[0] + ii*inp_cluster->nato;
-      for( ii=0; ii<3*inp_cluster->nato; ii++)
-        inp_cluster->tmpcoor[0][ii] = 0.0;
-    }
-      
-   
-   inp_cluster->output = O_File( title, "w");
-   inp_cluster->gOutput = O_File( gTitle, "w");
-
-   return 30;
+	    inp_cluster->nclusters = 0;
+	    inp_cluster->clusterlist = calloc( inp_cluster->totframe+1, sizeof(_clusters *));
+	    
+	    if(inp_cluster->distance ==1) {
+			
+		    //refcoor[0] are x coords of all atoms of reference frame, refcoor[1] y coords ...
+		    /*inp_cluster->refcoor = calloc( 3, sizeof(float *));
+		    inp_cluster->refcoor[0] = calloc ( inp_cluster->nato*3, sizeof ( float  ));
+		    for ( ii =0; ii<3; ii++)
+				inp_cluster->refcoor[ii] = inp_cluster->refcoor[0] + inp_cluster->nato*ii;*/     
+		    
+			inp_cluster->gclust_coords = calloc ( (size_t)inp_cluster->nato *3*(size_t)(inp_cluster->totframe/inp_cluster->step+ (inp_cluster->totframe%inp_cluster->step == 0 ? 0 : 1) +1), sizeof (float));
+	         
+			if(!inp_cluster->gclust_coords) {
+				fprintf(stderr,"Not enough memory!\n");
+				exit(-1);
+			}
+	    }    
+	    
+	    if( inp_cluster->distance == 2 )
+	    {
+		      inp_cluster->msize = (int)(inp_cluster->nato*(inp_cluster->nato-1)/2);
+		      inp_cluster->dist_mtx = calloc ( inp_cluster->msize , sizeof (float));
+		      if(  inp_cluster->nointrasegm == 1 )
+		      {
+		        inp_cluster->nointrasegm_msk=calloc(inp_cluster->msize , sizeof (float));
+		        kk=0;
+		        inp_cluster->nointrasegm_corr_fact=0;
+		        for ( ii=0; ii<inp_cluster->sele.nselatm; ii++)
+		        {
+		          for ( jj=0; jj<ii; jj++)
+		          {
+		            if(!strcmp(inp_cluster->mol->rawmol.segId[inp_cluster->sele.selatm[ii]-1], inp_cluster->mol->rawmol.segId[inp_cluster->sele.selatm[jj]-1]))
+		              inp_cluster->nointrasegm_msk[kk] = 0.0;
+		            else
+		            {
+		              inp_cluster->nointrasegm_msk[kk] = 1.0; 
+		              inp_cluster->nointrasegm_corr_fact+=1.0;
+		            } 
+		            kk++;
+		          }
+		        }
+		         
+		        inp_cluster->nointrasegm_corr_fact = sqrt( kk/inp_cluster->nointrasegm_corr_fact );
+		      }
+		         
+		
+		      inp_cluster->dist_mtx_size = inp_cluster->msize ;
+		      inp_cluster->gclust_coords = calloc ( (size_t)inp_cluster->msize * (size_t)(inp_cluster->totframe/inp_cluster->step+ (inp_cluster->totframe%inp_cluster->step == 0 ? 0 : 1) +1), sizeof (float));
+		       
+		      //gclust_dmtx can get very big and thus the allocation can fail, if there is not enough memory
+		      if(!inp_cluster->gclust_coords) {
+				  fprintf(stderr,"Not enough memory!\n");
+				  exit(-1);
+			  }
+			  
+		      inp_cluster->tmpcoor = (float **) walloc( 3, sizeof(float *));
+		      inp_cluster->tmpcoor[0] = (float *) walloc( 3*inp_cluster->nato, sizeof(float ));
+		      
+		      for( ii=0; ii<3; ii++)
+		        inp_cluster->tmpcoor[ii] = inp_cluster->tmpcoor[0] + ii*inp_cluster->nato;
+		      for( ii=0; ii<3*inp_cluster->nato; ii++)
+		        inp_cluster->tmpcoor[0][ii] = 0.0;
+	    }
+	      
+	   
+	   inp_cluster->output = O_File( title, "w");
+	   inp_cluster->gOutput = O_File( gTitle, "w");
+	
+	   return 30;
 
 }
 #endif
@@ -1549,17 +1566,15 @@ int Compute_Cluster ( struct inp_Cluster *inp_cluster, struct sopt *OPT, CoorSet
 		
 		if( inp_cluster->distance == 1 )
 		{
-	       /*clusterapp = -1;
-	       distance   = -1;
-	       clusterapp = ClusterLeaderRmsd( inp_cluster, trj_crd, frame, &distance);
-	       sprintf( outprint, " %10d %8d %8.3f ", clusterapp, inp_cluster->frameapp[lframe]+1, distance);
-	       return 25;*/ //not supported
+			//only saves coordinates of current frame for later processing
+			saveCoords( inp_cluster, trj_crd, frame);
+			return 25;
 	    }
 	    if( inp_cluster->distance == 2 )
 	    {
-			//only saves distance matrix of current frame in inp_cluster->tsne_coords, the clustering takes place in Post_Cluster
-	       saveDistMtx( inp_cluster, trj_crd, frame);
-	       return 25;
+			//only saves distance matrix of current frame for later processing
+			saveDistMtx( inp_cluster, trj_crd, frame);
+			return 25;
 	    }
 	    
 	    if( inp_cluster->distance == 3 )
@@ -2063,37 +2078,38 @@ int Post_Cluster ( struct inp_Cluster *inp_cluster )
      
      
     int frames = inp_cluster->totframe/inp_cluster->step+(inp_cluster->totframe%inp_cluster->step == 0 ? 0 : 1)+1; //number of datapoints
-	int msize = inp_cluster->msize; //original dimension
-	int no_dims = inp_cluster->dimension; //output dim 
-	int max_iter = inp_cluster->max_iter; 
-	double perplexity = inp_cluster->perplexity;
-	double theta = inp_cluster->threshold_bh;
-	 
-    int rand_seed = 42;
-    
-
+	//int msize = inp_cluster->msize; //original dimension
+	//int no_dims = inp_cluster->dimension; //output dimension
+	//int max_iter = inp_cluster->max_iter; 
+	//double perplexity = inp_cluster->perplexity;
+	//double theta = inp_cluster->threshold_bh;
+	     
 	// Now fire up the SNE implementation
-	double* Y = (double*) malloc(frames * no_dims * sizeof(double));
-    if(Y == NULL) { printf("Memory allocation failed!\n"); exit(1); }
+	double* Y = (double*) malloc(frames * inp_cluster->no_dims * sizeof(double));
+    if(Y == NULL) { fprintf(stderr, "Memory allocation failed!\n"); exit(1); }
     
-    fprintf(stderr,"start tsne\n");
-    setup_tsne(inp_cluster->tsne_coords, frames, msize, Y, no_dims, perplexity, theta, rand_seed, max_iter);
+    
+    if(inp_cluster->distance ==1)
+		setup_tsne(inp_cluster->tsne_coords+3*inp_cluster->nato, frames, 3*inp_cluster->nato, Y, inp_cluster->no_dims, inp_cluster->perplexity, inp_cluster->theta, inp_cluster->rand_seed, inp_cluster->max_iter);
+    else
+		setup_tsne(inp_cluster->tsne_coords+inp_cluster->msize, frames, inp_cluster->msize, Y, inp_cluster->no_dims, inp_cluster->perplexity, inp_cluster->theta, inp_cluster->rand_seed, inp_cluster->max_iter);
     
     //output
-    fprintf(inp_cluster->output, " Result T-Sne, #frames: %d, dimension: %d\n",frames, no_dims);
-    fprintf(inp_cluster->output, " frame coords\n");
+    fprintf(inp_cluster->output, " Result T-Sne, #frames: %d, dimension: %d, perplexity: %f, theta: %f, iterations: %d\n",frames, no_dims, perplexity, theta, max_iter);
+    fprintf(inp_cluster->output, " %6s %12s\n","frame","coords");
     
     for (ii=0; ii<frames; ii++) {
 		fprintf(inp_cluster->output, " %10d ",ii);
 		for (jj=0; jj<no_dims; jj++) {
-			fprintf(inp_cluster->output, "%10.10f ",Y[jj+no_dims*ii]);
+			fprintf(inp_cluster->output, "%15.5f ",Y[jj+no_dims*ii]);
 		}
 		fprintf(inp_cluster->output, "\n");
 	}
 
     // Clean up the memory
 	free(Y); Y = NULL;
-     
+    free(inp_cluster->tsne_coords); inp_cluster->tsne_coords = NULL;
+    
    }
 
    return 0;
@@ -2166,6 +2182,7 @@ int Post_Gcluster(struct inp_Cluster *inp_cluster,FILE * oA_f)
 		
 		fclose(inp_cluster->gOutput);
 		free(distance);
+		distance = NULL;
 		Post_Cluster(inp_cluster);
 		return 0;	
 }

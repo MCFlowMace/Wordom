@@ -107,10 +107,11 @@ struct inp_Cluster
   int            nato;          // equal to sele.nselatm
   int            step;
   float          threshold;
-  float			 threshold_bh;	//threshold for the Barnes-Hut approximation in tsne
-  float			 perplexity;	//for probability distribution in tsne
+  double		 threshold_bh;	//threshold for the Barnes-Hut approximation in tsne
+  double		 perplexity;	//for probability distribution in tsne
   int			 max_iter;		//max iterations for tsne
   int			 dimension;		//reduced dimension for tsne
+  int			 rand_seed; 		//seed for tsne clustering
   int            method;
   int            distance;
   int            totframe;
@@ -186,6 +187,7 @@ struct inp_Cluster
   float 		*gclust_coords; // for Gcluster array of distance matrices or array of all coords
   double 		*tsne_coords; // same array for tsne but with double precision
   int			 device; //number of device to run on for multi GPU systems
+  
 };
 
 // ------------------------------------------------------------------
