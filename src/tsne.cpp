@@ -76,7 +76,11 @@ void TSNE::run(double* X, int N, int D, double* Y, int no_dims, double perplexit
     clock_t start, end;
 	double momentum = .5, final_momentum = .8;
 	double eta = 200.0;
-
+	
+	/*for(int i = 0; i < N * D; i++) {
+		fprintf(stderr, "xi = %f\n",X[i]);
+	}*/
+	
     // Allocate some memory
     double* dY    = (double*) malloc(N * no_dims * sizeof(double));
     double* uY    = (double*) malloc(N * no_dims * sizeof(double));
@@ -92,7 +96,6 @@ void TSNE::run(double* X, int N, int D, double* Y, int no_dims, double perplexit
     double max_X = .0;
     for(int i = 0; i < N * D; i++) {
         if(fabs(X[i]) > max_X) max_X = fabs(X[i]);
-        fprintf(stderr, "xi = %f\n",X[i]);
     }
     for(int i = 0; i < N * D; i++) X[i] /= max_X;
 
@@ -510,6 +513,7 @@ void TSNE::computeGaussianPerplexity(double* X, int N, int D, unsigned int** _ro
             col_P[row_P[n] + m] = (unsigned int) indices[m + 1].index();
             val_P[row_P[n] + m] = cur_P[m];
         }
+        
     }
 
     // Clean up memory

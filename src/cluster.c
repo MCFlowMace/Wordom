@@ -277,7 +277,7 @@ int Read_iCluster ( char **input, int inp_index, struct inp_Cluster *inp_cluster
    
    if( inp_cluster->method == 5)
    {
-	   if(inp_cluster->distance != 2 || inp_cluster->distance != 1)
+	   if(inp_cluster->distance != 2 && inp_cluster->distance != 1)
 	   {
 		   fprintf( stderr, "tsne only works with drms or rmsd\n");
 		   exit(0);
@@ -1158,11 +1158,23 @@ void saveCoords( struct inp_Cluster *inp_cluster, CoorSet *trj_crd, int frame )
    lframe = (frame-1)/inp_cluster->step+1;
    
    // trj_crd contains coords of current frame
-   for( ii=0; ii<inp_cluster->nato; ii++ )
-   {
-     inp_cluster->gclust_coords[(size_t)lframe*(size_t)inp_cluster->nato*3+(size_t)ii*3] = trj_crd->xcoor[inp_cluster->sele.selatm[ii]-1];
-     inp_cluster->gclust_coords[(size_t)lframe*(size_t)inp_cluster->nato*3+(size_t)ii*3+1] = trj_crd->ycoor[inp_cluster->sele.selatm[ii]-1];
-     inp_cluster->gclust_coords[(size_t)lframe*(size_t)inp_cluster->nato*3+(size_t)ii*3+2] = trj_crd->zcoor[inp_cluster->sele.selatm[ii]-1];
+   
+   if( inp_cluster->method==5) {
+	   
+	   for( ii=0; ii<inp_cluster->nato; ii++ )
+	   {
+	     inp_cluster->tsne_coords[(size_t)lframe*(size_t)inp_cluster->nato*3+(size_t)ii*3] = trj_crd->xcoor[inp_cluster->sele.selatm[ii]-1];
+	     inp_cluster->tsne_coords[(size_t)lframe*(size_t)inp_cluster->nato*3+(size_t)ii*3+1] = trj_crd->ycoor[inp_cluster->sele.selatm[ii]-1];
+	     inp_cluster->tsne_coords[(size_t)lframe*(size_t)inp_cluster->nato*3+(size_t)ii*3+2] = trj_crd->zcoor[inp_cluster->sele.selatm[ii]-1];
+	   }
+	} else {
+		
+	   for( ii=0; ii<inp_cluster->nato; ii++ )
+	   {
+	     inp_cluster->gclust_coords[(size_t)lframe*(size_t)inp_cluster->nato*3+(size_t)ii*3] = trj_crd->xcoor[inp_cluster->sele.selatm[ii]-1];
+	     inp_cluster->gclust_coords[(size_t)lframe*(size_t)inp_cluster->nato*3+(size_t)ii*3+1] = trj_crd->ycoor[inp_cluster->sele.selatm[ii]-1];
+	     inp_cluster->gclust_coords[(size_t)lframe*(size_t)inp_cluster->nato*3+(size_t)ii*3+2] = trj_crd->zcoor[inp_cluster->sele.selatm[ii]-1];
+	   }
    }
    
 }
@@ -2077,13 +2089,14 @@ int Post_Cluster ( struct inp_Cluster *inp_cluster )
    {
      
      
-    int frames = inp_cluster->totframe/inp_cluster->step+(inp_cluster->totframe%inp_cluster->step == 0 ? 0 : 1)+1; //number of datapoints
+    int frames = inp_cluster->totframe/inp_cluster->step+(inp_cluster->totframe%inp_cluster->step == 0 ? 0 : 1); //number of datapoints
 	//int msize = inp_cluster->msize; //original dimension
 	//int no_dims = inp_cluster->dimension; //output dimension
 	//int max_iter = inp_cluster->max_iter; 
 	//double perplexity = inp_cluster->perplexity;
 	//double theta = inp_cluster->threshold_bh;
 	     
+	//fprintf(stderr,"Reached post cluster\n");
 	// Now fire up the SNE implementation
 	double* Y = (double*) malloc(frames * inp_cluster->dimension * sizeof(double));
     if(Y == NULL) { fprintf(stderr, "Memory allocation failed!\n"); exit(1); }
