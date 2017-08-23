@@ -2085,23 +2085,23 @@ int Post_Cluster ( struct inp_Cluster *inp_cluster )
 	//double theta = inp_cluster->threshold_bh;
 	     
 	// Now fire up the SNE implementation
-	double* Y = (double*) malloc(frames * inp_cluster->no_dims * sizeof(double));
+	double* Y = (double*) malloc(frames * inp_cluster->dimension * sizeof(double));
     if(Y == NULL) { fprintf(stderr, "Memory allocation failed!\n"); exit(1); }
     
     
     if(inp_cluster->distance ==1)
-		setup_tsne(inp_cluster->tsne_coords+3*inp_cluster->nato, frames, 3*inp_cluster->nato, Y, inp_cluster->no_dims, inp_cluster->perplexity, inp_cluster->theta, inp_cluster->rand_seed, inp_cluster->max_iter);
+		setup_tsne(inp_cluster->tsne_coords+3*inp_cluster->nato, frames, 3*inp_cluster->nato, Y, inp_cluster->dimension, inp_cluster->perplexity, inp_cluster->threshold_bh, inp_cluster->rand_seed, inp_cluster->max_iter);
     else
-		setup_tsne(inp_cluster->tsne_coords+inp_cluster->msize, frames, inp_cluster->msize, Y, inp_cluster->no_dims, inp_cluster->perplexity, inp_cluster->theta, inp_cluster->rand_seed, inp_cluster->max_iter);
+		setup_tsne(inp_cluster->tsne_coords+inp_cluster->msize, frames, inp_cluster->msize, Y, inp_cluster->dimension, inp_cluster->perplexity, inp_cluster->threshold_bh, inp_cluster->rand_seed, inp_cluster->max_iter);
     
     //output
-    fprintf(inp_cluster->output, " Result T-Sne, #frames: %d, dimension: %d, perplexity: %f, theta: %f, iterations: %d\n",frames, no_dims, perplexity, theta, max_iter);
+    fprintf(inp_cluster->output, " Result T-Sne, #frames: %d, dimension: %d, perplexity: %f, theta: %f, iterations: %d\n",frames, inp_cluster->dimension, inp_cluster->perplexity, inp_cluster->threshold_bh, inp_cluster->max_iter);
     fprintf(inp_cluster->output, " %6s %12s\n","frame","coords");
     
     for (ii=0; ii<frames; ii++) {
 		fprintf(inp_cluster->output, " %10d ",ii);
-		for (jj=0; jj<no_dims; jj++) {
-			fprintf(inp_cluster->output, "%15.5f ",Y[jj+no_dims*ii]);
+		for (jj=0; jj<inp_cluster->dimension; jj++) {
+			fprintf(inp_cluster->output, "%15.5f ",Y[jj+inp_cluster->dimension*ii]);
 		}
 		fprintf(inp_cluster->output, "\n");
 	}
