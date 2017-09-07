@@ -35,7 +35,7 @@
 #define TSNE_H
 
 #ifdef C_LINKING
-void setup_tsne(double* X, int N, int D, double* Y, int no_dims, double perplexity, double theta, int rand_seed, int max_iter);
+void setup_tsne(double* X, int N, int D, double* Y, int no_dims, double perplexity, double theta, int rand_seed, int max_iter, bool useRmsd);
 
 #else
 static inline double sign(double x) { return (x == .0 ? .0 : (x < .0 ? -1.0 : 1.0)); }
@@ -47,6 +47,12 @@ public:
     void run(double* X, int N, int D, double* Y, int no_dims, double perplexity, double theta, int rand_seed,
              bool skip_random_init, int max_iter=1000, int stop_lying_iter=250, int mom_switch_iter=250);
     void symmetrizeMatrix(unsigned int** row_P, unsigned int** col_P, double** val_P, int N); // should be static!
+    
+    TSNE (bool useSuper) {
+		this->useSuper = useSuper;
+	}
+	bool useSuper;
+
 
 
 private:
@@ -59,6 +65,7 @@ private:
     void computeGaussianPerplexity(double* X, int N, int D, unsigned int** _row_P, unsigned int** _col_P, double** _val_P, double perplexity, int K);
     void computeSquaredEuclideanDistance(double* X, int N, int D, double* DD);
     double randn();
+    
 };
 #endif
 #endif

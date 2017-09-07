@@ -15,11 +15,12 @@ if (CUDA_FOUND)
 	cuda_add_executable(wordom src/main.c src/tsne.cpp src/sptree.cpp src/fileio.c src/tools.c src/datahandler.c src/analysis.c src/geometry.c src/moldiff.c src/cluster.c src/pca.c src/qentropy.c src/kga.c src/ssa.c src/enm.c src/psn.c src/corr.c src/surf.c src/xdrfile.c src/xdrfile_xtc.c src/qcprot.c src/volumes.c src/com.c src/ring.c src/tilt.c src/twist.c src/hole.c src/flux.c src/gCluster.cu)
 	add_definitions( -D CUDA )
 	set_source_files_properties(src/gCluster.cu PROPERTIES COMPILE_FLAGS --maxrregcount=32)
+	
 else (CUDA_FOUND)
 	add_executable(wordom src/main.c src/tsne.cpp src/sptree.cpp src/fileio.c src/tools.c src/datahandler.c src/analysis.c src/geometry.c src/moldiff.c src/cluster.c src/pca.c src/qentropy.c src/kga.c src/ssa.c src/enm.c src/psn.c src/corr.c src/surf.c src/xdrfile.c src/xdrfile_xtc.c src/qcprot.c src/volumes.c src/com.c src/ring.c src/tilt.c src/twist.c src/hole.c src/flux.c )
 endif (CUDA_FOUND)
 
-set(CMAKE_C_FLAGS "-D_GNU_SOURCE -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -D GMX -g -O2 -w")
+set(CMAKE_C_FLAGS "-D_GNU_SOURCE -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -D GMX -O2 -g -w")
 set_source_files_properties(src/xdrfile.c src/xdrfile_xtc.c PROPERTIES COMPILE_FLAGS -w)
 
 # lapack for fast matrix diagonalization

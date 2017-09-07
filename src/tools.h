@@ -35,6 +35,18 @@
 #endif
 
 // ------------------------------------------------------------------
+//! Computes Root Mean Square Deviation - QCP algorithm
+/*!
+ RmsdCalc computes the Root Mean Square Deviation between two sets of
+ coordinates, either with or without previous superposition. The
+ movcoor set is modified if superposition to refcoor is required.
+ Coor set are in coor[3][nato] format. The QCP algorithm is used; faster
+ than Kabsch, still in testing
+*/
+float RmsdCalcQCP(float **refcoor, float **movcoor, int nato, int super );
+
+#ifndef TSNE_INCLUDE
+// ------------------------------------------------------------------
 //! Vectorial Distance structure
 /*!
   If a set of distances is to be computed with vectorialization enabled,
@@ -147,16 +159,6 @@ float RmsdCalcKabsch3n( float **refcoor,        /*!< reference coordinate set */
                         int n_ato,              /*!< number of atoms for both sets */
                         int super_flag          /*!< whether superposition is required */
                       );
-// ------------------------------------------------------------------
-//! Computes Root Mean Square Deviation - QCP algorithm
-/*!
- RmsdCalc computes the Root Mean Square Deviation between two sets of
- coordinates, either with or without previous superposition. The
- movcoor set is modified if superposition to refcoor is required.
- Coor set are in coor[3][nato] format. The QCP algorithm is used; faster
- than Kabsch, still in testing
-*/
-float RmsdCalcQCP(float **refcoor, float **movcoor, int nato, int super );
 // ------------------------------------------------------------------
 //! Computes Root Mean Square Deviation among Molecules
 /*!
@@ -407,4 +409,5 @@ float *DistanceVectCoor( CoorSet *coorset1, int *piSele1, CoorSet *coorset2, int
 void Res3ToRes1(char *cResCode3, char *cResCode1);
 // ------------------------------------------------------------------
 //======================================================================
+#endif
 #endif

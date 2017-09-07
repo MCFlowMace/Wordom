@@ -41,6 +41,12 @@
 #include <limits>
 #include <cmath>
 
+#define TSNE_INCLUDE
+
+extern "C" {
+#include "tools.h"
+}
+
 
 #ifndef VPTREE_H
 #define VPTREE_H
@@ -87,6 +93,7 @@ public:
     double x(int d) const { return _x[d]; }
 };
 
+//standard distance used for drms and rmsd without alignment
 double euclidean_distance(const DataPoint &t1, const DataPoint &t2) {
     double dd = .0;
     double* x1 = t1._x;
@@ -97,6 +104,60 @@ double euclidean_distance(const DataPoint &t1, const DataPoint &t2) {
         dd += diff * diff;
     }
     return sqrt(dd);
+
+}
+
+//use wordoms rmsd algorithm for rmsd with alignment as distance metric
+double aligned_rmsd(const DataPoint &t1, const DataPoint &t2) {
+
+    double* x1 = t1._x;
+    double* x2 = t2._x;
+    
+    //for usage with wordoms rmsd calculation the data has to be copied to 2D float arrays instead of 1D double arrays
+    float** refcoor;
+    float** movcoor;
+    
+    //allocate contiguous memory for the arrays
+	refcoor = (float**) calloc(3,sizeof(float*));
+	movcoor = (float**) calloc(3,sizeof(float*));
+	if(!refcoor || !movcoor)  { fprintf(stderr, "Memory allocation failed!\n"); exit(1); }
+		    
+	refcoor[0] = (float*) calloc( (t1._D), sizeof ( float));
+	movcoor[0] = (float*) calloc( (t1._D), sizeof ( float));
+	
+	if(!refcoor[0] || !movcoor[0])  { fprintf(stderr, "Memory allocation failed!\n"); exit(1); }
+	
+	for (int ii =1; ii<3; ii++) {
+		
+		refcoor[ii] = refcoor[ii-1] + (t1._D)/3;
+		movcoor[ii] = movcoor[ii-1] + (t1._D)/3;
+	}
+
+	//copy the data
+	for(int i = 0; i < 3; i++) {
+		for(int d = 0; d < (t1._D)/3; ++d) {
+			
+			refcoor[i][d]= (float) x1[3*d+i];
+			movcoor[i][d]= (float) x2[3*d+i];	
+		}
+	}
+	
+	//calculate rmsd
+	float rmsd = RmsdCalcQCP( refcoor, movcoor, (t1._D)/3, 1 );
+	rmsd *= rmsd*(t1._D)/3; //RmsdCalcQCP normalizes with the number of atoms i.e. dimension/3
+    //rmsd *= rmsd;
+
+	free(refcoor[0]);
+	free(movcoor[0]);
+	for(int i =0; i<3; i++)
+		refcoor[i]=movcoor[i]=NULL;
+		
+	free(refcoor);
+	free(movcoor);
+	refcoor=movcoor=NULL;
+		
+	return rmsd;
+
 }
 
 

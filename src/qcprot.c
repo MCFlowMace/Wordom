@@ -155,6 +155,7 @@ float InnerProduct(float *A, float **coords1, float **coords2, const int len, co
 
 int FastCalcRMSDAndRotation(float *rot, float *A, float *rmsd, float E0, int len, float minScore)
 {
+
     float   Sxx, Sxy, Sxz, Syx, Syy, Syz, Szx, Szy, Szz;
     float   Szz2, Syy2, Sxx2, Sxy2, Syz2, Sxz2, Syx2, Szy2, Szx2,
              SyzSzymSyySzz2, Sxx2Syy2Szz2Syz2Szy2, Sxy2Sxz2Syx2Szx2,

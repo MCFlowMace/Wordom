@@ -35,18 +35,25 @@
 #include <cstdlib>
 #include <cstdio>
 #include <cstring>
+#include <iostream>
 #include <ctime>
 #include "vptree.h"
 #include "sptree.h"
 #include "tsne.h"
 
+#define TSNE_INCLUDE
+
+extern "C" {
+#include "tools.h"
+}
+
 using namespace std;
 
 
 //just a C wrapper
-extern "C" void setup_tsne(double* X, int N, int D, double* Y, int no_dims, double perplexity, double theta, int rand_seed, int max_iter) {
+extern "C" void setup_tsne(double* X, int N, int D, double* Y, int no_dims, double perplexity, double theta, int rand_seed, int max_iter, bool useSuper) {
 
-    TSNE* tsne = new TSNE();
+    TSNE* tsne = new TSNE(useSuper);
 	tsne->run(X, N, D, Y, no_dims, perplexity, theta, rand_seed, false, max_iter);
     delete(tsne);
 }
@@ -85,7 +92,7 @@ void TSNE::run(double* X, int N, int D, double* Y, int no_dims, double perplexit
     double* dY    = (double*) malloc(N * no_dims * sizeof(double));
     double* uY    = (double*) malloc(N * no_dims * sizeof(double));
     double* gains = (double*) malloc(N * no_dims * sizeof(double));
-    if(dY == NULL || uY == NULL || gains == NULL) { fprintf(stderr, "Memory allocation failed!\n"); exit(1); }
+    if(dY == NULL || uY == NULL || gains == NULL) { fprintf(stderr,"Memory allocation failed! %d\n",__LINE__); exit(1); }
     for(int i = 0; i < N * no_dims; i++)    uY[i] =  .0;
     for(int i = 0; i < N * no_dims; i++) gains[i] = 1.0;
 
@@ -106,7 +113,7 @@ void TSNE::run(double* X, int N, int D, double* Y, int no_dims, double perplexit
         // Compute similarities
         fprintf(stderr, "Exact?");
         P = (double*) malloc(N * N * sizeof(double));
-        if(P == NULL) { fprintf(stderr, "Memory allocation failed!\n"); exit(1); }
+        if(P == NULL) { fprintf(stderr,"Memory allocation failed! %d\n",__LINE__); exit(1); }
         computeGaussianPerplexity(X, N, D, P, perplexity);
 
         // Symmetrize input similarities
@@ -220,7 +227,7 @@ void TSNE::computeGradient(double* P, unsigned int* inp_row_P, unsigned int* inp
     double sum_Q = .0;
     double* pos_f = (double*) calloc(N * D, sizeof(double));
     double* neg_f = (double*) calloc(N * D, sizeof(double));
-    if(pos_f == NULL || neg_f == NULL) { fprintf(stderr,"Memory allocation failed!\n"); exit(1); }
+    if(pos_f == NULL || neg_f == NULL) { fprintf(stderr,"Memory allocation failed! %d\n",__LINE__); exit(1); }
     tree->computeEdgeForces(inp_row_P, inp_col_P, inp_val_P, N, pos_f);
     for(int n = 0; n < N; n++) tree->computeNonEdgeForces(n, theta, neg_f + n * D, &sum_Q);
 
@@ -241,12 +248,12 @@ void TSNE::computeExactGradient(double* P, double* Y, int N, int D, double* dC) 
 
     // Compute the squared Euclidean distance matrix
     double* DD = (double*) malloc(N * N * sizeof(double));
-    if(DD == NULL) { fprintf(stderr,"Memory allocation failed!\n"); exit(1); }
+    if(DD == NULL) { fprintf(stderr,"Memory allocation failed! %d\n",__LINE__); exit(1); }
     computeSquaredEuclideanDistance(Y, N, D, DD);
 
     // Compute Q-matrix and normalization sum
     double* Q    = (double*) malloc(N * N * sizeof(double));
-    if(Q == NULL) { fprintf(stderr,"Memory allocation failed!\n"); exit(1); }
+    if(Q == NULL) { fprintf(stderr,"Memory allocation failed! %d\n",__LINE__); exit(1); }
     double sum_Q = .0;
     int nN = 0;
     for(int n = 0; n < N; n++) {
@@ -289,7 +296,7 @@ double TSNE::evaluateError(double* P, double* Y, int N, int D) {
     // Compute the squared Euclidean distance matrix
     double* DD = (double*) malloc(N * N * sizeof(double));
     double* Q = (double*) malloc(N * N * sizeof(double));
-    if(DD == NULL || Q == NULL) { fprintf(stderr,"Memory allocation failed!\n"); exit(1); }
+    if(DD == NULL || Q == NULL) { fprintf(stderr,"Memory allocation failed! %d\n",__LINE__); exit(1); }
     computeSquaredEuclideanDistance(Y, N, D, DD);
 
     // Compute Q-matrix and normalization sum
@@ -357,7 +364,7 @@ void TSNE::computeGaussianPerplexity(double* X, int N, int D, double* P, double 
 
 	// Compute the squared Euclidean distance matrix
 	double* DD = (double*) malloc(N * N * sizeof(double));
-    if(DD == NULL) { fprintf(stderr,"Memory allocation failed!\n"); exit(1); }
+    if(DD == NULL) { fprintf(stderr,"Memory allocation failed! %d\n",__LINE__); exit(1); }
 	computeSquaredEuclideanDistance(X, N, D, DD);
 
 	// Compute the Gaussian kernel row by row
@@ -432,94 +439,183 @@ void TSNE::computeGaussianPerplexity(double* X, int N, int D, unsigned int** _ro
     *_row_P = (unsigned int*)    malloc((N + 1) * sizeof(unsigned int));
     *_col_P = (unsigned int*)    calloc(N * K, sizeof(unsigned int));
     *_val_P = (double*) calloc(N * K, sizeof(double));
-    if(*_row_P == NULL || *_col_P == NULL || *_val_P == NULL) { fprintf(stderr, "Memory allocation failed!\n"); exit(1); }
+    if(*_row_P == NULL || *_col_P == NULL || *_val_P == NULL) { fprintf(stderr,"Memory allocation failed! %d\n",__LINE__); exit(1); }
     unsigned int* row_P = *_row_P;
     unsigned int* col_P = *_col_P;
     double* val_P = *_val_P;
     double* cur_P = (double*) malloc((N - 1) * sizeof(double));
-    if(cur_P == NULL) { fprintf(stderr, "Memory allocation failed!\n"); exit(1); }
+    if(cur_P == NULL) { fprintf(stderr,"Memory allocation failed! %d\n",__LINE__); exit(1); }
     row_P[0] = 0;
     for(int n = 0; n < N; n++) row_P[n + 1] = row_P[n] + (unsigned int) K;
 
     // Build ball tree on data set
+    if(!this->useSuper) {
+    
     VpTree<DataPoint, euclidean_distance>* tree = new VpTree<DataPoint, euclidean_distance>();
-    vector<DataPoint> obj_X(N, DataPoint(D, -1, X));
-    for(int n = 0; n < N; n++) obj_X[n] = DataPoint(D, n, X + n * D);
-    tree->create(obj_X);
-
-    // Loop over all points to find nearest neighbors
-    fprintf(stderr, "Building tree...\n");
-    vector<DataPoint> indices;
-    vector<double> distances;
-    for(int n = 0; n < N; n++) {
-
-        if(n % 10000 == 0) fprintf(stderr, " - point %d of %d\n", n, N);
-
-        // Find nearest neighbors
-        indices.clear();
-        distances.clear();
-        tree->search(obj_X[n], K + 1, &indices, &distances);
-
-        // Initialize some variables for binary search
-        bool found = false;
-        double beta = 1.0;
-        double min_beta = -DBL_MAX;
-        double max_beta =  DBL_MAX;
-        double tol = 1e-5;
-
-        // Iterate until we found a good perplexity
-        int iter = 0; double sum_P;
-        while(!found && iter < 200) {
-
-            // Compute Gaussian kernel row
-            for(int m = 0; m < K; m++) cur_P[m] = exp(-beta * distances[m + 1] * distances[m + 1]);
-
-            // Compute entropy of current row
-            sum_P = DBL_MIN;
-            for(int m = 0; m < K; m++) sum_P += cur_P[m];
-            double H = .0;
-            for(int m = 0; m < K; m++) H += beta * (distances[m + 1] * distances[m + 1] * cur_P[m]);
-            H = (H / sum_P) + log(sum_P);
-
-            // Evaluate whether the entropy is within the tolerance level
-            double Hdiff = H - log(perplexity);
-            if(Hdiff < tol && -Hdiff < tol) {
-                found = true;
-            }
-            else {
-                if(Hdiff > 0) {
-                    min_beta = beta;
-                    if(max_beta == DBL_MAX || max_beta == -DBL_MAX)
-                        beta *= 2.0;
-                    else
-                        beta = (beta + max_beta) / 2.0;
-                }
-                else {
-                    max_beta = beta;
-                    if(min_beta == -DBL_MAX || min_beta == DBL_MAX)
-                        beta /= 2.0;
-                    else
-                        beta = (beta + min_beta) / 2.0;
-                }
-            }
-
-            // Update iteration counter
-            iter++;
-        }
-
-        // Row-normalize current row of P and store in matrix
-        for(unsigned int m = 0; m < K; m++) cur_P[m] /= sum_P;
-        for(unsigned int m = 0; m < K; m++) {
-            col_P[row_P[n] + m] = (unsigned int) indices[m + 1].index();
-            val_P[row_P[n] + m] = cur_P[m];
-        }
-        
-    }
-
-    // Clean up memory
-    obj_X.clear();
-    free(cur_P);
-    delete tree;
+	    vector<DataPoint> obj_X(N, DataPoint(D, -1, X));
+	    for(int n = 0; n < N; n++) obj_X[n] = DataPoint(D, n, X + n * D);
+	    tree->create(obj_X);
+	
+	    // Loop over all points to find nearest neighbors
+	    fprintf(stderr, "Building tree...\n");
+	    vector<DataPoint> indices;
+	    vector<double> distances;
+	    for(int n = 0; n < N; n++) {
+	
+	        if(n % 10000 == 0) fprintf(stderr, " - point %d of %d\n", n, N);
+	
+	        // Find nearest neighbors
+	        indices.clear();
+	        distances.clear();
+	        tree->search(obj_X[n], K + 1, &indices, &distances);
+	
+	        // Initialize some variables for binary search
+	        bool found = false;
+	        double beta = 1.0;
+	        double min_beta = -DBL_MAX;
+	        double max_beta =  DBL_MAX;
+	        double tol = 1e-5;
+	
+	        // Iterate until we found a good perplexity
+	        int iter = 0; double sum_P;
+	        while(!found && iter < 200) {
+	
+	            // Compute Gaussian kernel row
+	            for(int m = 0; m < K; m++) cur_P[m] = exp(-beta * distances[m + 1] * distances[m + 1]);
+	
+	            // Compute entropy of current row
+	            sum_P = DBL_MIN;
+	            for(int m = 0; m < K; m++) sum_P += cur_P[m];
+	            double H = .0;
+	            for(int m = 0; m < K; m++) H += beta * (distances[m + 1] * distances[m + 1] * cur_P[m]);
+	            H = (H / sum_P) + log(sum_P);
+	
+	            // Evaluate whether the entropy is within the tolerance level
+	            double Hdiff = H - log(perplexity);
+	            if(Hdiff < tol && -Hdiff < tol) {
+	                found = true;
+	            }
+	            else {
+	                if(Hdiff > 0) {
+	                    min_beta = beta;
+	                    if(max_beta == DBL_MAX || max_beta == -DBL_MAX)
+	                        beta *= 2.0;
+	                    else
+	                        beta = (beta + max_beta) / 2.0;
+	                }
+	                else {
+	                    max_beta = beta;
+	                    if(min_beta == -DBL_MAX || min_beta == DBL_MAX)
+	                        beta /= 2.0;
+	                    else
+	                        beta = (beta + min_beta) / 2.0;
+	                }
+	            }
+	
+	            // Update iteration counter
+	            iter++;
+	        }
+	        
+	        fprintf(stdout, "beta= %f\n",beta);
+	
+	        // Row-normalize current row of P and store in matrix
+	        for(unsigned int m = 0; m < K; m++) cur_P[m] /= sum_P;
+	        for(unsigned int m = 0; m < K; m++) {
+	            col_P[row_P[n] + m] = (unsigned int) indices[m + 1].index();
+	            val_P[row_P[n] + m] = cur_P[m];
+	        }
+	        
+	    }
+	
+	    // Clean up memory
+	    obj_X.clear();
+	    free(cur_P);
+	    delete tree;
+		}
+    
+    else {
+		VpTree<DataPoint, aligned_rmsd>* tree = new VpTree<DataPoint, aligned_rmsd>(); //this is the only line that differs from first case
+		vector<DataPoint> obj_X(N, DataPoint(D, -1, X));
+	    for(int n = 0; n < N; n++) obj_X[n] = DataPoint(D, n, X + n * D);
+	    tree->create(obj_X);
+	
+	    // Loop over all points to find nearest neighbors
+	    fprintf(stderr, "Building tree...\n");
+	    vector<DataPoint> indices;
+	    vector<double> distances;
+	    for(int n = 0; n < N; n++) {
+	
+	        if(n % 10000 == 0) fprintf(stderr, " - point %d of %d\n", n, N);
+	
+	        // Find nearest neighbors
+	        indices.clear();
+	        distances.clear();
+	        tree->search(obj_X[n], K + 1, &indices, &distances);
+	
+	        // Initialize some variables for binary search
+	        bool found = false;
+	        double beta = 1.0;
+	        double min_beta = -DBL_MAX;
+	        double max_beta =  DBL_MAX;
+	        double tol = 1e-5;
+	
+	        // Iterate until we found a good perplexity
+	        int iter = 0; double sum_P;
+	        while(!found && iter < 200) {
+	
+	            // Compute Gaussian kernel row
+	            for(int m = 0; m < K; m++) cur_P[m] = exp(-beta * distances[m + 1] * distances[m + 1]);
+	
+	            // Compute entropy of current row
+	            sum_P = DBL_MIN;
+	            for(int m = 0; m < K; m++) sum_P += cur_P[m];
+	            double H = .0;
+	            for(int m = 0; m < K; m++) H += beta * (distances[m + 1] * distances[m + 1] * cur_P[m]);
+	            H = (H / sum_P) + log(sum_P);
+	
+	            // Evaluate whether the entropy is within the tolerance level
+	            double Hdiff = H - log(perplexity);
+	            if(Hdiff < tol && -Hdiff < tol) {
+	                found = true;
+	            }
+	            else {
+	                if(Hdiff > 0) {
+	                    min_beta = beta;
+	                    if(max_beta == DBL_MAX || max_beta == -DBL_MAX)
+	                        beta *= 2.0;
+	                    else
+	                        beta = (beta + max_beta) / 2.0;
+	                }
+	                else {
+	                    max_beta = beta;
+	                    if(min_beta == -DBL_MAX || min_beta == DBL_MAX)
+	                        beta /= 2.0;
+	                    else
+	                        beta = (beta + min_beta) / 2.0;
+	                }
+	            }
+	
+	            // Update iteration counter
+	            iter++;
+	        }
+	        
+	        fprintf(stdout, "beta= %f\n",beta);
+	
+	        // Row-normalize current row of P and store in matrix
+	        for(unsigned int m = 0; m < K; m++) cur_P[m] /= sum_P;
+	        for(unsigned int m = 0; m < K; m++) {
+	            col_P[row_P[n] + m] = (unsigned int) indices[m + 1].index();
+	            val_P[row_P[n] + m] = cur_P[m];
+	        }
+	        
+	    }
+	
+	    // Clean up memory
+	    obj_X.clear();
+	    free(cur_P);
+	    delete tree;
+		}
+	
 }
 
 
@@ -533,7 +629,7 @@ void TSNE::symmetrizeMatrix(unsigned int** _row_P, unsigned int** _col_P, double
 
     // Count number of elements and row counts of symmetric matrix
     int* row_counts = (int*) calloc(N, sizeof(int));
-    if(row_counts == NULL) { fprintf(stderr, "Memory allocation failed!\n"); exit(1); }
+    if(row_counts == NULL) { fprintf(stderr,"Memory allocation failed! %d\n",__LINE__); exit(1); }
     for(int n = 0; n < N; n++) {
         for(int i = row_P[n]; i < row_P[n + 1]; i++) {
 
@@ -556,7 +652,7 @@ void TSNE::symmetrizeMatrix(unsigned int** _row_P, unsigned int** _col_P, double
     unsigned int* sym_row_P = (unsigned int*) malloc((N + 1) * sizeof(unsigned int));
     unsigned int* sym_col_P = (unsigned int*) malloc(no_elem * sizeof(unsigned int));
     double* sym_val_P = (double*) malloc(no_elem * sizeof(double));
-    if(sym_row_P == NULL || sym_col_P == NULL || sym_val_P == NULL) { fprintf(stderr, "Memory allocation failed!\n"); exit(1); }
+    if(sym_row_P == NULL || sym_col_P == NULL || sym_val_P == NULL) { fprintf(stderr,"Memory allocation failed! %d\n",__LINE__); exit(1); }
 
     // Construct new row indices for symmetric matrix
     sym_row_P[0] = 0;
@@ -564,7 +660,7 @@ void TSNE::symmetrizeMatrix(unsigned int** _row_P, unsigned int** _col_P, double
 
     // Fill the result matrix
     int* offset = (int*) calloc(N, sizeof(int));
-    if(offset == NULL) { fprintf(stderr, "Memory allocation failed!\n"); exit(1); }
+    if(offset == NULL) { fprintf(stderr,"Memory allocation failed! %d\n",__LINE__); exit(1); }
     for(int n = 0; n < N; n++) {
         for(unsigned int i = row_P[n]; i < row_P[n + 1]; i++) {                                  // considering element(n, col_P[i])
 
@@ -614,19 +710,65 @@ void TSNE::symmetrizeMatrix(unsigned int** _row_P, unsigned int** _col_P, double
 // Compute squared Euclidean distance matrix
 void TSNE::computeSquaredEuclideanDistance(double* X, int N, int D, double* DD) {
     const double* XnD = X;
+    float** refcoor;
+    float** movcoor;
+
+	//rmsd calculation with alignment is performed with wordoms rmsd algorithm
+    if(this->useSuper) {
+		
+		//for usage with wordoms rmsd calculation the data has to be copied to 2D float arrays instead of 1D double arrays
+	    refcoor = (float**) calloc(3,sizeof(float*));
+	    movcoor = (float**) calloc(3,sizeof(float*));
+	    if(!refcoor || !movcoor)  { fprintf(stderr,"Memory allocation failed! %d\n",__LINE__); exit(1); }
+	    
+		refcoor[0] = (float*) calloc( D, sizeof ( float));
+		movcoor[0] = (float*) calloc( D, sizeof ( float));
+		if(!refcoor[0] || !movcoor[0])  { fprintf(stderr,"Memory allocation failed! %d\n",__LINE__); exit(1); }
+		for (int ii =1; ii<3; ii++) {
+			refcoor[ii] = refcoor[ii-1] + ii*D/3;
+			movcoor[ii] = movcoor[ii-1] + ii*D/3;
+		}
+	}
+	
     for(int n = 0; n < N; ++n, XnD += D) {
         const double* XmD = XnD + D;
         double* curr_elem = &DD[n*N + n];
         *curr_elem = 0.0;
         double* curr_elem_sym = curr_elem + N;
         for(int m = n + 1; m < N; ++m, XmD+=D, curr_elem_sym+=N) {
-            *(++curr_elem) = 0.0;
-            for(int d = 0; d < D; ++d) {
-                *curr_elem += (XnD[d] - XmD[d]) * (XnD[d] - XmD[d]);
-            }
+			*(++curr_elem) = 0.0;
+			
+			if (!this->useSuper) {
+	            for(int d = 0; d < D; ++d) {
+	                *curr_elem += (XnD[d] - XmD[d]) * (XnD[d] - XmD[d]);
+	            }
+			} else {
+				
+				fprintf(stderr, "working \n");
+				for(int d = 0; d < D/3; ++d) {
+					for(int x = 0; x < 3; x++) {
+		                refcoor[x][d]= (float) XnD[3*d+x];
+		                movcoor[x][d]= (float) XmD[3*d+x];
+		            }
+				}
+				*curr_elem = RmsdCalcQCP( refcoor, movcoor, D/3, 1 );
+				*curr_elem = (*curr_elem)*(*curr_elem)*D/3;
+			}
+			
             *curr_elem_sym = *curr_elem;
         }
     }
+    
+    if(this->useSuper) {
+		free(refcoor[0]);
+		free(movcoor[0]);
+		for(int i =0; i<3; i++)
+			refcoor[i]=movcoor[i]=NULL;
+			
+		free(refcoor);
+		free(movcoor);
+		refcoor=movcoor=NULL;
+	}
 }
 
 
@@ -635,7 +777,7 @@ void TSNE::zeroMean(double* X, int N, int D) {
 
 	// Compute data mean
 	double* mean = (double*) calloc(D, sizeof(double));
-    if(mean == NULL) { fprintf(stderr, "Memory allocation failed!\n"); exit(1); }
+    if(mean == NULL) { fprintf(stderr,"Memory allocation failed! %d\n",__LINE__); exit(1); }
     int nD = 0;
 	for(int n = 0; n < N; n++) {
 		for(int d = 0; d < D; d++) {

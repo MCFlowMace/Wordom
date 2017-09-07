@@ -2098,14 +2098,24 @@ int Post_Cluster ( struct inp_Cluster *inp_cluster )
 	     
 	//fprintf(stderr,"Reached post cluster\n");
 	// Now fire up the SNE implementation
+	
+	//fprintf(stderr, "postcluster_start\n");
 	double* Y = (double*) malloc(frames * inp_cluster->dimension * sizeof(double));
     if(Y == NULL) { fprintf(stderr, "Memory allocation failed!\n"); exit(1); }
+    //fprintf(stderr, "postcluster_start2\n");
     
-    
-    if(inp_cluster->distance ==1)
-		setup_tsne(inp_cluster->tsne_coords+3*inp_cluster->nato, frames, 3*inp_cluster->nato, Y, inp_cluster->dimension, inp_cluster->perplexity, inp_cluster->threshold_bh, inp_cluster->rand_seed, inp_cluster->max_iter);
-    else
-		setup_tsne(inp_cluster->tsne_coords+inp_cluster->msize, frames, inp_cluster->msize, Y, inp_cluster->dimension, inp_cluster->perplexity, inp_cluster->threshold_bh, inp_cluster->rand_seed, inp_cluster->max_iter);
+    if(inp_cluster->distance ==1) {
+		
+		if(inp_cluster->super) {
+			setup_tsne(inp_cluster->tsne_coords+3*inp_cluster->nato, frames, 3*inp_cluster->nato, Y, inp_cluster->dimension, inp_cluster->perplexity, inp_cluster->threshold_bh, inp_cluster->rand_seed, inp_cluster->max_iter, true);
+		} else {
+			fprintf(stderr, "Nosuper!\n");
+			setup_tsne(inp_cluster->tsne_coords+3*inp_cluster->nato, frames, 3*inp_cluster->nato, Y, inp_cluster->dimension, inp_cluster->perplexity, inp_cluster->threshold_bh, inp_cluster->rand_seed, inp_cluster->max_iter, false);
+		}
+    } else {
+		
+		setup_tsne(inp_cluster->tsne_coords+inp_cluster->msize, frames, inp_cluster->msize, Y, inp_cluster->dimension, inp_cluster->perplexity, inp_cluster->threshold_bh, inp_cluster->rand_seed, inp_cluster->max_iter, false);
+    }
     
     //output
     fprintf(inp_cluster->output, " Result T-Sne, #frames: %d, dimension: %d, perplexity: %f, theta: %f, iterations: %d\n",frames, inp_cluster->dimension, inp_cluster->perplexity, inp_cluster->threshold_bh, inp_cluster->max_iter);
