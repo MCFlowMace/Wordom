@@ -144,7 +144,7 @@ double aligned_rmsd(const DataPoint &t1, const DataPoint &t2) {
 	
 	//calculate rmsd
 	float rmsd = RmsdCalcQCP( refcoor, movcoor, (t1._D)/3, 1 );
-	rmsd *= rmsd*(t1._D)/3; //RmsdCalcQCP normalizes with the number of atoms i.e. dimension/3
+	//rmsd *= rmsd*(t1._D)/3; //RmsdCalcQCP normalizes with the number of atoms i.e. dimension/3
     //rmsd *= rmsd;
 
 	free(refcoor[0]);

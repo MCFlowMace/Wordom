@@ -51,9 +51,9 @@ using namespace std;
 
 
 //just a C wrapper
-extern "C" void setup_tsne(double* X, int N, int D, double* Y, int no_dims, double perplexity, double theta, int rand_seed, int max_iter, bool useSuper) {
+extern "C" void setup_tsne(double* X, int N, int D, double* Y, int no_dims, double perplexity, double theta, int rand_seed, int max_iter, bool useSuper, bool useRmsd) {
 
-    TSNE* tsne = new TSNE(useSuper);
+    TSNE* tsne = new TSNE(useSuper, useRmsd);
 	tsne->run(X, N, D, Y, no_dims, perplexity, theta, rand_seed, false, max_iter);
     delete(tsne);
 }
@@ -366,6 +366,13 @@ void TSNE::computeGaussianPerplexity(double* X, int N, int D, double* P, double 
 	double* DD = (double*) malloc(N * N * sizeof(double));
     if(DD == NULL) { fprintf(stderr,"Memory allocation failed! %d\n",__LINE__); exit(1); }
 	computeSquaredEuclideanDistance(X, N, D, DD);
+	
+	if(!this->useRmsd)
+		for(int n=0; n<N*N; n++)
+			DD[n]/=D;
+	else 
+		for(int n=0; n<N*N; n++)
+			DD[n]/=D/3;
 
 	// Compute the Gaussian kernel row by row
     int nN = 0;
@@ -420,6 +427,7 @@ void TSNE::computeGaussianPerplexity(double* X, int N, int D, double* P, double 
 			iter++;
 		}
 
+		fprintf(stdout, "beta= %f\n", beta);
 		// Row normalize P
 		for(int m = 0; m < N; m++) P[nN + m] /= sum_P;
         nN += N;
@@ -451,7 +459,7 @@ void TSNE::computeGaussianPerplexity(double* X, int N, int D, unsigned int** _ro
     // Build ball tree on data set
     if(!this->useSuper) {
     
-    VpTree<DataPoint, euclidean_distance>* tree = new VpTree<DataPoint, euclidean_distance>();
+		VpTree<DataPoint, euclidean_distance>* tree = new VpTree<DataPoint, euclidean_distance>();
 	    vector<DataPoint> obj_X(N, DataPoint(D, -1, X));
 	    for(int n = 0; n < N; n++) obj_X[n] = DataPoint(D, n, X + n * D);
 	    tree->create(obj_X);
@@ -468,6 +476,13 @@ void TSNE::computeGaussianPerplexity(double* X, int N, int D, unsigned int** _ro
 	        indices.clear();
 	        distances.clear();
 	        tree->search(obj_X[n], K + 1, &indices, &distances);
+	        
+	        if(this->useRmsd)
+				for(int i=0; i<distances.size(); i++)
+					distances[i] /= sqrt(D/3);
+			else
+				for(int i=0; i<distances.size(); i++)
+					distances[i] /= sqrt(D);
 	
 	        // Initialize some variables for binary search
 	        bool found = false;
@@ -531,9 +546,9 @@ void TSNE::computeGaussianPerplexity(double* X, int N, int D, unsigned int** _ro
 	    obj_X.clear();
 	    free(cur_P);
 	    delete tree;
-		}
-    
-    else {
+	    
+	    
+	} else {
 		VpTree<DataPoint, aligned_rmsd>* tree = new VpTree<DataPoint, aligned_rmsd>(); //this is the only line that differs from first case
 		vector<DataPoint> obj_X(N, DataPoint(D, -1, X));
 	    for(int n = 0; n < N; n++) obj_X[n] = DataPoint(D, n, X + n * D);
@@ -740,11 +755,11 @@ void TSNE::computeSquaredEuclideanDistance(double* X, int N, int D, double* DD) 
 			
 			if (!this->useSuper) {
 	            for(int d = 0; d < D; ++d) {
-	                *curr_elem += (XnD[d] - XmD[d]) * (XnD[d] - XmD[d]);
+	                *curr_elem += (XnD[d] - XmD[d]) * (XnD[d] - XmD[d]);//*1.3245;
 	            }
 			} else {
 				
-				fprintf(stderr, "working \n");
+				//fprintf(stderr, "working \n");
 				for(int d = 0; d < D/3; ++d) {
 					for(int x = 0; x < 3; x++) {
 		                refcoor[x][d]= (float) XnD[3*d+x];

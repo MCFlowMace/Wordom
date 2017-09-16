@@ -2107,14 +2107,14 @@ int Post_Cluster ( struct inp_Cluster *inp_cluster )
     if(inp_cluster->distance ==1) {
 		
 		if(inp_cluster->super) {
-			setup_tsne(inp_cluster->tsne_coords+3*inp_cluster->nato, frames, 3*inp_cluster->nato, Y, inp_cluster->dimension, inp_cluster->perplexity, inp_cluster->threshold_bh, inp_cluster->rand_seed, inp_cluster->max_iter, true);
+			setup_tsne(inp_cluster->tsne_coords+3*inp_cluster->nato, frames, 3*inp_cluster->nato, Y, inp_cluster->dimension, inp_cluster->perplexity, inp_cluster->threshold_bh, inp_cluster->rand_seed, inp_cluster->max_iter, true, true);
 		} else {
-			fprintf(stderr, "Nosuper!\n");
-			setup_tsne(inp_cluster->tsne_coords+3*inp_cluster->nato, frames, 3*inp_cluster->nato, Y, inp_cluster->dimension, inp_cluster->perplexity, inp_cluster->threshold_bh, inp_cluster->rand_seed, inp_cluster->max_iter, false);
+			//fprintf(stderr, "Nosuper!\n");
+			setup_tsne(inp_cluster->tsne_coords+3*inp_cluster->nato, frames, 3*inp_cluster->nato, Y, inp_cluster->dimension, inp_cluster->perplexity, inp_cluster->threshold_bh, inp_cluster->rand_seed, inp_cluster->max_iter, false, true);
 		}
     } else {
 		
-		setup_tsne(inp_cluster->tsne_coords+inp_cluster->msize, frames, inp_cluster->msize, Y, inp_cluster->dimension, inp_cluster->perplexity, inp_cluster->threshold_bh, inp_cluster->rand_seed, inp_cluster->max_iter, false);
+		setup_tsne(inp_cluster->tsne_coords+inp_cluster->msize, frames, inp_cluster->msize, Y, inp_cluster->dimension, inp_cluster->perplexity, inp_cluster->threshold_bh, inp_cluster->rand_seed, inp_cluster->max_iter, false, false);
     }
     
     //output
