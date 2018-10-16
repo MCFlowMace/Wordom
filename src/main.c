@@ -38,6 +38,7 @@ extern short int verbose;
 
 int main (int argc, char **argv)
 {
+	
   int           c;
   int           ii;
   int           iaoptions;
@@ -55,8 +56,10 @@ int main (int argc, char **argv)
   // to be passed to the read_ia functions
   OPT.Ia_FLAG = 0;
   iaoptions = 0;
+	
   for( ii=0; ii<argc; ii++ )
   {
+	
     if( !strncmp( argv[ii], "-ia", 3) )
     {
       OPT.Ia_FLAG = 1; // found! take notice!
@@ -339,9 +342,12 @@ int main (int argc, char **argv)
     }
   }
 
+
+
   // ================================
   // === now let the action begin ===
   // ================================
+
 
   OPT.TCONV_FLAG = 
       OPT.ITRJ_FLAG && OPT.OTRJ_FLAG && OPT.CONV_FLAG;
@@ -351,6 +357,7 @@ int main (int argc, char **argv)
     fprintf( stderr, "IA, Ia, IE and Ie are mutually exclusive\n");
     exit(0);
   }
+
 
   if ( OPT.Ia_FLAG )
   {
@@ -364,9 +371,11 @@ int main (int argc, char **argv)
       fprintf ( stderr, "Something's missing: -itrj (or -E) and -imol are required!\a\n" );
       exit ( 99 );
     }
+
     superCalc( &OPT );
     exit(0);
   }
+
   
   if ( OPT.IA_FLAG == 1 )
   {
@@ -379,6 +388,7 @@ int main (int argc, char **argv)
     superCalc( &OPT );
     exit (0);
   }
+
   if ( OPT.IE_FLAG || OPT.Ie_FLAG )
   {
     Calc2( &OPT );

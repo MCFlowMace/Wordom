@@ -468,6 +468,7 @@ void superCalc ( struct sopt   *OPT  )
    // WARNING : ADD POST_STUFF HERE
   #endif
 
+
    fflush(stdout);
    iA_Calc( OPT );
    return;

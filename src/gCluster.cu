@@ -822,6 +822,9 @@ extern "C" int find_GPUs() {
 	cudaError_t cudaResultCode = cudaGetDeviceCount(&deviceCount);
 	if (cudaResultCode != cudaSuccess)
 		deviceCount = 0;
+
+	fprintf(stderr,"devicecount: %d\n",deviceCount);
+	realGPUs=0;
 		
 	// look for the number of real GPUs not counting CUDA emulation devices
 	for (device = 0; device < deviceCount; ++device) {
@@ -1052,7 +1055,9 @@ extern "C" int gClusterDrms (struct inp_Cluster *inp_cluster,float *distance)
 		
 	//cuda API functions always return some type of error, but if no error occured, this error is just a cudaSuccess
 	//errorHandler terminates program in case there was no cudaSuccess reported
+
 	errorHandler(cudaMemGetInfo(&freemem, &total),__LINE__);
+
 	
 	//check if there is enough gpu memory for the job and split up the calculation if not
 	if(freemem < totalmemsize) {
@@ -1073,7 +1078,7 @@ extern "C" int gClusterDrms (struct inp_Cluster *inp_cluster,float *distance)
 			errorHandler(cudaMemGetInfo(&freemem, &total),__LINE__);
 			
 			//number of frames that fit into memory; 2MB of the total memory reported to freemem have to remain free, allocations fail otherwise (value found by trial and error)
-			nframes = (freemem -10000000 - clust_dmtx_mem - sizeof(int))/(dmtx_size+3*sizeof(int)+sizeof(float));
+			nframes = (freemem -20000000 - clust_dmtx_mem - sizeof(int))/(dmtx_size+3*sizeof(int)+sizeof(float));
 			//DEBUG fprintf(stderr,"Free memory: %u, Frames remaining: %d, Frames fitting into memory: %d, Number of clusters: %d\n",freemem,framesRemaining,nframes,nclusters);
 			
 			//nframes is either the number of frames that fit into gpu memory, or the number of remaining frames

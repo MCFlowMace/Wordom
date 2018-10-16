@@ -628,6 +628,7 @@ int Read_iGcluster ( char **input, int inp_index, struct inp_Cluster *inp_cluste
    int         nsframe;         // frames to be clustered = nframe/step
    float       cutoff;
    int         gotit;
+
    
    int realGPUs = find_GPUs();
    
@@ -639,6 +640,7 @@ int Read_iGcluster ( char **input, int inp_index, struct inp_Cluster *inp_cluste
 		fprintf(stderr,"No CUDA GPUs found on the system. Cannot run gCluster!\n");
 		exit(-1);
 	}
+
    
    extern short int  no_frame_par;
    no_frame_par = 1;
