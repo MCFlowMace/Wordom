@@ -1,3 +1,10 @@
+READ FIRST!!
+I have noticed that a few people started to follow or fork this repository. You should know, that this is my own fork of Wordom.
+I used this repository during the development of my contributions to Wordom. 
+If you were actually looking for the trajcectory analysis tool Wordom, please visit the official project page:
+https://sourceforge.net/projects/wordom/
+This repository is not up-to-date to the latest official version of Wordom and it contains features that still were work in progress.
+
 INSTALL
 In order to compile wordom get into the build directory and run the cmake/make procedure:
 mkdir build
@@ -21,7 +28,7 @@ Some of the code (basic functions mostly) is commented doxygen-style, to generat
 
 
 LICENSE
- Wordom is Copyright © 2003-2014 the University of Modena and Reggio Emilia and the University of Zurich.
+ Wordom is Copyright Â© 2003-2014 the University of Modena and Reggio Emilia and the University of Zurich.
  Wordom is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation; either version 3 of the License, or (at your option) any later version.
  Wordom is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
  You should have received a copy of the GNU General Public License along with Wordom. If not, see http://www.gnu.org/licenses/
